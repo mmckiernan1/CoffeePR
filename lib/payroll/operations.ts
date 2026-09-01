@@ -21,6 +21,41 @@ export function monthlyRemittanceDueDate(payDate: string): string {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 15)).toISOString().slice(0, 10);
 }
 
+function iso(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function addWorkingDays(value: string, days: number): string {
+  const date = validIsoDate(value, "date");
+  let remaining = days;
+  while (remaining > 0) {
+    date.setUTCDate(date.getUTCDate() + 1);
+    const weekday = date.getUTCDay();
+    if (weekday !== 0 && weekday !== 6) remaining -= 1;
+  }
+  return iso(date);
+}
+
+export function remittanceDueDate(remitterType: string, payDate: string): string {
+  const date = validIsoDate(payDate, "payDate");
+  const normalized = remitterType.trim().toLowerCase();
+  if (normalized === "monthly" || normalized === "regular monthly") return monthlyRemittanceDueDate(payDate);
+  if (normalized === "quarterly") {
+    const quarterEndMonth = Math.floor(date.getUTCMonth() / 3) * 3 + 2;
+    return iso(new Date(Date.UTC(date.getUTCFullYear(), quarterEndMonth + 1, 15)));
+  }
+  if (normalized.includes("threshold 1") || normalized.includes("accelerated 1")) {
+    if (date.getUTCDate() <= 15) return iso(new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 25)));
+    return iso(new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 10)));
+  }
+  if (normalized.includes("threshold 2") || normalized.includes("accelerated 2")) {
+    const day = date.getUTCDate();
+    const periodEndDay = day <= 7 ? 7 : day <= 14 ? 14 : day <= 21 ? 21 : new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+    return addWorkingDays(iso(new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), periodEndDay))), 3);
+  }
+  throw new Error(`Unsupported remitter type: ${remitterType}.`);
+}
+
 export function remittanceLiabilityCents(lines: readonly { incomeTaxCents: number; cppCents: number; cpp2Cents: number; eiCents: number }[]): number {
   return lines.reduce((sum, line) => {
     for (const value of [line.incomeTaxCents, line.cppCents, line.cpp2Cents, line.eiCents]) {

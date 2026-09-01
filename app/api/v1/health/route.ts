@@ -3,7 +3,7 @@ import { RBC_CPA005_SPEC } from "@/lib/payroll/rbc-cpa005";
 export async function GET() {
   return Response.json({
     product: "Comcheq Payroll",
-    version: "0.5.0-payment-operations",
+    version: "0.6.0-operating-model",
     environment: "public-fictional-prototype",
     capabilities: {
       payRunStateMachine: "implemented-and-tested",
@@ -11,6 +11,7 @@ export async function GET() {
       alberta2026RegularPeriodic: "implemented-cra-worked-examples-reconciled",
       statutoryDemo: "/api/v1/demo/alberta-calculation",
       rbcBankAdapter: `${RBC_CPA005_SPEC.adapter}-test-mode`,
+      paymentsCanadaAftSimulation: "fixed-record-generic-workflow-rehearsal",
       administratorCsvDataExchange: "interactive-validation-prototype",
       openApiContract: "/api/v1/openapi",
       persistentPayrollRecords: "authenticated-fictional-admin-milestone",
@@ -21,7 +22,7 @@ export async function GET() {
       linkedCorrectionRuns: "durable-approval-workflow",
       bankedOvertime: "agreement-gated-auditable-in-out-ledger",
       eftBankHandoff: "controlled-test-file-and-external-bank-link",
-      craRemittanceWorkflow: "liability-due-date-reminder-and-payment-tracking",
+      craRemittanceWorkflow: "quarterly-monthly-accelerated-due-dates-reminders-and-payment-tracking",
       t4Xml: "production-gate",
       roeXml: "production-gate",
     },

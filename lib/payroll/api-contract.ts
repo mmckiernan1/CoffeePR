@@ -55,6 +55,18 @@ export const openApiDocument = {
         },
       },
     },
+    "/api/v1/demo/payments-canada-aft": {
+      get: {
+        summary: "Download a fictional Payments Canada AFT simulation file",
+        operationId: "getDemoPaymentsCanadaAft",
+        responses: {
+          "200": {
+            description: "Fixed-width Standard-005-style simulation file; not bank-submittable",
+            content: { "text/plain": { schema: { type: "string" } } },
+          },
+        },
+      },
+    },
     "/api/v1/demo/alberta-calculation": {
       get: {
         summary: "Inspect a fictional 2026 Alberta regular-periodic calculation",

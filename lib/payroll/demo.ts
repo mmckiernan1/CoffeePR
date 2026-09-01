@@ -1,5 +1,6 @@
 import { dollarsToCents, type MoneyCents } from "./money.ts";
 import { generateRbcCpa005CreditFile, type RbcCpa005Payment } from "./rbc-cpa005.ts";
+import { generatePaymentsCanadaAftSimulation } from "./payments-canada-aft.ts";
 import { calculateAlbertaPayroll } from "./statutory/calculate.ts";
 
 export const demoEmployees = [
@@ -42,6 +43,23 @@ export function buildDemoRbcCpa005File(runNumber: number, netPayDollars: readonl
     clientLegalName: "Prairie North Services Ltd.",
     includeRoutingRecord: true,
   }, payments);
+}
+
+function demoAftPayments(runNumber: number, netPayDollars: readonly number[]): RbcCpa005Payment[] {
+  if (netPayDollars.length !== demoEmployees.length) throw new Error("Demo net pay must include all four fictional employees.");
+  return demoEmployees.map((employee, index) => ({
+    ...employee,
+    amountCents: dollarsToCents(netPayDollars[index]),
+    paymentDate: "2026-09-04",
+    transactionCode: "200",
+    customerNumber: employee.employeeId,
+    sundryInformation: `PAY RUN ${runNumber}`,
+    customerName: employee.name,
+  }));
+}
+
+export function buildDemoPaymentsCanadaAftFile(runNumber: number, netPayDollars: readonly number[]) {
+  return generatePaymentsCanadaAftSimulation(demoAftPayments(runNumber, netPayDollars), { runNumber });
 }
 
 export function buildDemoAlbertaCalculation() {
