@@ -185,6 +185,8 @@ export const payRunDraftLines = sqliteTable("pay_run_draft_lines", {
   payType: text("pay_type").notNull(),
   regularHoursHundredths: integer("regular_hours_hundredths").notNull().default(0),
   overtimeHoursHundredths: integer("overtime_hours_hundredths").notNull().default(0),
+  bankedOvertimeEarnedHundredths: integer("banked_overtime_earned_hundredths").notNull().default(0),
+  bankedOvertimeUsedHundredths: integer("banked_overtime_used_hundredths").notNull().default(0),
   otherEarningsCents: integer("other_earnings_cents").notNull().default(0),
   otherDeductionsCents: integer("other_deductions_cents").notNull().default(0),
   grossCents: integer("gross_cents").notNull().default(0),
@@ -199,6 +201,68 @@ export const payRunDraftLines = sqliteTable("pay_run_draft_lines", {
   uniqueIndex("pay_run_draft_lines_draft_employee_uq").on(table.draftId, table.employeeId),
   index("pay_run_draft_lines_workspace_idx").on(table.workspaceId),
 ]);
+
+export const overtimeAgreements = sqliteTable("overtime_agreements", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => employerWorkspaces.id),
+  employeeId: text("employee_id").notNull().references(() => employees.id),
+  agreementType: text("agreement_type").notNull(),
+  bankRateHundredths: integer("bank_rate_hundredths").notNull().default(100),
+  effectiveFrom: text("effective_from").notNull(),
+  effectiveTo: text("effective_to"),
+  status: text("status").notNull(),
+  documentReference: text("document_reference").notNull(),
+  createdAt: text("created_at").notNull(),
+  createdBy: text("created_by").notNull(),
+}, (table) => [index("overtime_agreements_employee_effective_idx").on(table.workspaceId, table.employeeId, table.effectiveFrom)]);
+
+export const overtimeBankEntries = sqliteTable("overtime_bank_entries", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => employerWorkspaces.id),
+  employeeId: text("employee_id").notNull().references(() => employees.id),
+  payRunId: text("pay_run_id").references(() => payRuns.id),
+  entryType: text("entry_type").notNull(),
+  transactionDate: text("transaction_date").notNull(),
+  hoursDeltaHundredths: integer("hours_delta_hundredths").notNull(),
+  expiresOn: text("expires_on"),
+  sourceReference: text("source_reference").notNull(),
+  note: text("note").notNull(),
+  createdAt: text("created_at").notNull(),
+  createdBy: text("created_by").notNull(),
+}, (table) => [
+  uniqueIndex("overtime_bank_source_uq").on(table.sourceReference),
+  index("overtime_bank_employee_date_idx").on(table.workspaceId, table.employeeId, table.transactionDate),
+]);
+
+export const remittanceObligations = sqliteTable("remittance_obligations", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => employerWorkspaces.id),
+  payrollAccountId: text("payroll_account_id").notNull().references(() => payrollAccounts.id),
+  payRunId: text("pay_run_id").notNull().references(() => payRuns.id),
+  periodEnd: text("period_end").notNull(),
+  dueDate: text("due_date").notNull(),
+  liabilityCents: integer("liability_cents").notNull(),
+  status: text("status").notNull(),
+  reminderDate: text("reminder_date"),
+  paidDate: text("paid_date"),
+  paymentReference: text("payment_reference"),
+  createdAt: text("created_at").notNull(),
+  createdBy: text("created_by").notNull(),
+}, (table) => [
+  uniqueIndex("remittance_pay_run_uq").on(table.payRunId),
+  index("remittance_workspace_due_idx").on(table.workspaceId, table.dueDate),
+]);
+
+export const employerBankLinks = sqliteTable("employer_bank_links", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => employerWorkspaces.id),
+  bankName: text("bank_name").notNull(),
+  bankUrl: text("bank_url").notNull(),
+  eftAdapter: text("eft_adapter").notNull(),
+  status: text("status").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  updatedBy: text("updated_by").notNull(),
+}, (table) => [uniqueIndex("employer_bank_link_workspace_uq").on(table.workspaceId)]);
 
 export const payRunDraftComponents = sqliteTable("pay_run_draft_components", {
   id: text("id").primaryKey(),

@@ -71,6 +71,13 @@
       "when": 1788240560752,
       "tag": "0009_large_micromax",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1788275248125,
+      "tag": "0010_tricky_victor_mancha",
+      "breakpoints": true
     }
   ]
 }
