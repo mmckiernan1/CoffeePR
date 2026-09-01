@@ -154,6 +154,64 @@ export const billingEvents = sqliteTable("billing_events", {
   index("billing_events_workspace_time_idx").on(table.workspaceId, table.occurredAt),
 ]);
 
+export const billingPaymentProfiles = sqliteTable("billing_payment_profiles", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => employerWorkspaces.id),
+  provider: text("provider").notNull(),
+  methodType: text("method_type").notNull(),
+  displayLabel: text("display_label").notNull(),
+  providerCustomerToken: text("provider_customer_token").notNull(),
+  automaticCharge: integer("automatic_charge", { mode: "boolean" }).notNull().default(false),
+  status: text("status").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  updatedBy: text("updated_by").notNull(),
+}, (table) => [uniqueIndex("billing_payment_profiles_workspace_uq").on(table.workspaceId)]);
+
+export const billingCharges = sqliteTable("billing_charges", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => employerWorkspaces.id),
+  payRunId: text("pay_run_id").notNull().references(() => payRuns.id),
+  billingEventId: text("billing_event_id").notNull().references(() => billingEvents.id),
+  amountCents: integer("amount_cents").notNull(),
+  currency: text("currency").notNull(),
+  status: text("status").notNull(),
+  providerReference: text("provider_reference").notNull(),
+  attemptedAt: text("attempted_at").notNull(),
+  createdBy: text("created_by").notNull(),
+}, (table) => [
+  uniqueIndex("billing_charges_pay_run_uq").on(table.payRunId),
+  index("billing_charges_workspace_status_idx").on(table.workspaceId, table.status),
+]);
+
+export const contractors = sqliteTable("contractors", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => employerWorkspaces.id),
+  contractorNumber: text("contractor_number").notNull(),
+  legalName: text("legal_name").notNull(),
+  email: text("email").notNull(),
+  status: text("status").notNull(),
+  createdAt: text("created_at").notNull(),
+  createdBy: text("created_by").notNull(),
+}, (table) => [
+  uniqueIndex("contractors_workspace_number_uq").on(table.workspaceId, table.contractorNumber),
+  index("contractors_workspace_status_idx").on(table.workspaceId, table.status),
+]);
+
+export const contractorPayments = sqliteTable("contractor_payments", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => employerWorkspaces.id),
+  contractorId: text("contractor_id").notNull().references(() => contractors.id),
+  paymentDate: text("payment_date").notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  notes: text("notes").notNull(),
+  t4aBox: text("t4a_box").notNull().default("048"),
+  status: text("status").notNull(),
+  createdAt: text("created_at").notNull(),
+  createdBy: text("created_by").notNull(),
+}, (table) => [
+  index("contractor_payments_contractor_date_idx").on(table.workspaceId, table.contractorId, table.paymentDate),
+]);
+
 export const payRunDrafts = sqliteTable("pay_run_drafts", {
   id: text("id").primaryKey(),
   workspaceId: text("workspace_id").notNull().references(() => employerWorkspaces.id),

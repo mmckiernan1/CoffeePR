@@ -12,7 +12,7 @@ import { payrollApiControls, payrollApiResources } from "@/lib/payroll/api-contr
 import { buildAllSectionsCsv, buildSectionCsv, dataExchangeSections, validateSectionCsv } from "@/lib/payroll/csv-data-exchange";
 import { allocateDemoNetPay, buildDemoAlbertaCalculation, buildDemoPaymentsCanadaAftFile } from "@/lib/payroll/demo";
 import { dollarsToCents, formatCad } from "@/lib/payroll/money";
-import { buildBrandedPdf } from "@/lib/payroll/pdf";
+import { buildBrandedPdf, buildPayrollRegisterPdf } from "@/lib/payroll/pdf";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -169,14 +169,17 @@ function reportFile(kind: PdfReportKind, employeeName = "Noah Williams") {
   return {
     title: "Payroll register",
     filename: "comcheq-pay-run-17-payroll-register.pdf",
-    bytes: buildBrandedPdf({
-      clientName: "Prairie North Services Ltd.", title: "Payroll register", subtitle: "Pay run 17 - employee calculation summary",
-      metadata: [{ label: "Pay period", value: "August 16-31, 2026" }, { label: "Pay date", value: "September 4, 2026" }, { label: "Payroll year position", value: "Run 17 of 26" }, { label: "Employees", value: "4 payments" }],
-      sections: [{ title: "Employee register", rows: employees.map((employee) => ({ label: employee.name, detail: `Gross ${currency.format(employee.gross)}`, value: currency.format(employee.gross - employee.tax - employee.cpp - employee.ei - employee.other) })) }, { title: "Run totals", rows: [
-        { label: "Gross payroll", detail: "4 employees", value: "$12,102.65" },
-        { label: "Statutory and other deductions", detail: "Tax, CPP, EI, other", value: "$3,609.72" },
-        { label: "Net payroll", detail: "Bank-file control", value: "$8,492.93", emphasis: true },
-      ] }], footer: "Fictional payroll register preview. Approved production registers are retained with the numbered pay run.",
+    bytes: buildPayrollRegisterPdf({
+      clientName: "Prairie North Services Ltd.", period: "August 16-31, 2026", payDate: "September 4, 2026", runLabel: "17 of 26",
+      employees: employees.map((employee) => ({
+        employeeNumber: employeeProfiles[employee.name].id,
+        employeeName: employee.name,
+        regularHours: employee.name === "Noah Williams" ? "80.00" : employee.name === "Liam Martin" ? "72.00" : "86.67",
+        overtimeHours: employee.name === "Noah Williams" ? "2.50" : "0.00",
+        gross: currency.format(employee.gross), incomeTax: currency.format(employee.tax), cpp: currency.format(employee.cpp), ei: currency.format(employee.ei), otherDeductions: currency.format(employee.other),
+        netPay: currency.format(employee.gross - employee.tax - employee.cpp - employee.ei - employee.other),
+      })),
+      grossTotal: "$12,102.65", deductionTotal: "$3,609.72", netTotal: "$8,492.93",
     }),
   };
 }
@@ -227,7 +230,7 @@ export default function Home() {
   }
 
   function payrollRows() {
-    return employees.map((employee) => {
+    return [...employees].sort((left, right) => employeeProfiles[left.name].id.localeCompare(employeeProfiles[right.name].id, "en-CA", { numeric: true })).map((employee) => {
       const tax = employee.tax;
       const net = employee.gross - tax - employee.cpp - employee.ei - employee.other;
       return [employee.name, employee.type, employee.gross, tax, employee.cpp, employee.ei, employee.other, net];
@@ -416,7 +419,7 @@ function HomeDashboard({ approved, timeReady, onNavigate }: { approved: boolean;
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       <WorkflowTile step="01" title="Customer setup" detail="Business, CRA, banking and remittance schedule" status="7 of 7 ready" icon={<Settings2 />} onClick={() => onNavigate("setup")} />
       <WorkflowTile step="02" title="Configuration" detail="Dated changes, component rules and opening balances" status="Alberta active" icon={<GitBranch />} onClick={() => onNavigate("configuration")} />
-      <WorkflowTile step="03" title="People & lifecycle" detail="New hires, changes and offboarding" status="Client managed" icon={<Users />} onClick={() => onNavigate("employees")} />
+      <WorkflowTile step="03" title="People & contractors" detail="Employees, lifecycle changes and simple T4A tracking" status="Client managed" icon={<Users />} onClick={() => onNavigate("employees")} />
       <WorkflowTile step="04" title="Time entry" detail="2 hourly employees in this run" status={timeReady ? "Ready" : "Changes to save"} icon={<Clock3 />} onClick={() => onNavigate("time")} warn={!timeReady} />
       <WorkflowTile step="05" title="Pay run 17" detail="Calculate, review notices and approve" status={approved ? "Approved" : "Draft"} icon={<WalletCards />} onClick={() => onNavigate("payroll")} accent />
       <WorkflowTile step="06" title="Corrections" detail="Underpayments, reversals and rejected EFTs" status="Extra EFT ready" icon={<RefreshCw />} onClick={() => onNavigate("corrections")} />
@@ -426,7 +429,7 @@ function HomeDashboard({ approved, timeReady, onNavigate }: { approved: boolean;
     <section className="mt-6 grid gap-4 rounded-2xl border border-[#ded6e8] bg-white p-5 lg:grid-cols-[1fr_360px]"><div><p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#d946ef]">Things to review</p><div className="mt-3 flex items-start gap-3 rounded-xl bg-[#fff8e7] p-4"><CalendarDays className="mt-0.5 size-5 shrink-0 text-[#9a6d08]" /><div><h2 className="text-sm font-semibold">Labour Day eligibility</h2><p className="mt-1 text-xs leading-5 text-[#725a22]">One employee attendance record needs confirmation before the next payroll.</p><Button variant="link" onClick={() => onNavigate("holidays")} className="mt-1 h-auto p-0 text-xs text-[#a21caf]">Review calculation<ChevronRight className="size-3.5" /></Button></div></div></div><div className="border-t border-[#eae3f0] pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0"><p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#d946ef]">Important dates</p><div className="mt-3 space-y-3"><div><p className="text-xs font-semibold">September 4, 2026</p><p className="mt-1 text-[11px] text-[#746a80]">Run 17 pay date · client releases EFT</p></div><div><p className="text-xs font-semibold">September 7, 2026</p><p className="mt-1 text-[11px] text-[#746a80]">Labour Day · Alberta general holiday</p></div><div><p className="text-xs font-semibold">September 15, 2026</p><p className="mt-1 text-[11px] text-[#746a80]">CRA monthly remittance due</p></div></div></div></section>
     <section className="mt-6 grid gap-4 lg:grid-cols-[1fr_310px]">
       <div className="rounded-2xl border border-[#ded6e8] bg-white p-5"><div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">Payroll year position</h2><p className="mt-1 text-xs text-[#746a80]">Every approved run remains individually numbered and retrievable.</p></div><Button variant="outline" size="sm" onClick={() => onNavigate("history")} className="border-[#ded6e8] bg-white">View history</Button></div><div className="mt-5 flex items-center gap-1.5" aria-label="17 of 26 scheduled payroll runs reached">{Array.from({ length: 26 }, (_, index) => <span key={index} className={`h-3 min-w-1 flex-1 rounded-full ${index < 16 ? "bg-[#48b9ae]" : index === 16 ? "bg-[#6d4aff]" : "bg-[#e9e3f1]"}`} />)}</div><div className="mt-2 flex justify-between text-[11px] text-[#847990]"><span>Run 1 · January</span><strong className="text-[#6d4aff]">Run 17 current</strong><span>Run 26 · December</span></div></div>
-      <div className="rounded-2xl border border-[#ded6e8] bg-[#ffffff] p-5"><p className="text-xs font-medium text-[#746a80]">Projected run billing</p><p className="mt-2 font-mono text-2xl font-bold">$18.00</p><p className="mt-2 text-xs leading-5 text-[#746a80]">$10.00 base fee + 4 employee payments × $2.00. Drafts and recalculations remain free.</p></div>
+      <div className="rounded-2xl border border-[#ded6e8] bg-[#ffffff] p-5"><p className="text-xs font-medium text-[#746a80]">Projected automatic billing</p><p className="mt-2 font-mono text-2xl font-bold">$18.00</p><p className="mt-2 text-xs leading-5 text-[#746a80]">$10.00 base fee + 4 employee payments × $2.00. Charged once when the run is approved; drafts and recalculations remain free.</p></div>
     </section>
   </>;
 }

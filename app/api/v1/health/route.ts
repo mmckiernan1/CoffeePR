@@ -3,7 +3,7 @@ import { RBC_CPA005_SPEC } from "@/lib/payroll/rbc-cpa005";
 export async function GET() {
   return Response.json({
     product: "Comcheq Payroll",
-    version: "0.6.0-operating-model",
+    version: "0.7.0-billing-contractors-register",
     environment: "public-fictional-prototype",
     capabilities: {
       payRunStateMachine: "implemented-and-tested",
@@ -23,6 +23,9 @@ export async function GET() {
       bankedOvertime: "agreement-gated-auditable-in-out-ledger",
       eftBankHandoff: "controlled-test-file-and-external-bank-link",
       craRemittanceWorkflow: "quarterly-monthly-accelerated-due-dates-reminders-and-payment-tracking",
+      automaticBilling: "approval-triggered-idempotent-provider-token-simulation",
+      payrollRegister: "employee-number-sorted-two-column-eight-per-page",
+      contractorPayments: "durable-payment-ledger-and-t4a-box-048-working-paper",
       t4Xml: "production-gate",
       roeXml: "production-gate",
     },

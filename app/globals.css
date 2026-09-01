@@ -25,10 +25,10 @@
   --card-foreground: #202024;
   --popover: #ffffff;
   --popover-foreground: #202024;
-  --primary: #e00087;
+  --primary: #4b7598;
   --primary-foreground: #ffffff;
-  --secondary: #fdf2f8;
-  --secondary-foreground: #a80065;
+  --secondary: #edf4f9;
+  --secondary-foreground: #294f70;
   --muted: #f1f1ed;
   --muted-foreground: #66666d;
   --accent: #eef8e8;
@@ -36,21 +36,21 @@
   --destructive: #e7000b;
   --border: #deded8;
   --input: #cecec7;
-  --ring: #e00087;
-  --chart-1: #e00087;
-  --chart-2: #63ad32;
-  --chart-3: #ff4aaa;
-  --chart-4: #9bd500;
-  --chart-5: #357a1c;
+  --ring: #4b7598;
+  --chart-1: #4b7598;
+  --chart-2: #7f9db8;
+  --chart-3: #8aaa70;
+  --chart-4: #b5cadb;
+  --chart-5: #315a7b;
   --radius: 0.75rem;
   --sidebar: #ffffff;
   --sidebar-foreground: #202024;
-  --sidebar-primary: #e00087;
+  --sidebar-primary: #4b7598;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #fdf2f8;
-  --sidebar-accent-foreground: #a80065;
+  --sidebar-accent: #edf4f9;
+  --sidebar-accent-foreground: #294f70;
   --sidebar-border: #deded8;
-  --sidebar-ring: #e00087;
+  --sidebar-ring: #4b7598;
 }
 
 @theme inline {
@@ -97,35 +97,36 @@
 body {
   background:
     radial-gradient(circle at 92% 0%, rgb(235 248 225 / 0.75), transparent 30rem),
-    radial-gradient(circle at 8% 18%, rgb(253 232 243 / 0.7), transparent 27rem),
+    radial-gradient(circle at 8% 18%, rgb(226 239 248 / 0.78), transparent 27rem),
     var(--background);
   color: var(--foreground);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
-/* Fuchsia + green fintech palette. Blue and violet are deliberately excluded. */
-[class*="bg-[#6d4aff]"], [class*="bg-[#8066ef]"] { background-color: #e00087 !important; }
-[class*="hover:bg-[#5934d1]"]:hover, [class*="hover:bg-[#b91c77]"]:hover { background-color: #b8006e !important; }
-[class*="text-[#6d4aff]"], [class*="text-[#7757e8]"], [class*="text-[#5b35c7]"], [class*="text-[#d946ef]"], [class*="text-[#a21caf]"] { color: #d60081 !important; }
-[class*="bg-[#eee9ff]"] { background-color: #fdf2f8 !important; }
-[class*="bg-[#f4f0ff]"] { background-color: #fdf2f8 !important; }
-[class*="bg-[#f6f2ff]"], [class*="bg-[#f3eeff]"], [class*="bg-[#f1edff]"], [class*="bg-[#efeaff]"] { background-color: #fdf4f8 !important; }
-[class*="border-[#b9a4f2]"], [class*="border-[#c7b8ed]"], [class*="border-[#cdbfe4]"], [class*="border-[#d8c9f4]"] { border-color: #efb4d3 !important; }
-[class*="ring-[#eee9ff]"] { --tw-ring-color: #fce7f3 !important; }
-[class*="from-[#6d4aff]"] { --tw-gradient-from: #e00087 !important; }
-[class*="via-[#8066ef]"] { --tw-gradient-via: #d0007c !important; }
-[class*="to-[#00a9a5]"] { --tw-gradient-to: #63ad32 !important; }
+/* Calm blue payroll palette: softer on desktop while retaining readable controls. */
+[class*="bg-[#6d4aff]"], [class*="bg-[#8066ef]"], [class*="bg-[#e00087]"] { background-color: #4b7598 !important; }
+[class*="hover:bg-[#5934d1]"]:hover, [class*="hover:bg-[#b91c77]"]:hover { background-color: #365d7e !important; }
+[class*="text-[#6d4aff]"], [class*="text-[#7757e8]"], [class*="text-[#5b35c7]"], [class*="text-[#d946ef]"], [class*="text-[#a21caf]"] { color: #315f87 !important; }
+[class*="bg-[#eee9ff]"], [class*="bg-[#f4f0ff]"] { background-color: #eaf2f8 !important; }
+[class*="bg-[#f6f2ff]"], [class*="bg-[#f3eeff]"], [class*="bg-[#f1edff]"], [class*="bg-[#efeaff]"] { background-color: #f1f6fa !important; }
+[class*="border-[#b9a4f2]"], [class*="border-[#c7b8ed]"], [class*="border-[#cdbfe4]"], [class*="border-[#d8c9f4]"] { border-color: #b7ccdc !important; }
+[class*="ring-[#eee9ff]"] { --tw-ring-color: #d8e7f1 !important; }
+[class*="from-[#6d4aff]"] { --tw-gradient-from: #4b7598 !important; }
+[class*="via-[#8066ef]"] { --tw-gradient-via: #5e85a5 !important; }
+[class*="to-[#00a9a5]"] { --tw-gradient-to: #86a5be !important; }
 [class*="from-[#5633b7]"], [class*="from-[#4a1742]"] { --tw-gradient-from: #202024 !important; }
 [class*="to-[#117d83]"], [class*="to-[#0f7775]"] { --tw-gradient-to: #477f28 !important; }
 
-/* Replace the former teal family with a true green family. */
-[class*="bg-[#00a9a5]"], [class*="bg-[#00a29a]"] { background-color: #63ad32 !important; }
-[class*="hover:bg-[#0b8d88]"]:hover, [class*="hover:bg-[#087f7a]"]:hover { background-color: #4b8d22 !important; }
-[class*="text-[#00a29a]"], [class*="text-[#0b8d88]"], [class*="text-[#0f6f74]"], [class*="text-[#0f766e]"], [class*="text-[#008b85]"], [class*="text-[#086d69]"] { color: #39791d !important; }
-[class*="bg-[#e9f7f6]"], [class*="bg-[#ddf8f4]"], [class*="bg-[#effcf9]"], [class*="bg-[#dcfce7]"] { background-color: #eef8e8 !important; }
-[class*="border-[#c9e8e5]"], [class*="border-[#59cfc7]"] { border-color: #b9dda8 !important; }
-[class*="ring-[#dff7f5]"] { --tw-ring-color: #deefd5 !important; }
+/* Retire the teal family. Blue carries progress; green remains reserved for success. */
+[class*="bg-[#00a9a5]"], [class*="bg-[#00a29a]"], [class*="bg-[#48b9ae]"] { background-color: #7898b3 !important; }
+[class*="hover:bg-[#0b8d88]"]:hover, [class*="hover:bg-[#087f7a]"]:hover { background-color: #5c7d99 !important; }
+[class*="text-[#00a29a]"], [class*="text-[#0b8d88]"], [class*="text-[#0f6f74]"], [class*="text-[#008b85]"], [class*="text-[#086d69]"] { color: #406b8f !important; }
+[class*="text-[#0f766e]"] { color: #3e6f2c !important; }
+[class*="bg-[#e9f7f6]"], [class*="bg-[#ddf8f4]"], [class*="bg-[#effcf9]"] { background-color: #edf4f9 !important; }
+[class*="bg-[#dcfce7]"] { background-color: #edf7e8 !important; }
+[class*="border-[#c9e8e5]"], [class*="border-[#59cfc7]"] { border-color: #bfd2e1 !important; }
+[class*="ring-[#dff7f5]"] { --tw-ring-color: #dce9f2 !important; }
 
 /* Neutralize the old purple-cast surfaces and typography. */
 [class*="bg-[#faf8ff]"], [class*="bg-[#fcfaff]"], [class*="bg-[#fbf9ff]"] { background-color: #f8f8f5 !important; }
@@ -138,10 +139,10 @@ body {
 [class*="bg-[#c7f36b]"] { background-color: #b8f500 !important; }
 [class*="text-[#ded2ff]"], [class*="text-[#eee9ff]"], [class*="text-[#f3efff]"] { color: #ffffff !important; }
 
-/* Complementary fuchsia and green stay separate so gradients never turn muddy. */
+/* Flatten legacy gradients into calm, consistent brand surfaces. */
 .bg-gradient-to-br[class*="from-[#6d4aff]"][class*="to-[#00a9a5]"] {
   background-image: none !important;
-  background-color: #e00087 !important;
+  background-color: #4b7598 !important;
 }
 
 .bg-gradient-to-br[class*="from-[#5633b7]"][class*="to-[#117d83]"],
@@ -153,7 +154,7 @@ body {
 
 .bg-gradient-to-r[class*="from-[#c026d3]"][class*="to-[#0f9f9a]"] {
   background-image: none !important;
-  background-color: #e00087 !important;
+  background-color: #4b7598 !important;
 }
 
 [class*="bg-[#c7f36b]"][class*="text-[#6d4aff]"] {

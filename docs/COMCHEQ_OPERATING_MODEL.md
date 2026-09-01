@@ -29,6 +29,8 @@ Comcheq never takes custody of online-banking credentials. The client remains th
 6. Open the configured bank link in a separate tab, but do not upload the simulation file.
 7. Choose Pay now or Remind on due date for the CRA obligation, then record the fictional confirmation.
 8. Bank and use overtime hours and verify the auditable in/out balance.
+9. Confirm that final approval creates exactly one $10 plus $2-per-employee billing charge attempt through the tokenized payment profile.
+10. Record a contractor payment separately from employee payroll and export the employee-number/contractor-number sorted year-end working papers.
 
 ## Production blockers
 
@@ -38,5 +40,7 @@ Comcheq never takes custody of online-banking credentials. The client remains th
 - Validate statutory calculations and holiday calendars for the production tax year and jurisdiction.
 - Require role-based review and explicit client approval for every released pay run.
 - Complete privacy, security, retention, incident-response and support procedures before accepting real payroll data.
+- Select a PCI-compliant hosted payment provider. Comcheq must store only its customer/payment-method token and masked label, never raw card or bank details.
+- Complete worker-classification and T4A filing rules before treating the contractor working paper as a filing-ready return.
 
 The generic AFT download is deliberately labelled **SIMULATION ONLY — NOT BANK-SUBMITTABLE**. It is a workflow and fixed-record control fixture, not a universal bank file.

@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { getComcheqActor, type ComcheqRole } from "@/lib/payroll/admin-auth";
 import { calculateAlbertaPayroll } from "@/lib/payroll/statutory/calculate";
 import { addUtcMonths, remittanceDueDate, remittanceLiabilityCents, validateOvertimeBankMovement } from "@/lib/payroll/operations";
+import { approvedPayRunChargeCents } from "@/lib/payroll/billing";
 
 const WORKSPACE_ID = "WS-PNS-001";
 const OPTION_1 = "Option 1 — Periodic";
@@ -22,6 +23,9 @@ type AdminAction =
   | { action: "create_next_draft" }
   | { action: "schedule_remittance_reminder"; remittanceId: string; reminderDate: string }
   | { action: "mark_remittance_paid"; remittanceId: string; paidDate: string; paymentReference: string }
+  | { action: "toggle_automatic_billing"; enabled: boolean }
+  | { action: "create_contractor"; contractorNumber: string; legalName: string; email: string }
+  | { action: "record_contractor_payment"; contractorId: string; paymentDate: string; amountCents: number; notes: string }
   | { action: "approve_demo_run" };
 
 const DEMO_PROFILES = {
@@ -58,6 +62,8 @@ async function ensureFictionalWorkspace(actorEmail: string) {
     db.prepare("INSERT OR IGNORE INTO employer_memberships (id, workspace_id, email, display_name, role, status, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind("MEM-ADMIN-001", WORKSPACE_ID, actorEmail.toLowerCase(), "Martin", "Administrator", "Active", createdAt, actorEmail),
     db.prepare("INSERT OR IGNORE INTO employer_payroll_settings (id, workspace_id, default_tax_method, option2_available, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?)").bind("EPS-PNS-001", WORKSPACE_ID, OPTION_1, 0, createdAt, actorEmail),
     db.prepare("INSERT OR IGNORE INTO employer_bank_links (id, workspace_id, bank_name, bank_url, eft_adapter, status, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind("BANK-PNS-001", WORKSPACE_ID, "RBC Royal Bank", "https://www.rbcroyalbank.com/ways-to-bank/online-banking/index.html", "RBC CPA005 Credit", "Active", createdAt, actorEmail),
+    db.prepare("INSERT OR IGNORE INTO billing_payment_profiles (id, workspace_id, provider, method_type, display_label, provider_customer_token, automatic_charge, status, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind("BPP-PNS-001", WORKSPACE_ID, "Hosted payment provider — simulation", "Tokenized card", "Visa •••• 4242 (fictional)", "tok_comcheq_simulation_only", 1, "Test ready", createdAt, actorEmail),
+    db.prepare("INSERT OR IGNORE INTO contractors (id, workspace_id, contractor_number, legal_name, email, status, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind("CON-0001", WORKSPACE_ID, "CNT-0001", "North Ridge Consulting", "accounts@northridge.example", "Active", createdAt, actorEmail),
     db.prepare("INSERT OR IGNORE INTO overtime_agreements (id, workspace_id, employee_id, agreement_type, bank_rate_hundredths, effective_from, effective_to, status, document_reference, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind("OTA-EMP-0002", WORKSPACE_ID, "EMP-0002", "Individual", 100, "2026-01-01", null, "Active", "Fictional written agreement on file", createdAt, actorEmail),
     db.prepare("INSERT OR IGNORE INTO overtime_agreements (id, workspace_id, employee_id, agreement_type, bank_rate_hundredths, effective_from, effective_to, status, document_reference, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind("OTA-EMP-0004", WORKSPACE_ID, "EMP-0004", "Individual", 100, "2026-01-01", null, "Active", "Fictional written agreement on file", createdAt, actorEmail),
     db.prepare("INSERT OR IGNORE INTO overtime_bank_entries (id, workspace_id, employee_id, pay_run_id, entry_type, transaction_date, hours_delta_hundredths, expires_on, source_reference, note, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind("OTB-OPENING-EMP-0002", WORKSPACE_ID, "EMP-0002", null, "Opening balance", "2026-08-15", 650, "2027-02-15", "overtime-opening:EMP-0002:2026-08-15", "Fictional conversion opening balance", createdAt, actorEmail),
@@ -70,6 +76,8 @@ async function ensureFictionalWorkspace(actorEmail: string) {
   ]);
   const approvedPayments = await db.prepare("SELECT p.pay_run_id AS payRunId, p.employee_id AS employeeId, p.gross_cents AS grossCents, p.income_tax_cents AS incomeTaxCents, p.cpp_cents AS cppCents, p.cpp2_cents AS cpp2Cents, p.ei_cents AS eiCents, r.payroll_year AS payrollYear, r.pay_date AS payDate, r.approved_at AS approvedAt, r.approved_by AS approvedBy FROM pay_run_payments p JOIN pay_runs r ON r.id = p.pay_run_id WHERE p.workspace_id = ? AND r.status = 'Approved'").bind(WORKSPACE_ID).all<{ payRunId: string; employeeId: string; grossCents: number; incomeTaxCents: number; cppCents: number; cpp2Cents: number; eiCents: number; payrollYear: number; payDate: string; approvedAt: string; approvedBy: string }>();
   if (approvedPayments.results.length) await db.batch(approvedPayments.results.map((payment) => db.prepare("INSERT OR IGNORE INTO statutory_ledger_entries (id, workspace_id, employee_id, pay_run_id, tax_year, entry_type, pay_date, taxable_earnings_cents, pensionable_earnings_cents, insurable_earnings_cents, income_tax_cents, cpp_cents, cpp2_cents, ei_cents, source_reference, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(`SLE-${payment.payRunId}-${payment.employeeId}`, WORKSPACE_ID, payment.employeeId, payment.payRunId, payment.payrollYear, "Approved payroll", payment.payDate, payment.grossCents, payment.grossCents, payment.grossCents, payment.incomeTaxCents, payment.cppCents, payment.cpp2Cents, payment.eiCents, `approved-pay-run:${payment.payRunId}:${payment.employeeId}`, payment.approvedAt, payment.approvedBy)));
+  const priorBilling = await db.prepare("SELECT id, pay_run_id AS payRunId, total_cents AS totalCents, occurred_at AS occurredAt FROM billing_events WHERE workspace_id = ?").bind(WORKSPACE_ID).all<{ id: string; payRunId: string; totalCents: number; occurredAt: string }>();
+  if (priorBilling.results.length) await db.batch(priorBilling.results.map((bill) => db.prepare("INSERT OR IGNORE INTO billing_charges (id, workspace_id, pay_run_id, billing_event_id, amount_cents, currency, status, provider_reference, attempted_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(`CHARGE-${bill.payRunId}`, WORKSPACE_ID, bill.payRunId, bill.id, bill.totalCents, "CAD", "Succeeded — simulation", `sim_charge_${bill.payRunId}`, bill.occurredAt, actorEmail)));
   const activeDraft = await db.prepare("SELECT run_number AS runNumber, period_start AS periodStart, period_end AS periodEnd, pay_date AS payDate FROM pay_run_drafts WHERE workspace_id = ? AND status != 'Approved' ORDER BY run_number DESC LIMIT 1").bind(WORKSPACE_ID).first<{ runNumber: number; periodStart: string; periodEnd: string; payDate: string }>();
   const latestApproved = activeDraft ? null : await db.prepare("SELECT run_number AS runNumber, period_start AS periodStart, period_end AS periodEnd, pay_date AS payDate FROM pay_runs WHERE workspace_id = ? AND status = 'Approved' ORDER BY payroll_year DESC, run_number DESC LIMIT 1").bind(WORKSPACE_ID).first<{ runNumber: number; periodStart: string; periodEnd: string; payDate: string }>();
   if (activeDraft) {
@@ -146,7 +154,7 @@ async function state(actor: { email: string; role: ComcheqRole }) {
     db.prepare("SELECT id, draft_id AS draftId, employee_id AS employeeId, employee_name AS employeeName, pay_type AS payType, regular_hours_hundredths AS regularHoursHundredths, overtime_hours_hundredths AS overtimeHoursHundredths, banked_overtime_earned_hundredths AS bankedOvertimeEarnedHundredths, banked_overtime_used_hundredths AS bankedOvertimeUsedHundredths, other_earnings_cents AS otherEarningsCents, other_deductions_cents AS otherDeductionsCents, gross_cents AS grossCents, income_tax_cents AS incomeTaxCents, cpp_cents AS cppCents, cpp2_cents AS cpp2Cents, ei_cents AS eiCents, net_pay_cents AS netPayCents, exceptions_json AS exceptionsJson FROM pay_run_draft_lines WHERE workspace_id = ? ORDER BY employee_name ASC").bind(WORKSPACE_ID).all(),
     db.prepare("SELECT id, draft_id AS draftId, employee_id AS employeeId, category, code, description, quantity_hundredths AS quantityHundredths, rate_cents AS rateCents, amount_cents AS amountCents, display_order AS displayOrder FROM pay_run_draft_components WHERE workspace_id = ? ORDER BY employee_id, display_order").bind(WORKSPACE_ID).all(),
     db.prepare("SELECT id, draft_id AS draftId, check_code AS checkCode, title, status, severity, summary, evidence_json AS evidenceJson, reviewed_at AS reviewedAt, reviewed_by AS reviewedBy, updated_at AS updatedAt FROM pay_run_compliance_checks WHERE workspace_id = ? ORDER BY check_code").bind(WORKSPACE_ID).all(),
-    db.prepare("SELECT id, pay_run_id AS payRunId, employee_id AS employeeId, employee_name AS employeeName, gross_cents AS grossCents, income_tax_cents AS incomeTaxCents, cpp_cents AS cppCents, cpp2_cents AS cpp2Cents, ei_cents AS eiCents, other_deductions_cents AS otherDeductionsCents, net_pay_cents AS netPayCents FROM pay_run_payments WHERE workspace_id = ? ORDER BY pay_run_id DESC, employee_name").bind(WORKSPACE_ID).all(),
+    db.prepare("SELECT id, pay_run_id AS payRunId, employee_id AS employeeId, employee_name AS employeeName, gross_cents AS grossCents, income_tax_cents AS incomeTaxCents, cpp_cents AS cppCents, cpp2_cents AS cpp2Cents, ei_cents AS eiCents, other_deductions_cents AS otherDeductionsCents, net_pay_cents AS netPayCents FROM pay_run_payments WHERE workspace_id = ? ORDER BY pay_run_id DESC, employee_id").bind(WORKSPACE_ID).all(),
     db.prepare("SELECT id, pay_run_id AS payRunId, employee_id AS employeeId, category, code, description, quantity_hundredths AS quantityHundredths, rate_cents AS rateCents, amount_cents AS amountCents, display_order AS displayOrder FROM pay_run_payment_components WHERE workspace_id = ? ORDER BY pay_run_id DESC, employee_id, display_order").bind(WORKSPACE_ID).all(),
     db.prepare("SELECT a.id, a.employee_id AS employeeId, e.legal_name AS employeeName, a.agreement_type AS agreementType, a.bank_rate_hundredths AS bankRateHundredths, a.effective_from AS effectiveFrom, a.effective_to AS effectiveTo, a.status, a.document_reference AS documentReference FROM overtime_agreements a JOIN employees e ON e.id = a.employee_id WHERE a.workspace_id = ? ORDER BY e.legal_name").bind(WORKSPACE_ID).all(),
     db.prepare("SELECT b.id, b.employee_id AS employeeId, e.legal_name AS employeeName, b.pay_run_id AS payRunId, b.entry_type AS entryType, b.transaction_date AS transactionDate, b.hours_delta_hundredths AS hoursDeltaHundredths, b.expires_on AS expiresOn, b.source_reference AS sourceReference, b.note, b.created_at AS createdAt, b.created_by AS createdBy FROM overtime_bank_entries b JOIN employees e ON e.id = b.employee_id WHERE b.workspace_id = ? ORDER BY b.transaction_date DESC, b.created_at DESC").bind(WORKSPACE_ID).all(),
@@ -155,8 +163,14 @@ async function state(actor: { email: string; role: ComcheqRole }) {
     db.prepare("SELECT id, bank_name AS bankName, bank_url AS bankUrl, eft_adapter AS eftAdapter, status FROM employer_bank_links WHERE workspace_id = ? AND status = 'Active' LIMIT 1").bind(WORKSPACE_ID).all(),
     db.prepare("SELECT id, occurred_at AS occurredAt, actor_email AS actorEmail, action, entity_type AS entityType, entity_id AS entityId, summary FROM audit_events WHERE workspace_id = ? ORDER BY occurred_at DESC LIMIT 100").bind(WORKSPACE_ID).all(),
   ]);
+  const [billingProfiles, billingCharges, contractors, contractorPayments] = await Promise.all([
+    db.prepare("SELECT id, provider, method_type AS methodType, display_label AS displayLabel, automatic_charge AS automaticCharge, status, updated_at AS updatedAt FROM billing_payment_profiles WHERE workspace_id = ? LIMIT 1").bind(WORKSPACE_ID).all(),
+    db.prepare("SELECT id, pay_run_id AS payRunId, billing_event_id AS billingEventId, amount_cents AS amountCents, currency, status, provider_reference AS providerReference, attempted_at AS attemptedAt FROM billing_charges WHERE workspace_id = ? ORDER BY attempted_at DESC").bind(WORKSPACE_ID).all(),
+    db.prepare("SELECT id, contractor_number AS contractorNumber, legal_name AS legalName, email, status, created_at AS createdAt FROM contractors WHERE workspace_id = ? ORDER BY contractor_number").bind(WORKSPACE_ID).all(),
+    db.prepare("SELECT p.id, p.contractor_id AS contractorId, c.contractor_number AS contractorNumber, c.legal_name AS contractorName, p.payment_date AS paymentDate, p.amount_cents AS amountCents, p.notes, p.t4a_box AS t4aBox, p.status, p.created_at AS createdAt FROM contractor_payments p JOIN contractors c ON c.id = p.contractor_id WHERE p.workspace_id = ? ORDER BY p.payment_date DESC, c.contractor_number").bind(WORKSPACE_ID).all(),
+  ]);
   const activeDraft = activeDrafts.results[0] ?? null;
-  return { actorRole: actor.role, accounts: accounts.results, employees: employees.results, offboarding: offboarding.results, memberships: memberships.results, payrollSettings: payrollSettings.results[0] ?? null, schedules: schedules.results, payrollProfiles: payrollProfiles.results, payrollCodes: payrollCodes.results, recurringPayItems: recurringPayItems.results, payRuns: payRuns.results, outputs: outputs.results, billing: billing.results, activeDraft, draftLines: activeDraft ? draftLines.results.filter((line) => line.draftId === activeDraft.id) : [], draftComponents: activeDraft ? draftComponents.results.filter((item) => item.draftId === activeDraft.id) : [], complianceChecks: activeDraft ? complianceChecks.results.filter((item) => item.draftId === activeDraft.id) : [], payments: payments.results, paymentComponents: paymentComponents.results, overtimeAgreements: overtimeAgreements.results, overtimeBankEntries: overtimeBankEntries.results, overtimeBalances: overtimeBalances.results, remittances: remittances.results, bankLink: bankLinks.results[0] ?? null, audit: audit.results };
+  return { actorRole: actor.role, accounts: accounts.results, employees: employees.results, offboarding: offboarding.results, memberships: memberships.results, payrollSettings: payrollSettings.results[0] ?? null, schedules: schedules.results, payrollProfiles: payrollProfiles.results, payrollCodes: payrollCodes.results, recurringPayItems: recurringPayItems.results, payRuns: payRuns.results, outputs: outputs.results, billing: billing.results, billingProfile: billingProfiles.results[0] ?? null, billingCharges: billingCharges.results, contractors: contractors.results, contractorPayments: contractorPayments.results, activeDraft, draftLines: activeDraft ? draftLines.results.filter((line) => line.draftId === activeDraft.id) : [], draftComponents: activeDraft ? draftComponents.results.filter((item) => item.draftId === activeDraft.id) : [], complianceChecks: activeDraft ? complianceChecks.results.filter((item) => item.draftId === activeDraft.id) : [], payments: payments.results, paymentComponents: paymentComponents.results, overtimeAgreements: overtimeAgreements.results, overtimeBankEntries: overtimeBankEntries.results, overtimeBalances: overtimeBalances.results, remittances: remittances.results, bankLink: bankLinks.results[0] ?? null, audit: audit.results };
 }
 
 function controlledInteger(value: number, label: string, maximum: number) {
@@ -509,6 +523,54 @@ export async function POST(request: Request) {
     return Response.json({ ok: true, id: remittance.id, status: "Paid", idempotent: false });
   }
 
+  if (body.action === "toggle_automatic_billing") {
+    if (actor.role !== "Administrator") return Response.json({ error: "Administrator role required." }, { status: 403 });
+    const profile = await db.prepare("SELECT id, automatic_charge AS automaticCharge FROM billing_payment_profiles WHERE workspace_id = ? LIMIT 1").bind(WORKSPACE_ID).first<{ id: string; automaticCharge: number }>();
+    if (!profile) return Response.json({ error: "A hosted payment profile must be configured first." }, { status: 409 });
+    await db.batch([
+      db.prepare("UPDATE billing_payment_profiles SET automatic_charge = ?, updated_at = ?, updated_by = ? WHERE id = ? AND workspace_id = ?").bind(body.enabled ? 1 : 0, occurredAt, actor.email, profile.id, WORKSPACE_ID),
+      db.prepare("INSERT INTO audit_events (id, workspace_id, occurred_at, actor_email, action, entity_type, entity_id, summary, payload_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(`AE-${crypto.randomUUID()}`, WORKSPACE_ID, occurredAt, actor.email, "billing.automatic_charge_updated", "billing_payment_profile", profile.id, `Automatic billing ${body.enabled ? "enabled" : "disabled"}`, JSON.stringify({ before: Boolean(profile.automaticCharge), after: body.enabled })),
+    ]);
+    return Response.json({ ok: true, enabled: body.enabled });
+  }
+
+  if (body.action === "create_contractor") {
+    if (actor.role === "Read-only") return Response.json({ error: "Payroll Processor or Administrator role required." }, { status: 403 });
+    const contractorNumber = body.contractorNumber.trim().toUpperCase();
+    const legalName = body.legalName.trim();
+    const email = body.email.trim().toLowerCase();
+    if (!/^CNT-\d{4}$/.test(contractorNumber) || legalName.length < 2 || !/^\S+@\S+\.\S+$/.test(email)) return Response.json({ error: "Contractor number, legal name and a valid email are required." }, { status: 400 });
+    const id = `CON-${crypto.randomUUID()}`;
+    try {
+      await db.batch([
+        db.prepare("INSERT INTO contractors (id, workspace_id, contractor_number, legal_name, email, status, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(id, WORKSPACE_ID, contractorNumber, legalName, email, "Active", occurredAt, actor.email),
+        db.prepare("INSERT INTO audit_events (id, workspace_id, occurred_at, actor_email, action, entity_type, entity_id, summary, payload_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(`AE-${crypto.randomUUID()}`, WORKSPACE_ID, occurredAt, actor.email, "contractor.created", "contractor", id, `${contractorNumber} ${legalName} created`, JSON.stringify({ contractorNumber, legalName, email })),
+      ]);
+      return Response.json({ ok: true, id });
+    } catch {
+      return Response.json({ error: `${contractorNumber} already exists in this employer workspace.` }, { status: 409 });
+    }
+  }
+
+  if (body.action === "record_contractor_payment") {
+    if (actor.role === "Read-only") return Response.json({ error: "Payroll Processor or Administrator role required." }, { status: 403 });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(body.paymentDate) || !body.notes.trim()) return Response.json({ error: "Payment date and notes are required." }, { status: 400 });
+    try {
+      const amountCents = controlledInteger(body.amountCents, "Contractor payment", 100_000_000);
+      if (amountCents === 0) return Response.json({ error: "Contractor payment must be greater than zero." }, { status: 400 });
+      const contractor = await db.prepare("SELECT contractor_number AS contractorNumber, legal_name AS legalName FROM contractors WHERE id = ? AND workspace_id = ? AND status = 'Active' LIMIT 1").bind(body.contractorId, WORKSPACE_ID).first<{ contractorNumber: string; legalName: string }>();
+      if (!contractor) return Response.json({ error: "An active contractor is required." }, { status: 404 });
+      const id = `CP-${crypto.randomUUID()}`;
+      await db.batch([
+        db.prepare("INSERT INTO contractor_payments (id, workspace_id, contractor_id, payment_date, amount_cents, notes, t4a_box, status, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(id, WORKSPACE_ID, body.contractorId, body.paymentDate, amountCents, body.notes.trim(), "048", "Recorded", occurredAt, actor.email),
+        db.prepare("INSERT INTO audit_events (id, workspace_id, occurred_at, actor_email, action, entity_type, entity_id, summary, payload_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(`AE-${crypto.randomUUID()}`, WORKSPACE_ID, occurredAt, actor.email, "contractor_payment.recorded", "contractor_payment", id, `${contractor.contractorNumber} payment recorded for T4A tracking`, JSON.stringify({ contractorId: body.contractorId, paymentDate: body.paymentDate, amountCents, t4aBox: "048", notes: body.notes.trim() })),
+      ]);
+      return Response.json({ ok: true, id });
+    } catch (problem) {
+      return Response.json({ error: problem instanceof Error ? problem.message : "The contractor payment could not be recorded." }, { status: 400 });
+    }
+  }
+
   if (body.action === "approve_draft") {
     if (actor.role === "Read-only") return Response.json({ error: "Payroll Processor or Administrator role required." }, { status: 403 });
     const draft = await db.prepare("SELECT id, payroll_account_id AS payrollAccountId, payroll_year AS payrollYear, run_number AS runNumber, period_start AS periodStart, period_end AS periodEnd, pay_date AS payDate, status, tax_method AS taxMethod, ruleset_version AS rulesetVersion, gross_cents AS grossCents, net_cents AS netCents, blocking_exception_count AS blockingExceptionCount FROM pay_run_drafts WHERE id = ? AND workspace_id = ? LIMIT 1").bind(body.draftId, WORKSPACE_ID).first<{ id: string; payrollAccountId: string; payrollYear: number; runNumber: number; periodStart: string; periodEnd: string; payDate: string; status: string; taxMethod: string; rulesetVersion: string; grossCents: number; netCents: number; blockingExceptionCount: number }>();
@@ -538,6 +600,11 @@ export async function POST(request: Request) {
     if (!account) return Response.json({ error: "The payroll account remitter schedule was not found." }, { status: 409 });
     const dueDate = remittanceDueDate(account.remitterType, draft.payDate);
     const idempotencyKey = `pay-run-approval:${WORKSPACE_ID}:${draft.payrollAccountId}:${draft.payrollYear}:${draft.runNumber}`;
+    const billingEventId = `BILL-${draft.runNumber}-PAYMENTS`;
+    const billingAmountCents = approvedPayRunChargeCents(payableCount);
+    const billingProfile = await db.prepare("SELECT automatic_charge AS automaticCharge, status FROM billing_payment_profiles WHERE workspace_id = ? LIMIT 1").bind(WORKSPACE_ID).first<{ automaticCharge: number; status: string }>();
+    const chargeStatus = billingProfile?.automaticCharge && billingProfile.status === "Test ready" ? "Succeeded — simulation" : "Action required";
+    const chargeReference = chargeStatus.startsWith("Succeeded") ? `sim_charge_${draft.payrollYear}_${String(draft.runNumber).padStart(3, "0")}` : "hosted-checkout-required";
     const outputs = { register: `REGISTER-${payRunId}`, bank: `RBC-CPA005-CONTROL-${payRunId}`, statements: `STATEMENTS-${payRunId}` };
     await db.batch([
       db.prepare("INSERT INTO pay_runs (id, workspace_id, payroll_account_id, payroll_year, run_number, period_start, period_end, pay_date, status, tax_method, ruleset_version, ruleset_effective_from, gross_cents, net_cents, employee_payment_count, approved_at, approved_by, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(payRunId, WORKSPACE_ID, draft.payrollAccountId, draft.payrollYear, draft.runNumber, draft.periodStart, draft.periodEnd, draft.payDate, "Approved", draft.taxMethod, draft.rulesetVersion, "2026-01-01", grossCents, netCents, payableCount, occurredAt, actor.email, occurredAt, actor.email),
@@ -550,11 +617,12 @@ export async function POST(request: Request) {
       db.prepare("INSERT INTO pay_run_outputs (id, workspace_id, pay_run_id, output_type, status, item_count, control_total_cents, reference, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(`OUT-${draft.runNumber}-REGISTER`, WORKSPACE_ID, payRunId, "Payroll register", "Ready", lines.length, grossCents, outputs.register, occurredAt),
       db.prepare("INSERT INTO pay_run_outputs (id, workspace_id, pay_run_id, output_type, status, item_count, control_total_cents, reference, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(`OUT-${draft.runNumber}-BANK`, WORKSPACE_ID, payRunId, "Bank-file control", "Ready", payableCount, netCents, outputs.bank, occurredAt),
       db.prepare("INSERT INTO pay_run_outputs (id, workspace_id, pay_run_id, output_type, status, item_count, control_total_cents, reference, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(`OUT-${draft.runNumber}-STATEMENTS`, WORKSPACE_ID, payRunId, "Statement batch", "Ready", payableCount, netCents, outputs.statements, occurredAt),
-      db.prepare("INSERT INTO billing_events (id, workspace_id, pay_run_id, event_type, quantity, unit_price_cents, total_cents, idempotency_key, occurred_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(`BILL-${draft.runNumber}-PAYMENTS`, WORKSPACE_ID, payRunId, "pay_run_finalized", payableCount, 200, 1000 + payableCount * 200, idempotencyKey, occurredAt),
+      db.prepare("INSERT INTO billing_events (id, workspace_id, pay_run_id, event_type, quantity, unit_price_cents, total_cents, idempotency_key, occurred_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(billingEventId, WORKSPACE_ID, payRunId, "pay_run_finalized", payableCount, 200, billingAmountCents, idempotencyKey, occurredAt),
+      db.prepare("INSERT INTO billing_charges (id, workspace_id, pay_run_id, billing_event_id, amount_cents, currency, status, provider_reference, attempted_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(`CHARGE-${payRunId}`, WORKSPACE_ID, payRunId, billingEventId, billingAmountCents, "CAD", chargeStatus, chargeReference, occurredAt, actor.email),
       db.prepare("UPDATE pay_run_drafts SET status = ?, updated_at = ?, updated_by = ? WHERE id = ? AND workspace_id = ?").bind("Approved", occurredAt, actor.email, draft.id, WORKSPACE_ID),
       db.prepare("UPDATE payroll_accounts SET next_run = ? WHERE id = ? AND workspace_id = ?").bind(`Run ${draft.runNumber + 1} · ${draft.runNumber === 17 ? "Sep 18" : "Oct 2"}`, draft.payrollAccountId, WORKSPACE_ID),
       db.prepare("UPDATE pay_schedules SET next_run_number = ?, next_period_start = ?, next_period_end = ?, next_pay_date = ?, updated_at = ?, updated_by = ? WHERE payroll_account_id = ? AND workspace_id = ?").bind(draft.runNumber + 1, addDays(draft.periodStart, 14), addDays(draft.periodEnd, 14), addDays(draft.payDate, 14), occurredAt, actor.email, draft.payrollAccountId, WORKSPACE_ID),
-      db.prepare("INSERT INTO audit_events (id, workspace_id, occurred_at, actor_email, action, entity_type, entity_id, summary, payload_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(`AE-${crypto.randomUUID()}`, WORKSPACE_ID, occurredAt, actor.email, "pay_run.approved", "pay_run", payRunId, `Pay run ${draft.runNumber} approved with EFT, remittance and overtime-bank outputs`, JSON.stringify({ draftId: draft.id, grossCents, netCents, employeePaymentCount: payableCount, remittanceAmountCents, remittanceDueDate: dueDate, remitterType: account.remitterType, taxMethod: draft.taxMethod, rulesetVersion: draft.rulesetVersion, idempotencyKey })),
+      db.prepare("INSERT INTO audit_events (id, workspace_id, occurred_at, actor_email, action, entity_type, entity_id, summary, payload_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(`AE-${crypto.randomUUID()}`, WORKSPACE_ID, occurredAt, actor.email, "pay_run.approved", "pay_run", payRunId, `Pay run ${draft.runNumber} approved with EFT, remittance, overtime-bank and billing outputs`, JSON.stringify({ draftId: draft.id, grossCents, netCents, employeePaymentCount: payableCount, remittanceAmountCents, remittanceDueDate: dueDate, remitterType: account.remitterType, billingAmountCents, chargeStatus, taxMethod: draft.taxMethod, rulesetVersion: draft.rulesetVersion, idempotencyKey })),
     ]);
     return Response.json({ ok: true, id: payRunId, status: "Approved", idempotent: false });
   }
