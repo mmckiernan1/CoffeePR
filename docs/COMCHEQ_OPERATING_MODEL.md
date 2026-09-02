@@ -21,8 +21,8 @@ Comcheq never takes custody of online-banking credentials. The client remains th
 
 ## Staging workflow test
 
-1. Open Customer setup and select Self-serve or Shoebox.
-2. Complete the simulated launch checklist.
+1. Open the secure workspace at **Start here** and select Self-service or Shoebox setup.
+2. Review the six readiness controls; each control links to its working area instead of relying on a manual completion claim.
 3. Open pay run 17, calculate, clear compliance checks, review and approve.
 4. Download the generic Payments Canada AFT simulation.
 5. Verify that every logical record is 1,464 characters, begins with A/C/Z as expected, and that the Z-record count and amount equal the approved run.
@@ -31,6 +31,8 @@ Comcheq never takes custody of online-banking credentials. The client remains th
 8. Bank and use overtime hours and verify the auditable in/out balance.
 9. Confirm that final approval creates exactly one $10 plus $2-per-employee billing charge attempt through the tokenized payment profile.
 10. Record a contractor payment separately from employee payroll and export the employee-number/contractor-number sorted year-end working papers.
+
+The client-facing navigation opens Start here, Pay runs, OT bank and Contractors first. Payroll accounts, detailed payroll setup, offboarding and the audit trail remain authenticated working areas and continue to enforce role checks on every write.
 
 ## Production blockers
 

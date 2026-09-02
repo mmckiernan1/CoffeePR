@@ -3,7 +3,7 @@ import { RBC_CPA005_SPEC } from "@/lib/payroll/rbc-cpa005";
 export async function GET() {
   return Response.json({
     product: "Comcheq Payroll",
-    version: "0.7.0-billing-contractors-register",
+    version: "0.8.0-client-onboarding-guided-payroll",
     environment: "public-fictional-prototype",
     capabilities: {
       payRunStateMachine: "implemented-and-tested",
@@ -26,6 +26,8 @@ export async function GET() {
       automaticBilling: "approval-triggered-idempotent-provider-token-simulation",
       payrollRegister: "employee-number-sorted-two-column-eight-per-page",
       contractorPayments: "durable-payment-ledger-and-t4a-box-048-working-paper",
+      clientOnboarding: "self-service-or-shoebox-path-with-derived-readiness-controls",
+      guidedFirstPayroll: "setup-through-eft-and-remittance-progress-path",
       t4Xml: "production-gate",
       roeXml: "production-gate",
     },

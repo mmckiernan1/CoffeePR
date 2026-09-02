@@ -55,6 +55,15 @@ export const employerPayrollSettings = sqliteTable("employer_payroll_settings", 
   updatedBy: text("updated_by").notNull(),
 }, (table) => [uniqueIndex("employer_payroll_settings_workspace_uq").on(table.workspaceId)]);
 
+export const clientOnboardingProfiles = sqliteTable("client_onboarding_profiles", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => employerWorkspaces.id),
+  servicePath: text("service_path").notNull().default("Self-service"),
+  status: text("status").notNull().default("In progress"),
+  updatedAt: text("updated_at").notNull(),
+  updatedBy: text("updated_by").notNull(),
+}, (table) => [uniqueIndex("client_onboarding_profiles_workspace_uq").on(table.workspaceId)]);
+
 export const offboardingDrafts = sqliteTable("offboarding_drafts", {
   id: text("id").primaryKey(),
   workspaceId: text("workspace_id").notNull().references(() => employerWorkspaces.id),

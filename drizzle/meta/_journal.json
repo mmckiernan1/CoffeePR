@@ -85,6 +85,13 @@
       "when": 1788299675001,
       "tag": "0011_gorgeous_vivisector",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1788319285839,
+      "tag": "0012_happy_chimera",
+      "breakpoints": true
     }
   ]
 }
