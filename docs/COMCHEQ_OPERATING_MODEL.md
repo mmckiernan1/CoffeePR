@@ -4,10 +4,16 @@
 
 | Path | Client responsibility | Comcheq responsibility | Commercial treatment |
 | --- | --- | --- | --- |
-| Self-serve | Enter and verify setup data, approve payroll, upload EFT, pay CRA | Guided gates, calculations, outputs, records and reminders | Published per-run and per-payment pricing |
+| Self-serve | Enter and verify setup data, approve payroll, release employee payments, pay CRA | Guided gates, calculations, payment instructions, outputs, records and reminders | Published per-run and per-payment pricing |
 | Shoebox assisted setup | Supply available records, answer exceptions, verify and approve | Organize opening records, configure the fictional workspace and support the first run | One-time fee quoted and accepted before work begins |
 
 Comcheq never takes custody of online-banking credentials. The client remains the payment approver in both paths.
+
+## Client-controlled employee payments
+
+An approved pay run may combine EFT bank-file deposits, business e-transfers and business cheques. Approval locks each employee's net pay but does not mark the employee paid. The client must confirm the EFT count and control total, record a unique bank reference for an e-transfer, or record a cheque number. Comcheq retains the outstanding/paid status and produces a payment-reconciliation record without storing banking passwords, e-transfer security answers or confidential details in a transfer message.
+
+Extra runs use the same separation of calculation, approval and payment. A missed shift can be calculated on the pay date, approved as a linked correction, paid directly and retained with its own statement and client evidence.
 
 ## Launch gates
 
@@ -26,13 +32,15 @@ The public **Guided test** is the shortest complete rehearsal. It now carries on
 1. Open the secure workspace at **Start here** and select Self-service or Shoebox setup.
 2. Review the six readiness controls; each control links to its working area instead of relying on a manual completion claim.
 3. Open pay run 17, calculate, clear compliance checks, review and approve.
-4. Download the generic Payments Canada AFT simulation.
-5. Verify that every logical record is 1,464 characters, begins with A/C/Z as expected, and that the Z-record count and amount equal the approved run.
-6. Open the configured bank link in a separate tab, but do not upload the simulation file.
-7. Choose Pay now or Remind on due date for the CRA obligation, then record the fictional confirmation.
-8. Bank and use overtime hours and verify the auditable in/out balance.
-9. Confirm that final approval creates exactly one $10 plus $2-per-employee billing charge attempt through the tokenized payment profile.
-10. Record a contractor payment separately from employee payroll and export the employee-number/contractor-number sorted year-end working papers.
+4. Open **Pay employees**, review the mixed EFT/e-transfer/cheque instructions and confirm that their total equals approved net payroll.
+5. Record a unique fictional e-transfer confirmation and cheque number, then download the generic Payments Canada AFT simulation for the remaining employees.
+6. Verify that every logical record is 1,464 characters, begins with A/C/Z as expected, and that the Z-record count and amount equal the approved run.
+7. Confirm the fictional EFT batch count, amount and bank reference, then export the payment reconciliation.
+8. Choose Pay now or Remind on due date for the CRA obligation, then record the fictional confirmation.
+9. Bank and use overtime hours and verify the auditable in/out balance.
+10. Confirm that final approval creates exactly one $10 plus $2-per-employee billing charge attempt through the tokenized payment profile.
+11. Run a missed-hours extra payroll and complete its e-transfer handoff.
+12. Record a contractor payment separately from employee payroll and export the employee-number/contractor-number sorted year-end working papers.
 
 The client-facing navigation opens Start here, Pay runs, OT bank and Contractors first. Payroll accounts, detailed payroll setup, offboarding and the audit trail remain authenticated working areas and continue to enforce role checks on every write.
 
