@@ -21,6 +21,8 @@ Comcheq never takes custody of online-banking credentials. The client remains th
 
 ## Staging workflow test
 
+The public **Guided test** is the shortest complete rehearsal. It now carries one fictional employee through employer and employee confirmation, regular and paid overtime inputs, overtime-bank movements, statutory-holiday evidence, preliminary calculation, approval and automatic billing. After approval it requires the client to confirm the EFT control total before continuing, then records either a CRA test-payment confirmation or a due-date reminder. The final screen exposes the locked run, closing overtime-bank balance, one billing result and the selected CRA action.
+
 1. Open the secure workspace at **Start here** and select Self-service or Shoebox setup.
 2. Review the six readiness controls; each control links to its working area instead of relying on a manual completion claim.
 3. Open pay run 17, calculate, clear compliance checks, review and approve.

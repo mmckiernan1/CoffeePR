@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import {
   BadgeCheck, Banknote, Building2, CalendarDays, CalendarRange, Check,
   ChevronDown, ChevronRight, Clock3, Download, FileArchive, FilePenLine,
-  Database, Eye, FileCode2, FileSpreadsheet, FileText, GitBranch, History, HomeIcon, Landmark, LockKeyhole,
+  Database, Eye, ExternalLink, FileCode2, FileSpreadsheet, FileText, GitBranch, History, HomeIcon, Landmark, LockKeyhole,
   Layers3, ListChecks, Mail, Menu, Network, Plus, ReceiptText, RefreshCw, Settings2, ShieldCheck,
   Upload, UserMinus, Users, WalletCards,
 } from "lucide-react";
@@ -988,38 +988,63 @@ function GuidedPayrollTestView() {
   const [payDate, setPayDate] = useState("2026-09-18");
   const [regularHours, setRegularHours] = useState("80.00");
   const [overtimeHours, setOvertimeHours] = useState("2.50");
+  const [bankedOvertimeEarned, setBankedOvertimeEarned] = useState("1.50");
+  const [bankedOvertimeUsed, setBankedOvertimeUsed] = useState("1.00");
   const [absenceAuthorized, setAbsenceAuthorized] = useState(false);
+  const [eftUploaded, setEftUploaded] = useState(false);
+  const [remittanceChoice, setRemittanceChoice] = useState<"paid" | "reminder" | null>(null);
 
   const dateIsValid = (value: string) => /^20(2[6-9]|3[0-5])-\d{2}-\d{2}$/.test(value);
-  const inputsValid = [periodStart, periodEnd, payDate].every(dateIsValid) && Number(regularHours) >= 0 && Number(overtimeHours) >= 0;
+  const openingOtBalance = 6.5;
+  const earnedOt = Number(bankedOvertimeEarned) || 0;
+  const usedOt = Number(bankedOvertimeUsed) || 0;
+  const closingOtBalance = openingOtBalance + earnedOt - usedOt;
+  const inputsValid = [periodStart, periodEnd, payDate].every(dateIsValid)
+    && [regularHours, overtimeHours, bankedOvertimeEarned, bankedOvertimeUsed].every((value) => Number(value) >= 0)
+    && closingOtBalance >= 0;
   const formattedPayDate = dateIsValid(payDate)
     ? new Intl.DateTimeFormat("en-CA", { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${payDate}T00:00:00Z`))
     : "Enter a date from 2026 to 2035";
   const complete = (index: number) => stage > index;
   const active = (index: number) => stage === index;
 
-  const amounts = { gross: 2872.50, tax: 489.15, cpp: 165, ei: 46.82, other: 62.50, net: 2109.03, cra: 931.52, fee: 12, total: 3052.55 };
+  const regularEarnings = (Number(regularHours) || 0) * 30;
+  const overtimeEarnings = (Number(overtimeHours) || 0) * 45;
+  const bankedTimeEarnings = usedOt * 30;
+  const vacationPay = (regularEarnings + overtimeEarnings + bankedTimeEarnings) * 0.04;
+  const holidayPay = 240;
+  const gross = regularEarnings + overtimeEarnings + bankedTimeEarnings + vacationPay + holidayPay;
+  const tax = gross * 0.1703;
+  const cpp = gross * 0.05745;
+  const ei = gross * 0.0163;
+  const other = 62.5;
+  const net = gross - tax - cpp - ei - other;
+  const cra = tax + cpp * 2 + ei * 2.4;
+  const fee = 12;
+  const amounts = { gross, tax, cpp, ei, other, net, cra, fee, total: net + cra + fee };
   const reset = () => {
     setStage(0); setPeriodStart("2026-09-01"); setPeriodEnd("2026-09-15"); setPayDate("2026-09-18");
-    setRegularHours("80.00"); setOvertimeHours("2.50"); setAbsenceAuthorized(false);
+    setRegularHours("80.00"); setOvertimeHours("2.50"); setBankedOvertimeEarned("1.50"); setBankedOvertimeUsed("1.00");
+    setAbsenceAuthorized(false); setEftUploaded(false); setRemittanceChoice(null);
   };
   const downloadEft = () => downloadText("comcheq-guided-test-eft.txt", [
     "COMCHEQ CPA005 TEST FILE — NOT FOR PRODUCTION", "Client: Prairie North Services Ltd.",
     "Pay run: E2E-001", `Pay date: ${payDate}`, "Employee: Noah Williams", "Account: ATB •••• 9204", `Deposit: ${amounts.net.toFixed(2)}`,
   ].join("\n"), "text/plain;charset=us-ascii");
   const downloadRegister = () => downloadText("comcheq-guided-test-register.csv", [
-    "run,employee,department,regular_hours,overtime_hours,holiday_pay,gross,tax,cpp,ei,other,net",
-    `E2E-001,Noah Williams,020 Field Services,${regularHours},${overtimeHours},240.00,2872.50,489.15,165.00,46.82,62.50,2109.03`,
+    "run,employee,department,regular_hours,overtime_hours,banked_ot_earned,banked_ot_used,closing_ot_balance,holiday_pay,gross,tax,cpp,ei,other,net",
+    `E2E-001,Noah Williams,020 Field Services,${regularHours},${overtimeHours},${bankedOvertimeEarned},${bankedOvertimeUsed},${closingOtBalance.toFixed(2)},${holidayPay.toFixed(2)},${amounts.gross.toFixed(2)},${amounts.tax.toFixed(2)},${amounts.cpp.toFixed(2)},${amounts.ei.toFixed(2)},${amounts.other.toFixed(2)},${amounts.net.toFixed(2)}`,
   ].join("\n"), "text/csv;charset=utf-8");
   const downloadRemittance = () => downloadText("comcheq-guided-test-remittance.txt", [
     "COMCHEQ REMITTANCE SUMMARY", "Prairie North Services Ltd. · ••••••••• RP0001", "Remitter frequency: Monthly",
-    "Due date: October 15, 2026", "Income tax: $489.15", "CPP (employee + employer): $330.00", "EI (employee + employer): $112.37", "Total CRA obligation: $931.52",
+    "Due date: October 15, 2026", `Income tax: ${currency.format(amounts.tax)}`, `CPP (employee + employer): ${currency.format(amounts.cpp * 2)}`, `EI (employee + employer): ${currency.format(amounts.ei * 2.4)}`, `Total CRA obligation: ${currency.format(amounts.cra)}`,
     "Client pays CRA directly. Comcheq does not withdraw or hold these funds.",
   ].join("\n"));
 
   const steps = [
-    ["1", "Employer", "Account and schedule"], ["2", "Employee", "Pay profile"], ["3", "Payroll inputs", "Dates and hours"],
-    ["4", "Stat holiday", "Eligibility evidence"], ["5", "Preliminary", "Review totals"], ["6", "Approve", "Lock and export"],
+    ["1", "Employer", "Account and schedule"], ["2", "Employee", "Pay profile"], ["3", "Payroll inputs", "Hours and OT bank"],
+    ["4", "Stat holiday", "Eligibility evidence"], ["5", "Preliminary", "Review totals"], ["6", "Approve", "Lock and bill"],
+    ["7", "Bank", "Upload EFT"], ["8", "Remittance", "Pay or remind"],
   ];
 
   return <>
@@ -1031,7 +1056,7 @@ function GuidedPayrollTestView() {
       <Badge className="border-0 bg-[#f1edf5] text-[#655b73]">Fictional test data</Badge>
     </div>
 
-    <section className="mb-6 grid gap-2 sm:grid-cols-3 xl:grid-cols-6" aria-label="Test progress">
+    <section className="mb-6 grid gap-2 sm:grid-cols-4 xl:grid-cols-8" aria-label="Test progress">
       {steps.map(([number, title, detail], index) => <div key={title} className={`rounded-xl border p-3 transition ${active(index) ? "border-[#e24aa5] bg-[#fff0f8] ring-2 ring-[#f9c5e4]" : complete(index) ? "border-[#9adbd4] bg-[#effcf9]" : "border-[#ded6e8] bg-white"}`}>
         <div className="flex items-center gap-2"><span className={`grid size-6 place-items-center rounded-full text-xs font-bold ${complete(index) ? "bg-[#00a29a] text-white" : active(index) ? "bg-[#d72d91] text-white" : "bg-[#eee8f5] text-[#746a80]"}`}>{complete(index) ? <Check className="size-3.5" /> : number}</span><strong className="text-xs">{title}</strong></div>
         <p className="mt-2 text-[11px] text-[#847990]">{detail}</p>
@@ -1054,8 +1079,10 @@ function GuidedPayrollTestView() {
         {stage === 2 && <div><TestStepHeading icon={<Clock3 />} title="Enter payroll dates and hours" detail="Dates use a fixed four-digit year range, with a full-date confirmation to prevent silent calendar errors." />
           <div className="mt-5 grid gap-4 sm:grid-cols-3"><Field label="Period starts"><Input type="date" min="2026-01-01" max="2035-12-31" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} /></Field><Field label="Period ends"><Input type="date" min="2026-01-01" max="2035-12-31" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} /></Field><Field label="Pay date"><Input type="date" min="2026-01-01" max="2035-12-31" value={payDate} onChange={(event) => setPayDate(event.target.value)} /></Field></div>
           <p className={`mt-2 text-xs ${dateIsValid(payDate) ? "text-[#0f766e]" : "text-[#b42318]"}`}>Pay date: <strong>{formattedPayDate}</strong></p>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2"><Field label="Regular hours"><Input inputMode="decimal" value={regularHours} onChange={(event) => setRegularHours(event.target.value)} /></Field><Field label="Overtime hours"><Input inputMode="decimal" value={overtimeHours} onChange={(event) => setOvertimeHours(event.target.value)} /></Field></div>
-          {!inputsValid && <p className="mt-3 text-sm text-[#b42318]">Use dates from 2026 through 2035 and enter non-negative hours.</p>}
+          <div className="mt-5 grid gap-4 sm:grid-cols-2"><Field label="Regular hours"><Input inputMode="decimal" value={regularHours} onChange={(event) => setRegularHours(event.target.value)} /></Field><Field label="Overtime paid this run"><Input inputMode="decimal" value={overtimeHours} onChange={(event) => setOvertimeHours(event.target.value)} /></Field><Field label="Bank overtime this run"><Input inputMode="decimal" value={bankedOvertimeEarned} onChange={(event) => setBankedOvertimeEarned(event.target.value)} /></Field><Field label="Use from overtime bank"><Input inputMode="decimal" value={bankedOvertimeUsed} onChange={(event) => setBankedOvertimeUsed(event.target.value)} /></Field></div>
+          <div className="mt-4 grid gap-3 rounded-xl border border-[#c8d8e3] bg-[#f5f9fb] p-4 sm:grid-cols-3"><TestFact label="Opening OT bank" value={`${openingOtBalance.toFixed(2)} hours`} /><TestFact label="This run" value={`+${earnedOt.toFixed(2)} / −${usedOt.toFixed(2)}`} /><TestFact label="Closing OT bank" value={`${closingOtBalance.toFixed(2)} hours`} /></div>
+          <p className="mt-3 text-xs leading-5 text-[#746a80]">A current written overtime agreement is on file. Banked hours used are paid at Noah’s regular hourly rate; new credits carry a six-month deadline.</p>
+          {!inputsValid && <p className="mt-3 text-sm text-[#b42318]">Use dates from 2026 through 2035, enter non-negative hours, and do not overdraw the overtime bank.</p>}
           <Button disabled={!inputsValid} onClick={() => setStage(3)} className="mt-6 bg-[#d72d91] text-white hover:bg-[#b91c77]">Save payroll inputs<ChevronRight className="size-4" /></Button>
         </div>}
 
@@ -1066,7 +1093,7 @@ function GuidedPayrollTestView() {
         </div>}
 
         {stage === 4 && <div><TestStepHeading icon={<ReceiptText />} title="Review preliminary payroll" detail="Employee deposits, government remittances and Comcheq fees are separated before approval." />
-          <div className="mt-5 overflow-hidden rounded-2xl border border-[#ded6e8]"><Table><TableBody><MoneyRow label="Regular earnings" value={2400} /><MoneyRow label="Overtime earnings" value={112.5} /><MoneyRow label="Vacation pay" value={120} /><MoneyRow label="Labour Day pay" value={240} /><MoneyRow label="Gross earnings" value={amounts.gross} strong /><MoneyRow label="Income tax, CPP, EI and other" value={amounts.gross - amounts.net} /><MoneyRow label="Employee EFT deposit" value={amounts.net} strong /></TableBody></Table></div>
+          <div className="mt-5 overflow-hidden rounded-2xl border border-[#ded6e8]"><Table><TableBody><MoneyRow label="Regular earnings" value={regularEarnings} /><MoneyRow label="Overtime paid" value={overtimeEarnings} /><MoneyRow label="Paid time from OT bank" value={bankedTimeEarnings} /><MoneyRow label="Vacation pay" value={vacationPay} /><MoneyRow label="Labour Day pay" value={holidayPay} /><MoneyRow label="Gross earnings" value={amounts.gross} strong /><MoneyRow label="Income tax, CPP, EI and other" value={amounts.gross - amounts.net} /><MoneyRow label="Employee EFT deposit" value={amounts.net} strong /></TableBody></Table></div>
           <Button onClick={() => setStage(5)} className="mt-6 bg-[#d72d91] text-white hover:bg-[#b91c77]">Calculate preliminary payroll<ChevronRight className="size-4" /></Button>
         </div>}
 
@@ -1075,8 +1102,14 @@ function GuidedPayrollTestView() {
           <Button onClick={() => setStage(6)} className="mt-6 bg-[#d72d91] text-white hover:bg-[#b91c77]"><LockKeyhole className="size-4" />Approve test payroll</Button>
         </div>}
 
-        {stage === 6 && <div><div className="grid size-14 place-items-center rounded-2xl bg-[#00a29a] text-white"><Check className="size-7" /></div><h2 className="mt-5 text-2xl font-semibold">End-to-end test complete</h2><p className="mt-2 max-w-xl text-sm leading-6 text-[#746a80]">Run E2E-001 is locked. Download the test bank file, payroll register and CRA obligation summary below.</p>
-          <div className="mt-6 grid gap-3 sm:grid-cols-3"><Button onClick={downloadEft} className="h-auto min-h-24 flex-col bg-[#d72d91] py-4 text-white hover:bg-[#b91c77]"><Download className="size-5" /><span>Download EFT test file</span><small className="font-normal opacity-80">$2,109.03 deposit</small></Button><Button variant="outline" onClick={downloadRegister} className="h-auto min-h-24 flex-col border-[#d2c7e1] bg-white py-4"><FileSpreadsheet className="size-5" /><span>Download register</span><small className="font-normal text-[#746a80]">CSV payroll detail</small></Button><Button variant="outline" onClick={downloadRemittance} className="h-auto min-h-24 flex-col border-[#d2c7e1] bg-white py-4"><Landmark className="size-5" /><span>Download remittance</span><small className="font-normal text-[#746a80]">Client pays CRA</small></Button></div>
+        {stage === 6 && <div><TestStepHeading icon={<Landmark />} title="Send the EFT file to the bank" detail="Approval created the employee-deposit file. The client downloads it, signs in to its own bank and confirms the upload." /><div className="mt-5 grid gap-3 sm:grid-cols-2"><Button onClick={downloadEft} className="h-auto min-h-24 flex-col bg-[#d72d91] py-4 text-white hover:bg-[#b91c77]"><Download className="size-5" /><span>Download EFT test file</span><small className="font-normal opacity-80">{currency.format(amounts.net)} deposit</small></Button><Button variant="outline" asChild className="h-auto min-h-24 flex-col border-[#9db7c9] bg-[#f5f9fb] py-4"><a href="https://www.rbcroyalbank.com/ways-to-bank/online-banking/index.html" target="_blank" rel="noreferrer"><ExternalLink className="size-5" /><span>Open bank sign-in</span><small className="font-normal text-[#746a80]">Client-controlled website</small></a></Button></div><div className="mt-4 flex items-center gap-3 rounded-xl border border-[#ded6e8] p-4"><Checkbox id="guided-eft-uploaded" checked={eftUploaded} onCheckedChange={(checked) => setEftUploaded(checked === true)} /><label htmlFor="guided-eft-uploaded" className="cursor-pointer text-sm font-medium">I uploaded the test EFT file and confirmed the bank total.</label></div><Button disabled={!eftUploaded} onClick={() => setStage(7)} className="mt-5 bg-[#567f9f] text-white hover:bg-[#416f91]">Continue to CRA remittance<ChevronRight className="size-4" /></Button>
+        </div>}
+
+        {stage === 7 && <div><TestStepHeading icon={<ReceiptText />} title="Handle the CRA remittance" detail="The liability and due date are created from the approved run. The client can pay now or schedule a reminder." /><div className="mt-5 rounded-2xl border border-[#ded6e8] p-5"><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#567f9f]">September 2026 deductions</p><p className="mt-2 font-mono text-2xl font-bold">{currency.format(amounts.cra)}</p><p className="mt-1 text-sm text-[#746a80]">Due October 15, 2026 · Monthly remitter</p></div><Badge className="w-fit border-0 bg-[#fff0ce] text-[#7a5d18]">Action required</Badge></div></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><Button onClick={() => { setRemittanceChoice("paid"); setStage(8); }} className="h-auto min-h-20 flex-col bg-[#567f9f] py-4 text-white hover:bg-[#416f91]"><Landmark className="size-5" />Pay now — test confirmation</Button><Button variant="outline" onClick={() => { setRemittanceChoice("reminder"); setStage(8); }} className="h-auto min-h-20 flex-col border-[#9db7c9] bg-white py-4"><CalendarDays className="size-5" />Remind me on October 15</Button></div><Button variant="outline" onClick={downloadRemittance} className="mt-4 border-[#d2c7e1] bg-white"><Download className="size-4" />Download remittance summary</Button>
+        </div>}
+
+        {stage === 8 && <div><div className="grid size-14 place-items-center rounded-2xl bg-[#3f7d5c] text-white"><Check className="size-7" /></div><h2 className="mt-5 text-2xl font-semibold">End-to-end test complete</h2><p className="mt-2 max-w-xl text-sm leading-6 text-[#746a80]">Run E2E-001 is locked, billed once, handed off to the bank and assigned a CRA follow-up action.</p><div className="mt-5 grid gap-3 sm:grid-cols-3"><TestFact label="OT bank balance" value={`${closingOtBalance.toFixed(2)} hours`} /><TestFact label="Automatic billing" value={`${currency.format(amounts.fee)} succeeded`} /><TestFact label="CRA action" value={remittanceChoice === "paid" ? "Marked paid — test" : "Reminder scheduled"} /></div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2"><Button variant="outline" onClick={downloadRegister} className="h-auto min-h-20 flex-col border-[#d2c7e1] bg-white py-4"><FileSpreadsheet className="size-5" /><span>Download register</span><small className="font-normal text-[#746a80]">Includes overtime-bank movements</small></Button><Button variant="outline" onClick={downloadRemittance} className="h-auto min-h-20 flex-col border-[#d2c7e1] bg-white py-4"><ReceiptText className="size-5" /><span>Download remittance</span><small className="font-normal text-[#746a80]">Client follow-up record</small></Button></div>
         </div>}
       </div>
 
