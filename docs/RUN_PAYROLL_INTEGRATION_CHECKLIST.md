@@ -11,10 +11,44 @@
 - [x] Deliberate approval and employee-payment handoff
 - [x] Completion state with records access
 - [x] Existing payroll engine remains source of truth
-- [ ] Import `GuidedPayrollRun` into `app/page.tsx`
-- [ ] Map current employee/totals state into the guided component
-- [ ] Route current Run Payroll entry point to guided flow
+- [x] Persist guided progress while visiting Employees, Time Entry, Review or Payments
+- [x] Add `CurrentRunBridge` to map the existing run-17 state into the guided component
+- [ ] Import `CurrentRunBridge` into `app/page.tsx`
+- [ ] Replace only the `view === "payroll"` render with the bridge
+- [ ] Keep the existing `PayrollView` as the detailed-review destination
 - [ ] Preserve direct deep-navigation for experienced users
 - [ ] Build/test on branch
 - [ ] Visual review at desktop and mobile widths
 - [ ] Merge only after review
+
+## Intended `app/page.tsx` wiring
+
+Add:
+
+```tsx
+import { CurrentRunBridge } from "@/components/comcheq";
+```
+
+Replace the current `view === "payroll"` render with:
+
+```tsx
+{view === "payroll" && (
+  <CurrentRunBridge
+    approved={approved}
+    timeReady={timeReady}
+    employees={employees}
+    gross={totals.gross}
+    net={totals.net}
+    remittance={remittance}
+    onHome={() => navigate("home")}
+    onEmployees={() => navigate("employees")}
+    onTime={() => navigate("time")}
+    onReview={() => navigate("calculation")}
+    onApprove={() => setApprovalOpen(true)}
+    onPayments={() => navigate("payments")}
+    onReports={() => navigate("reports")}
+  />
+)}
+```
+
+The existing `PayrollView` should remain in the file for detailed payroll review and can later be exposed from the guided Review step or an advanced/deep-navigation route. No payroll calculation, approval, payment, banking, CRA, billing or reporting logic is duplicated in the guided layer.
