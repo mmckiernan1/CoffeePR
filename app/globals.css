@@ -19,38 +19,38 @@
 }
 
 :root {
-  --background: #f7f7f4;
-  --foreground: #202024;
+  --background: #f5f8ff;
+  --foreground: #172033;
   --card: #ffffff;
-  --card-foreground: #202024;
+  --card-foreground: #172033;
   --popover: #ffffff;
-  --popover-foreground: #202024;
-  --primary: #4b7598;
+  --popover-foreground: #172033;
+  --primary: #1557d8;
   --primary-foreground: #ffffff;
-  --secondary: #edf4f9;
-  --secondary-foreground: #294f70;
-  --muted: #f1f1ed;
-  --muted-foreground: #66666d;
-  --accent: #eef8e8;
-  --accent-foreground: #356e1d;
-  --destructive: #e7000b;
-  --border: #deded8;
-  --input: #cecec7;
-  --ring: #4b7598;
-  --chart-1: #4b7598;
-  --chart-2: #7f9db8;
-  --chart-3: #8aaa70;
-  --chart-4: #b5cadb;
-  --chart-5: #315a7b;
+  --secondary: #eaf1ff;
+  --secondary-foreground: #17428e;
+  --muted: #f1f4f9;
+  --muted-foreground: #647087;
+  --accent: #eef9e8;
+  --accent-foreground: #34701d;
+  --destructive: #d92d20;
+  --border: #dce4f0;
+  --input: #c9d5e6;
+  --ring: #1557d8;
+  --chart-1: #1557d8;
+  --chart-2: #3d7bf0;
+  --chart-3: #72a3ff;
+  --chart-4: #83b85a;
+  --chart-5: #0d3f9e;
   --radius: 0.75rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #202024;
-  --sidebar-primary: #4b7598;
+  --sidebar-foreground: #172033;
+  --sidebar-primary: #1557d8;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #edf4f9;
-  --sidebar-accent-foreground: #294f70;
-  --sidebar-border: #deded8;
-  --sidebar-ring: #4b7598;
+  --sidebar-accent: #edf3ff;
+  --sidebar-accent-foreground: #17428e;
+  --sidebar-border: #dce4f0;
+  --sidebar-ring: #1557d8;
 }
 
 @theme inline {
@@ -96,69 +96,188 @@
 
 body {
   background:
-    radial-gradient(circle at 92% 0%, rgb(235 248 225 / 0.75), transparent 30rem),
-    radial-gradient(circle at 8% 18%, rgb(226 239 248 / 0.78), transparent 27rem),
+    radial-gradient(circle at 92% 0%, rgb(220 234 255 / 0.82), transparent 31rem),
+    radial-gradient(circle at 6% 20%, rgb(235 243 255 / 0.92), transparent 28rem),
     var(--background);
   color: var(--foreground);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
-/* Calm blue payroll palette: softer on desktop while retaining readable controls. */
-[class*="bg-[#6d4aff]"], [class*="bg-[#8066ef]"], [class*="bg-[#e00087]"] { background-color: #4b7598 !important; }
-[class*="hover:bg-[#5934d1]"]:hover, [class*="hover:bg-[#b91c77]"]:hover { background-color: #365d7e !important; }
-[class*="text-[#6d4aff]"], [class*="text-[#7757e8]"], [class*="text-[#5b35c7]"], [class*="text-[#d946ef]"], [class*="text-[#a21caf]"] { color: #315f87 !important; }
-[class*="bg-[#eee9ff]"], [class*="bg-[#f4f0ff]"] { background-color: #eaf2f8 !important; }
-[class*="bg-[#f6f2ff]"], [class*="bg-[#f3eeff]"], [class*="bg-[#f1edff]"], [class*="bg-[#efeaff]"] { background-color: #f1f6fa !important; }
-[class*="border-[#b9a4f2]"], [class*="border-[#c7b8ed]"], [class*="border-[#cdbfe4]"], [class*="border-[#d8c9f4]"] { border-color: #b7ccdc !important; }
-[class*="ring-[#eee9ff]"] { --tw-ring-color: #d8e7f1 !important; }
-[class*="from-[#6d4aff]"] { --tw-gradient-from: #4b7598 !important; }
-[class*="via-[#8066ef]"] { --tw-gradient-via: #5e85a5 !important; }
-[class*="to-[#00a9a5]"] { --tw-gradient-to: #86a5be !important; }
-[class*="from-[#5633b7]"], [class*="from-[#4a1742]"] { --tw-gradient-from: #202024 !important; }
-[class*="to-[#117d83]"], [class*="to-[#0f7775]"] { --tw-gradient-to: #477f28 !important; }
+/* Comcheq brand bridge: map legacy prototype colours into one vibrant cobalt system. */
+[class*="bg-[#6d4aff]"],
+[class*="bg-[#8066ef]"],
+[class*="bg-[#e00087]"] {
+  background-color: #1557d8 !important;
+}
 
-/* Retire the teal family. Blue carries progress; green remains reserved for success. */
-[class*="bg-[#00a9a5]"], [class*="bg-[#00a29a]"], [class*="bg-[#48b9ae]"] { background-color: #7898b3 !important; }
-[class*="hover:bg-[#0b8d88]"]:hover, [class*="hover:bg-[#087f7a]"]:hover { background-color: #5c7d99 !important; }
-[class*="text-[#00a29a]"], [class*="text-[#0b8d88]"], [class*="text-[#0f6f74]"], [class*="text-[#008b85]"], [class*="text-[#086d69]"] { color: #406b8f !important; }
-[class*="text-[#0f766e]"] { color: #3e6f2c !important; }
-[class*="bg-[#e9f7f6]"], [class*="bg-[#ddf8f4]"], [class*="bg-[#effcf9]"] { background-color: #edf4f9 !important; }
-[class*="bg-[#dcfce7]"] { background-color: #edf7e8 !important; }
-[class*="border-[#c9e8e5]"], [class*="border-[#59cfc7]"] { border-color: #bfd2e1 !important; }
-[class*="ring-[#dff7f5]"] { --tw-ring-color: #dce9f2 !important; }
+[class*="hover:bg-[#5934d1]"]:hover,
+[class*="hover:bg-[#b91c77]"]:hover {
+  background-color: #0f46b8 !important;
+}
 
-/* Neutralize the old purple-cast surfaces and typography. */
-[class*="bg-[#faf8ff]"], [class*="bg-[#fcfaff]"], [class*="bg-[#fbf9ff]"] { background-color: #f8f8f5 !important; }
-[class*="bg-[#f7f4fa]"], [class*="bg-[#f6f2f8]"], [class*="bg-[#f5f1ff]"], [class*="bg-[#f2eef7]"], [class*="bg-[#f1edf5]"] { background-color: #f1f1ed !important; }
-[class*="border-[#ded6e8]"], [class*="border-[#eae3f0]"], [class*="border-[#eee8f2]"], [class*="border-[#e5ddee]"], [class*="border-[#d2c7e1]"] { border-color: #deded8 !important; }
-[class*="text-[#2f2447]"], [class*="text-[#35284b]"] { color: #202024 !important; }
-[class*="text-[#655b73]"], [class*="text-[#746a80]"], [class*="text-[#847990]"], [class*="text-[#9a8da9]"], [class*="text-[#9d90ab]"], [class*="text-[#5e506f]"] { color: #67676d !important; }
+[class*="text-[#6d4aff]"],
+[class*="text-[#7757e8]"],
+[class*="text-[#5b35c7]"],
+[class*="text-[#d946ef]"],
+[class*="text-[#a21caf]"] {
+  color: #1557d8 !important;
+}
 
-/* Keep the lime highlight purposeful: primary release/continue actions only. */
-[class*="bg-[#c7f36b]"] { background-color: #b8f500 !important; }
-[class*="text-[#ded2ff]"], [class*="text-[#eee9ff]"], [class*="text-[#f3efff]"] { color: #ffffff !important; }
+[class*="bg-[#eee9ff]"],
+[class*="bg-[#f4f0ff]"] {
+  background-color: #e8f0ff !important;
+}
 
-/* Flatten legacy gradients into calm, consistent brand surfaces. */
+[class*="bg-[#f6f2ff]"],
+[class*="bg-[#f3eeff]"],
+[class*="bg-[#f1edff]"],
+[class*="bg-[#efeaff]"] {
+  background-color: #f1f5ff !important;
+}
+
+[class*="border-[#b9a4f2]"],
+[class*="border-[#c7b8ed]"],
+[class*="border-[#cdbfe4]"],
+[class*="border-[#d8c9f4]"] {
+  border-color: #b9cdf2 !important;
+}
+
+[class*="ring-[#eee9ff]"] {
+  --tw-ring-color: #d3e1fb !important;
+}
+
+[class*="from-[#6d4aff]"] {
+  --tw-gradient-from: #1557d8 !important;
+}
+
+[class*="via-[#8066ef]"] {
+  --tw-gradient-via: #3475ed !important;
+}
+
+[class*="to-[#00a9a5]"] {
+  --tw-gradient-to: #5a96ff !important;
+}
+
+[class*="from-[#5633b7]"],
+[class*="from-[#4a1742]"] {
+  --tw-gradient-from: #103b93 !important;
+}
+
+[class*="to-[#117d83]"],
+[class*="to-[#0f7775]"] {
+  --tw-gradient-to: #1557d8 !important;
+}
+
+/* Retire teal as a competing brand colour. Blue communicates navigation and progress. */
+[class*="bg-[#00a9a5]"],
+[class*="bg-[#00a29a]"],
+[class*="bg-[#48b9ae]"] {
+  background-color: #3d7bf0 !important;
+}
+
+[class*="hover:bg-[#0b8d88]"]:hover,
+[class*="hover:bg-[#087f7a]"]:hover {
+  background-color: #2767d7 !important;
+}
+
+[class*="text-[#00a29a]"],
+[class*="text-[#0b8d88]"],
+[class*="text-[#0f6f74]"],
+[class*="text-[#008b85]"],
+[class*="text-[#086d69]"] {
+  color: #2466d6 !important;
+}
+
+/* Green is reserved for successful, balanced or completed states. */
+[class*="text-[#0f766e]"] {
+  color: #34701d !important;
+}
+
+[class*="bg-[#e9f7f6]"],
+[class*="bg-[#ddf8f4]"],
+[class*="bg-[#effcf9]"] {
+  background-color: #edf4ff !important;
+}
+
+[class*="bg-[#dcfce7]"] {
+  background-color: #eef9e8 !important;
+}
+
+[class*="border-[#c9e8e5]"],
+[class*="border-[#59cfc7]"] {
+  border-color: #c4d7f5 !important;
+}
+
+[class*="ring-[#dff7f5]"] {
+  --tw-ring-color: #d9e7fb !important;
+}
+
+/* Neutral working surfaces stay bright and slightly cool instead of muddy grey or mauve. */
+[class*="bg-[#faf8ff]"],
+[class*="bg-[#fcfaff]"],
+[class*="bg-[#fbf9ff]"] {
+  background-color: #f8faff !important;
+}
+
+[class*="bg-[#f7f4fa]"],
+[class*="bg-[#f6f2f8]"],
+[class*="bg-[#f5f1ff]"],
+[class*="bg-[#f2eef7]"],
+[class*="bg-[#f1edf5]"] {
+  background-color: #f2f5fa !important;
+}
+
+[class*="border-[#ded6e8]"],
+[class*="border-[#eae3f0]"],
+[class*="border-[#eee8f2]"],
+[class*="border-[#e5ddee]"],
+[class*="border-[#d2c7e1]"] {
+  border-color: #dce4f0 !important;
+}
+
+[class*="text-[#2f2447]"],
+[class*="text-[#35284b]"] {
+  color: #172033 !important;
+}
+
+[class*="text-[#655b73]"],
+[class*="text-[#746a80]"],
+[class*="text-[#847990]"],
+[class*="text-[#9a8da9]"],
+[class*="text-[#9d90ab]"],
+[class*="text-[#5e506f]"] {
+  color: #647087 !important;
+}
+
+/* Keep the lime highlight purposeful for release/continue actions. */
+[class*="bg-[#c7f36b]"] {
+  background-color: #b7ef45 !important;
+}
+
+[class*="text-[#ded2ff]"],
+[class*="text-[#eee9ff]"],
+[class*="text-[#f3efff]"] {
+  color: #ffffff !important;
+}
+
+/* Legacy gradients become recognizably Comcheq rather than grey or red-purple. */
 .bg-gradient-to-br[class*="from-[#6d4aff]"][class*="to-[#00a9a5]"] {
-  background-image: none !important;
-  background-color: #4b7598 !important;
+  background-image: linear-gradient(135deg, #1557d8, #4b8cff) !important;
 }
 
 .bg-gradient-to-br[class*="from-[#5633b7]"][class*="to-[#117d83]"],
 .bg-gradient-to-br[class*="from-[#4a1742]"][class*="to-[#0f7775]"],
 .bg-gradient-to-br[class*="from-[#5f3bd6]"][class*="to-[#00a9a5]"] {
-  background-image: none !important;
-  background-color: #202024 !important;
+  background-image: linear-gradient(135deg, #103b93, #1557d8) !important;
 }
 
 .bg-gradient-to-r[class*="from-[#c026d3]"][class*="to-[#0f9f9a]"] {
-  background-image: none !important;
-  background-color: #4b7598 !important;
+  background-image: linear-gradient(90deg, #1557d8, #4b8cff) !important;
 }
 
 [class*="bg-[#c7f36b]"][class*="text-[#6d4aff]"] {
-  color: #202024 !important;
+  color: #17315e !important;
 }
 
 button,
