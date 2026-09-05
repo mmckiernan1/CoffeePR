@@ -1,16 +1,9 @@
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 import { getCoffeePayrollUser } from "@/lib/auth/current-user";
+import { pilotWorkspaceScope } from "@/lib/pilot/workspace-scope";
 import { dollarsToCents } from "@/lib/payroll/money";
-import {
-  PILOT_STARTER_STATE,
-  type PilotFinalPay,
-  type PilotProfile,
-  type PilotRateHistoryEntry,
-  type PilotTimesheet,
-  type PilotUatEmployee,
-  type PilotUatState,
-} from "@/lib/payroll/pilot-uat";
+import { PILOT_STARTER_STATE, type PilotFinalPay as FinalPay, type PilotProfile, type PilotRateHistoryEntry as RateHistoryEntry, type PilotTimesheet as Timesheet, type PilotUatEmployee as UatEmployee, type PilotUatState } from "@/lib/payroll/pilot-uat";
 
 type LegacyFinalPay = {
   vacationPay: number;
@@ -21,16 +14,13 @@ type LegacyFinalPay = {
 
 type UpdateBody = { profile?: Partial<PilotProfile>; state?: unknown; resetState?: boolean };
 
+const starterState: PilotUatState = PILOT_STARTER_STATE;
+
 function database() {
   const db = (env as unknown as { DB?: D1Database }).DB;
   if (!db) throw new Error("Coffee Payroll durable storage is unavailable.");
   return db;
 }
-
-function workspaceId(userId: string) { return `WS-PILOT-${userId}`; }
-function profileId(userId: string) { return `PWP-${userId}`; }
-function stateId(userId: string) { return `UAT-${userId}`; }
-function membershipId(userId: string) { return `MEM-PILOT-${userId}`; }
 
 function safeProfile(input: Partial<PilotProfile> | undefined): PilotProfile {
   const count = Number(input?.employeeCount ?? 4);
@@ -52,10 +42,10 @@ function validMoney(value: unknown) { return typeof value === "number" && Number
 function validRate(value: unknown) { return typeof value === "number" && Number.isFinite(value) && value > 0 && value < 10_000_000; }
 function validCents(value: unknown) { return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value < 1_000_000_000; }
 
-function normalizeFinalPay(input: unknown): PilotFinalPay | undefined | null {
+function normalizeFinalPay(input: unknown): FinalPay | undefined | null {
   if (input === undefined) return undefined;
   if (!input || typeof input !== "object") return null;
-  const value = input as Partial<PilotFinalPay & LegacyFinalPay>;
+  const value = input as Partial<FinalPay & LegacyFinalPay>;
   if (validCents(value.vacationPayCents) && validCents(value.overtimePayCents) && validCents(value.otherTaxablePayCents) && validCents(value.reimbursementCents)) {
     return {
       vacationPayCents: value.vacationPayCents as number,
@@ -81,7 +71,7 @@ function normalizeExtraPay(employee: Record<string, unknown>): number | undefine
   return undefined;
 }
 
-function normalizeRateHistory(employee: Record<string, unknown>): PilotRateHistoryEntry[] | undefined | null {
+function normalizeRateHistory(employee: Record<string, unknown>): RateHistoryEntry[] | undefined | null {
   if (employee.rateHistory === undefined) {
     if (typeof employee.rateEffectiveDate === "string" && validIsoDate(employee.rateEffectiveDate) && validRate(employee.rate)) {
       return [{ effectiveDate: employee.rateEffectiveDate, rate: employee.rate as number }];
@@ -108,11 +98,11 @@ function normalizeState(input: unknown): PilotUatState | null {
   if (!Array.isArray(state.employees) || !state.timesheets || typeof state.timesheets !== "object" || typeof state.ready !== "boolean") return null;
   if (state.employees.length > 250) return null;
 
-  const employees: PilotUatEmployee[] = [];
+  const employees: UatEmployee[] = [];
   for (const rawEmployee of state.employees) {
     if (!rawEmployee || typeof rawEmployee !== "object") return null;
     const employee = rawEmployee as Record<string, unknown>;
-    if (!(typeof employee.id === "string" && employee.id.length <= 80 && typeof employee.name === "string" && employee.name.length > 0 && employee.name.length <= 160 && (employee.payType === "Salary" || employee.payType === "Hourly") && validRate(employee.rate) && (["Active", "New hire", "Terminating", "Terminated"] as const).includes(employee.status as PilotUatEmployee["status"]))) return null;
+    if (!(typeof employee.id === "string" && employee.id.length <= 80 && typeof employee.name === "string" && employee.name.length > 0 && employee.name.length <= 160 && (employee.payType === "Salary" || employee.payType === "Hourly") && validRate(employee.rate) && (["Active", "New hire", "Terminating", "Terminated"] as const).includes(employee.status as UatEmployee["status"]))) return null;
     if (employee.hireDate !== undefined && !validIsoDate(employee.hireDate)) return null;
     if (employee.rateEffectiveDate !== undefined && !validIsoDate(employee.rateEffectiveDate)) return null;
     if (employee.terminationDate !== undefined && !validIsoDate(employee.terminationDate)) return null;
@@ -134,7 +124,7 @@ function normalizeState(input: unknown): PilotUatState | null {
       payType: employee.payType,
       rate: employee.rate as number,
       ...(rateHistory?.length ? { rateHistory } : {}),
-      status: employee.status as PilotUatEmployee["status"],
+      status: employee.status as UatEmployee["status"],
       ...(typeof employee.hireDate === "string" ? { hireDate: employee.hireDate } : {}),
       ...(typeof employee.rateEffectiveDate === "string" ? { rateEffectiveDate: employee.rateEffectiveDate } : {}),
       ...(typeof employee.terminationDate === "string" ? { terminationDate: employee.terminationDate } : {}),
@@ -152,37 +142,38 @@ function normalizeState(input: unknown): PilotUatState | null {
     if (![time.regular, time.overtime, time.vacation].every((value) => typeof value === "number" && Number.isFinite(value) && value >= 0 && value < 10_000)) return null;
   }
 
-  return { employees, timesheets: state.timesheets as Record<string, PilotTimesheet>, ready: state.ready };
+  return { employees, timesheets: state.timesheets as Record<string, Timesheet>, ready: state.ready };
 }
 
 async function ensureWorkspace(user: { id: string; email: string }) {
   const db = database();
-  const wsId = workspaceId(user.id);
+  const scope = pilotWorkspaceScope(user.id);
   const now = new Date().toISOString();
   await db.batch([
-    db.prepare("INSERT OR IGNORE INTO employer_workspaces (id, legal_name, province, created_at, created_by) VALUES (?, ?, ?, ?, ?)").bind(wsId, "My business", "Alberta", now, user.email),
-    db.prepare("INSERT OR IGNORE INTO employer_memberships (id, workspace_id, email, display_name, role, status, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(membershipId(user.id), wsId, user.email, user.email, "Administrator", "Active", now, user.email),
-    db.prepare("INSERT OR IGNORE INTO pilot_workspace_profiles (id, workspace_id, auth_user_id, owner_email, business_name, province, pay_frequency, expected_employee_count, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(profileId(user.id), wsId, user.id, user.email, "My business", "Alberta", "Biweekly", 4, now),
-    db.prepare("INSERT OR IGNORE INTO pilot_uat_states (id, workspace_id, state_json, updated_at, updated_by) VALUES (?, ?, ?, ?, ?)").bind(stateId(user.id), wsId, JSON.stringify(PILOT_STARTER_STATE), now, user.email),
+    db.prepare("INSERT OR IGNORE INTO employer_workspaces (id, legal_name, province, created_at, created_by) VALUES (?, ?, ?, ?, ?)").bind(scope.workspaceId, "My business", "Alberta", now, user.email),
+    db.prepare("INSERT OR IGNORE INTO employer_memberships (id, workspace_id, email, display_name, role, status, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(scope.membershipId, scope.workspaceId, user.email, user.email, "Administrator", "Active", now, user.email),
+    db.prepare("INSERT OR IGNORE INTO pilot_workspace_profiles (id, workspace_id, auth_user_id, owner_email, business_name, province, pay_frequency, expected_employee_count, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(scope.profileId, scope.workspaceId, user.id, user.email, "My business", "Alberta", "Biweekly", 4, now),
+    db.prepare("INSERT OR IGNORE INTO pilot_uat_states (id, workspace_id, state_json, updated_at, updated_by) VALUES (?, ?, ?, ?, ?)").bind(scope.stateId, scope.workspaceId, JSON.stringify(starterState), now, user.email),
   ]);
-  return wsId;
+  return scope;
 }
 
 async function currentSnapshot(user: { id: string; email: string }) {
   const db = database();
-  const wsId = await ensureWorkspace(user);
-  const profile = await db.prepare("SELECT business_name AS businessName, province, pay_frequency AS frequency, expected_employee_count AS employeeCount FROM pilot_workspace_profiles WHERE workspace_id = ? LIMIT 1").bind(wsId).first<PilotProfile>();
-  const stateRow = await db.prepare("SELECT state_json AS stateJson, updated_at AS updatedAt FROM pilot_uat_states WHERE workspace_id = ? LIMIT 1").bind(wsId).first<{ stateJson: string; updatedAt: string }>();
-  let state = PILOT_STARTER_STATE;
+  const scope = await ensureWorkspace(user);
+  const profile = await db.prepare("SELECT business_name AS businessName, province, pay_frequency AS frequency, expected_employee_count AS employeeCount FROM pilot_workspace_profiles WHERE workspace_id = ? AND auth_user_id = ? LIMIT 1").bind(scope.workspaceId, user.id).first<PilotProfile>();
+  const stateRow = await db.prepare("SELECT state_json AS stateJson, updated_at AS updatedAt FROM pilot_uat_states WHERE id = ? AND workspace_id = ? LIMIT 1").bind(scope.stateId, scope.workspaceId).first<{ stateJson: string; updatedAt: string }>();
+  if (!profile) throw new Error("Pilot workspace ownership could not be verified.");
+  let state = starterState;
   if (stateRow?.stateJson) {
     try {
       const parsed = normalizeState(JSON.parse(stateRow.stateJson));
       if (parsed) state = parsed;
     } catch {
-      state = PILOT_STARTER_STATE;
+      state = starterState;
     }
   }
-  return { workspaceId: wsId, profile: profile ?? safeProfile(undefined), state, updatedAt: stateRow?.updatedAt ?? null };
+  return { workspaceId: scope.workspaceId, profile, state, updatedAt: stateRow?.updatedAt ?? null };
 }
 
 export async function GET() {
@@ -201,24 +192,25 @@ export async function PUT(request: Request) {
     if (!user) return NextResponse.json({ error: "Sign in to save pilot data." }, { status: 401 });
     const body = (await request.json().catch(() => ({}))) as UpdateBody;
     const db = database();
-    const wsId = await ensureWorkspace(user);
+    const scope = await ensureWorkspace(user);
     const now = new Date().toISOString();
 
     if (body.profile) {
-      const existing = await db.prepare("SELECT business_name AS businessName, province, pay_frequency AS frequency, expected_employee_count AS employeeCount FROM pilot_workspace_profiles WHERE workspace_id = ? LIMIT 1").bind(wsId).first<PilotProfile>();
+      const existing = await db.prepare("SELECT business_name AS businessName, province, pay_frequency AS frequency, expected_employee_count AS employeeCount FROM pilot_workspace_profiles WHERE workspace_id = ? AND auth_user_id = ? LIMIT 1").bind(scope.workspaceId, user.id).first<PilotProfile>();
+      if (!existing) return NextResponse.json({ error: "Pilot workspace ownership could not be verified." }, { status: 403 });
       const profile = safeProfile({ ...existing, ...body.profile });
       await db.batch([
-        db.prepare("UPDATE pilot_workspace_profiles SET business_name = ?, province = ?, pay_frequency = ?, expected_employee_count = ?, owner_email = ?, updated_at = ? WHERE workspace_id = ?").bind(profile.businessName, profile.province, profile.frequency, profile.employeeCount, user.email, now, wsId),
-        db.prepare("UPDATE employer_workspaces SET legal_name = ?, province = ? WHERE id = ?").bind(profile.businessName, profile.province, wsId),
+        db.prepare("UPDATE pilot_workspace_profiles SET business_name = ?, province = ?, pay_frequency = ?, expected_employee_count = ?, owner_email = ?, updated_at = ? WHERE workspace_id = ? AND auth_user_id = ?").bind(profile.businessName, profile.province, profile.frequency, profile.employeeCount, user.email, now, scope.workspaceId, user.id),
+        db.prepare("UPDATE employer_workspaces SET legal_name = ?, province = ? WHERE id = ?").bind(profile.businessName, profile.province, scope.workspaceId),
       ]);
     }
 
     if (body.resetState) {
-      await db.prepare("UPDATE pilot_uat_states SET state_json = ?, updated_at = ?, updated_by = ? WHERE workspace_id = ?").bind(JSON.stringify(PILOT_STARTER_STATE), now, user.email, wsId).run();
+      await db.prepare("UPDATE pilot_uat_states SET state_json = ?, updated_at = ?, updated_by = ? WHERE id = ? AND workspace_id = ?").bind(JSON.stringify(starterState), now, user.email, scope.stateId, scope.workspaceId).run();
     } else if (body.state !== undefined) {
       const normalized = normalizeState(body.state);
       if (!normalized) return NextResponse.json({ error: "UAT state is invalid." }, { status: 400 });
-      await db.prepare("UPDATE pilot_uat_states SET state_json = ?, updated_at = ?, updated_by = ? WHERE workspace_id = ?").bind(JSON.stringify(normalized), now, user.email, wsId).run();
+      await db.prepare("UPDATE pilot_uat_states SET state_json = ?, updated_at = ?, updated_by = ? WHERE id = ? AND workspace_id = ?").bind(JSON.stringify(normalized), now, user.email, scope.stateId, scope.workspaceId).run();
     }
 
     return NextResponse.json(await currentSnapshot(user));
