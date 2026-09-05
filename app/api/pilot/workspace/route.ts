@@ -7,7 +7,16 @@ type UatEmployee = {
   name: string;
   payType: "Salary" | "Hourly";
   rate: number;
-  status: "Active" | "New hire";
+  status: "Active" | "New hire" | "Terminating" | "Terminated";
+  hireDate?: string;
+  rateEffectiveDate?: string;
+  terminationDate?: string;
+  finalPay?: {
+    vacationPay: number;
+    overtimePay: number;
+    otherTaxablePay: number;
+    reimbursement: number;
+  };
 };
 
 type Timesheet = { regular: number; overtime: number; vacation: number };
@@ -77,18 +86,40 @@ function safeProfile(input: Partial<PilotProfile> | undefined): PilotProfile {
   };
 }
 
+function validIsoDate(value: unknown) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function validMoney(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value < 10_000_000;
+}
+
 function validState(input: unknown): input is PilotUatState {
   if (!input || typeof input !== "object") return false;
   const state = input as PilotUatState;
   if (!Array.isArray(state.employees) || !state.timesheets || typeof state.timesheets !== "object" || typeof state.ready !== "boolean") return false;
   if (state.employees.length > 250) return false;
-  return state.employees.every((employee) =>
-    employee && typeof employee.id === "string" && employee.id.length <= 80 &&
-    typeof employee.name === "string" && employee.name.length > 0 && employee.name.length <= 160 &&
-    (employee.payType === "Salary" || employee.payType === "Hourly") &&
-    Number.isFinite(employee.rate) && employee.rate > 0 && employee.rate < 10_000_000 &&
-    (employee.status === "Active" || employee.status === "New hire")
-  );
+  return state.employees.every((employee) => {
+    if (!(employee && typeof employee.id === "string" && employee.id.length <= 80 &&
+      typeof employee.name === "string" && employee.name.length > 0 && employee.name.length <= 160 &&
+      (employee.payType === "Salary" || employee.payType === "Hourly") &&
+      Number.isFinite(employee.rate) && employee.rate > 0 && employee.rate < 10_000_000 &&
+      (["Active", "New hire", "Terminating", "Terminated"] as const).includes(employee.status))) return false;
+
+    if (employee.hireDate !== undefined && !validIsoDate(employee.hireDate)) return false;
+    if (employee.rateEffectiveDate !== undefined && !validIsoDate(employee.rateEffectiveDate)) return false;
+    if (employee.terminationDate !== undefined && !validIsoDate(employee.terminationDate)) return false;
+    if ((employee.status === "Terminating" || employee.status === "Terminated") && !employee.terminationDate) return false;
+    if (employee.hireDate && employee.terminationDate && employee.terminationDate < employee.hireDate) return false;
+
+    if (employee.finalPay) {
+      if (!validMoney(employee.finalPay.vacationPay) || !validMoney(employee.finalPay.overtimePay) ||
+        !validMoney(employee.finalPay.otherTaxablePay) || !validMoney(employee.finalPay.reimbursement)) return false;
+    }
+    return true;
+  });
 }
 
 async function ensureWorkspace(user: { id: string; email: string }) {
