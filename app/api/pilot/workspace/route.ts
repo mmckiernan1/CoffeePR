@@ -13,6 +13,7 @@ type UatEmployee = {
   terminationDate?: string;
   extraTaxablePay?: number;
   changeNote?: string;
+  taxSetupComplete?: boolean;
   finalPay?: {
     vacationPay: number;
     overtimePay: number;
@@ -44,10 +45,10 @@ type UpdateBody = {
 
 const starterState: PilotUatState = {
   employees: [
-    { id: "EMP-0001", name: "Avery Chen", payType: "Salary", rate: 80000, status: "Active" },
-    { id: "EMP-0002", name: "Noah Williams", payType: "Hourly", rate: 30, status: "Active" },
-    { id: "EMP-0003", name: "Priya Singh", payType: "Salary", rate: 111000, status: "Active" },
-    { id: "EMP-0004", name: "Liam Martin", payType: "Hourly", rate: 29.5, status: "Active" },
+    { id: "EMP-0001", name: "Avery Chen", payType: "Salary", rate: 80000, status: "Active", taxSetupComplete: true },
+    { id: "EMP-0002", name: "Noah Williams", payType: "Hourly", rate: 30, status: "Active", taxSetupComplete: true },
+    { id: "EMP-0003", name: "Priya Singh", payType: "Salary", rate: 111000, status: "Active", taxSetupComplete: true },
+    { id: "EMP-0004", name: "Liam Martin", payType: "Hourly", rate: 29.5, status: "Active", taxSetupComplete: true },
   ],
   timesheets: {
     "EMP-0002": { regular: 80, overtime: 2.5, vacation: 0 },
@@ -117,6 +118,7 @@ function validState(input: unknown): input is PilotUatState {
     if (employee.hireDate && employee.terminationDate && employee.terminationDate < employee.hireDate) return false;
     if (employee.extraTaxablePay !== undefined && !validMoney(employee.extraTaxablePay)) return false;
     if (employee.changeNote !== undefined && (typeof employee.changeNote !== "string" || employee.changeNote.length > 500)) return false;
+    if (employee.taxSetupComplete !== undefined && typeof employee.taxSetupComplete !== "boolean") return false;
 
     if (employee.finalPay) {
       if (!validMoney(employee.finalPay.vacationPay) || !validMoney(employee.finalPay.overtimePay) ||
