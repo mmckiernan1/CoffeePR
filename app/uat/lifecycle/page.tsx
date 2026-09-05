@@ -2,23 +2,10 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { dollarsToCents } from "@/lib/payroll/money";
+import type { PilotUatEmployee as Employee, PilotUatState as WorkspaceState } from "@/lib/payroll/pilot-uat";
 
 type ChangeKind = "hire" | "leave" | "pay" | "bonus" | "absence" | "other" | null;
-type Employee = {
-  id: string;
-  name: string;
-  payType: "Salary" | "Hourly";
-  rate: number;
-  status: "Active" | "New hire" | "Terminating" | "Terminated";
-  hireDate?: string;
-  rateEffectiveDate?: string;
-  terminationDate?: string;
-  extraTaxablePay?: number;
-  changeNote?: string;
-  finalPay?: { vacationPay: number; overtimePay: number; otherTaxablePay: number; reimbursement: number };
-};
-type Timesheet = { regular: number; overtime: number; vacation: number };
-type WorkspaceState = { employees: Employee[]; timesheets: Record<string, Timesheet>; ready: boolean };
 
 const choices: Array<{ id: Exclude<ChangeKind, null>; title: string; detail: string; icon: string }> = [
   { id: "hire", title: "Hired someone", detail: "Add a new employee and their starting pay.", icon: "＋" },
@@ -128,11 +115,20 @@ export default function LifecycleUatPage() {
       setNotice("Enter a valid last day and non-negative final-pay amounts."); return;
     }
     if (selected.hireDate && terminationDate < selected.hireDate) { setNotice("The last day cannot be before the employee’s hire date."); return; }
-    const [vacation, overtime, taxable, reimb] = amounts;
-    const nextState = {
+    const nextState: WorkspaceState = {
       ...state,
       ready: false,
-      employees: state.employees.map((employee) => employee.id === selected.id ? { ...employee, status: "Terminating" as const, terminationDate, finalPay: { vacationPay: vacation, overtimePay: overtime, otherTaxablePay: taxable, reimbursement: reimb } } : employee),
+      employees: state.employees.map((employee) => employee.id === selected.id ? {
+        ...employee,
+        status: "Terminating" as const,
+        terminationDate,
+        finalPay: {
+          vacationPayCents: dollarsToCents(vacationPay),
+          overtimePayCents: dollarsToCents(overtimePay),
+          otherTaxablePayCents: dollarsToCents(otherTaxablePay),
+          reimbursementCents: dollarsToCents(reimbursement),
+        },
+      } : employee),
     };
     try { await persist(nextState, `${selected.name} is marked as leaving on ${terminationDate}. Final-pay items are ready for review.`); }
     catch (error) { setNotice(error instanceof Error ? error.message : "Unable to save termination."); }
