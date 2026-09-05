@@ -34,7 +34,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.replace("/guided-payroll");
+      router.replace(mode === "signup" ? "/setup" : "/guided-payroll");
     } catch (reason) {
       setMessage(reason instanceof Error ? reason.message : "Unable to continue.");
     } finally {
