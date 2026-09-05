@@ -261,7 +261,7 @@ export default function GuidedPayrollPreviewPage() {
         window.localStorage.setItem(paymentStorageKey, JSON.stringify(payload.state));
       }
     } catch {
-      // Device copy remains available for offline UAT.
+      // Device copy remains available for offline pilot use.
     }
   }
 
@@ -277,9 +277,9 @@ export default function GuidedPayrollPreviewPage() {
             <span className="ml-2">Run 17 · August 16–31 · Pay date September 4, 2026</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-lg border border-[#d6c6b8] bg-white px-3 py-2 font-semibold text-[#6b4a36]">{loadedFrom === "workspace" ? "UAT workspace synced" : loadedFrom === "device" ? "Using saved UAT on this device" : "Loading UAT…"}</span>
+            <span className="rounded-lg border border-[#d6c6b8] bg-white px-3 py-2 font-semibold text-[#6b4a36]">{loadedFrom === "workspace" ? "Workspace synced" : loadedFrom === "device" ? "Saved on this device" : "Loading payroll…"}</span>
             {lifecycleChanges.length > 0 && <button onClick={() => router.push("/uat/lifecycle")} className="rounded-lg bg-[#fff0dc] px-3 py-2 font-semibold text-[#7b4b23]">{lifecycleChanges.length} employee change{lifecycleChanges.length === 1 ? "" : "s"}</button>}
-            <span className={`rounded-lg px-3 py-2 font-semibold ${state.ready ? "bg-[#e8efdf] text-[#3d5a2f]" : "bg-[#f3e6da] text-[#7b543d]"}`}>Time: {state.ready ? "Ready" : "Needs work"}</span>
+            <span className={`rounded-lg px-3 py-2 font-semibold ${state.ready ? "bg-[#e8efdf] text-[#3d5a2f]" : "bg-[#f3e6da] text-[#7b543d]"}`}>Hours: {state.ready ? "Ready" : "Needs work"}</span>
             {payments.approved && <span className="rounded-lg bg-[#e8efdf] px-3 py-2 font-semibold text-[#3d5a2f]">Approved</span>}
             {paymentsComplete && <button onClick={() => router.push("/uat/complete")} className="rounded-lg bg-[#5a321f] px-3 py-2 font-semibold text-white">Completed</button>}
           </div>
@@ -287,7 +287,7 @@ export default function GuidedPayrollPreviewPage() {
 
         {!supported && (
           <div className="mb-5 rounded-xl border border-[#e2b999] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">
-            This pilot calculation engine is currently validated for Alberta. Change the pilot province to Alberta before running calculation UAT.
+            Coffee Payroll&apos;s current calculation pack is validated for Alberta. Change the business province to Alberta before running this payroll.
           </div>
         )}
 
@@ -298,7 +298,6 @@ export default function GuidedPayrollPreviewPage() {
             paymentsComplete={paymentsComplete}
             timeReady={state.ready}
             employees={employees}
-            gross={totals.gross}
             net={totals.net}
             remittance={remittance}
             fee={18}
