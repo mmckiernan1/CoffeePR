@@ -86,8 +86,8 @@ export default function GuidedPayrollPreviewPage() {
 
   const calculated = useMemo(() => {
     if (profile.province !== "Alberta") return [];
-    return includedEmployees.map((employee) => pilotCalculateEmployee(employee, state.timesheets, profile.frequency));
-  }, [includedEmployees, state.timesheets, profile]);
+    return includedEmployees.map((employee) => pilotCalculateEmployee(employee, state.timesheets, profile.frequency, state.openingBalances ?? {}));
+  }, [includedEmployees, state.timesheets, state.openingBalances, profile]);
 
   const totals = useMemo(() => calculated.reduce((result, employee) => ({
     gross: result.gross + employee.gross,
