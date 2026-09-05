@@ -4,23 +4,36 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { calculateAlbertaPayroll } from "@/lib/payroll/statutory/calculate";
 import { dollarsToCents } from "@/lib/payroll/money";
+import { buildFinalPay, isEmployeeInPayPeriod } from "@/lib/payroll/employee-lifecycle";
 
-type UatEmployee = { id: string; name: string; payType: "Salary" | "Hourly"; rate: number; status: "Active" | "New hire" };
+type FinalPay = { vacationPay: number; overtimePay: number; otherTaxablePay: number; reimbursement: number };
+type UatEmployee = {
+  id: string;
+  name: string;
+  payType: "Salary" | "Hourly";
+  rate: number;
+  status: "Active" | "New hire" | "Terminating" | "Terminated";
+  hireDate?: string;
+  rateEffectiveDate?: string;
+  terminationDate?: string;
+  finalPay?: FinalPay;
+};
 type Timesheet = { regular: number; overtime: number; vacation: number };
 type UatState = { employees: UatEmployee[]; timesheets: Record<string, Timesheet>; ready: boolean };
 type PilotProfile = { businessName: string; province: string; frequency: string; employeeCount: number };
-type PaymentState = { approved: boolean; paidEmployeeIds: string[]; references: Record<string, string>; completedAt: string | null };
+type PaymentState = { approved: boolean; approvedFingerprint?: string | null; paidEmployeeIds: string[]; references: Record<string, string>; completedAt: string | null };
 
 const uatKey = "coffee-payroll:pilot-uat";
 const paymentKey = "coffee-payroll:pilot-payments";
-const emptyPayments: PaymentState = { approved: false, paidEmployeeIds: [], references: {}, completedAt: null };
+const emptyPayments: PaymentState = { approved: false, approvedFingerprint: null, paidEmployeeIds: [], references: {}, completedAt: null };
+const runPeriod = { periodStart: "2026-08-16", periodEnd: "2026-08-31", payDate: "2026-09-04" } as const;
 
 const starterState: UatState = {
   employees: [
-    { id: "EMP-0001", name: "Avery Chen", payType: "Salary", rate: 80000, status: "Active" },
-    { id: "EMP-0002", name: "Noah Williams", payType: "Hourly", rate: 30, status: "Active" },
-    { id: "EMP-0003", name: "Priya Singh", payType: "Salary", rate: 111000, status: "Active" },
-    { id: "EMP-0004", name: "Liam Martin", payType: "Hourly", rate: 29.5, status: "Active" },
+    { id: "EMP-0001", name: "Avery Chen", payType: "Salary", rate: 80000, status: "Active", hireDate: "2024-01-08" },
+    { id: "EMP-0002", name: "Noah Williams", payType: "Hourly", rate: 30, status: "Active", hireDate: "2024-05-13" },
+    { id: "EMP-0003", name: "Priya Singh", payType: "Salary", rate: 111000, status: "Active", hireDate: "2023-09-05" },
+    { id: "EMP-0004", name: "Liam Martin", payType: "Hourly", rate: 29.5, status: "Active", hireDate: "2025-02-03" },
   ],
   timesheets: { "EMP-0002": { regular: 80, overtime: 2.5, vacation: 0 }, "EMP-0004": { regular: 72, overtime: 0, vacation: 0 } },
   ready: false,
@@ -40,24 +53,39 @@ function periodsPerYear(frequency: string): 12 | 24 | 26 | 52 {
   return 26;
 }
 
+function employeeIsInRun(employee: UatEmployee) {
+  try {
+    return isEmployeeInPayPeriod({ hireDate: employee.hireDate ?? "2020-01-01", terminationDate: employee.terminationDate ?? null, status: employee.status }, runPeriod);
+  } catch {
+    return true;
+  }
+}
+
 function netPay(employee: UatEmployee, timesheets: Record<string, Timesheet>, frequency: string) {
   const ppy = periodsPerYear(frequency);
   const time = timesheets[employee.id] ?? { regular: 0, overtime: 0, vacation: 0 };
-  const gross = employee.payType === "Salary"
+  const ordinaryGross = employee.payType === "Salary"
     ? employee.rate / ppy
     : time.regular * employee.rate + time.overtime * employee.rate * 1.5 + time.vacation * employee.rate;
+  const final = buildFinalPay({
+    vacationPayCents: dollarsToCents(String(employee.finalPay?.vacationPay ?? 0)),
+    overtimePayCents: dollarsToCents(String(employee.finalPay?.overtimePay ?? 0)),
+    otherTaxablePayCents: dollarsToCents(String(employee.finalPay?.otherTaxablePay ?? 0)),
+    reimbursementCents: dollarsToCents(String(employee.finalPay?.reimbursement ?? 0)),
+  });
+  const taxableGross = ordinaryGross + final.taxableGrossCents / 100;
   const result = calculateAlbertaPayroll({
-    payDate: "2026-09-04",
+    payDate: runPeriod.payDate,
     province: "AB",
     incomePath: "regular-periodic",
     payPeriodsPerYear: ppy,
     periodsRemainingIncludingCurrent: Math.max(1, Math.round(ppy * 0.33)),
-    cashEarningsCents: dollarsToCents(gross.toFixed(2)),
+    cashEarningsCents: dollarsToCents(taxableGross.toFixed(2)),
     federalClaimCents: 1_645_200,
     albertaClaimCents: 2_276_900,
     yearToDate: baselineYtd[employee.id] ?? { pensionableEarningsCents: 0, cppCents: 0, cpp2Cents: 0, eiCents: 0 },
   });
-  return result.netPayCents / 100;
+  return result.netPayCents / 100 + final.reimbursementCents / 100;
 }
 
 export default function PilotPaymentsPage() {
@@ -65,6 +93,7 @@ export default function PilotPaymentsPage() {
   const [uat, setUat] = useState<UatState>(starterState);
   const [profile, setProfile] = useState<PilotProfile>({ businessName: "My business", province: "Alberta", frequency: "Biweekly", employeeCount: 4 });
   const [payments, setPayments] = useState<PaymentState>(emptyPayments);
+  const [approvalStale, setApprovalStale] = useState(false);
   const [sync, setSync] = useState<"loading" | "workspace" | "device" | "saving">("loading");
 
   useEffect(() => {
@@ -83,7 +112,7 @@ export default function PilotPaymentsPage() {
         const paymentResponse = await fetch("/api/pilot/payments", { cache: "no-store" });
         if (paymentResponse.ok) {
           const data = await paymentResponse.json();
-          if (!cancelled) { setPayments(data.state); setSync("workspace"); }
+          if (!cancelled) { setPayments(data.state); setApprovalStale(Boolean(data.approvalStale)); setSync("workspace"); }
           return;
         }
       } catch {
@@ -101,7 +130,9 @@ export default function PilotPaymentsPage() {
     return () => { cancelled = true; };
   }, []);
 
-  const rows = useMemo(() => profile.province === "Alberta" ? uat.employees.map((employee) => ({ employee, net: netPay(employee, uat.timesheets, profile.frequency) })) : [], [uat, profile]);
+  const rows = useMemo(() => profile.province === "Alberta"
+    ? uat.employees.filter(employeeIsInRun).map((employee) => ({ employee, net: netPay(employee, uat.timesheets, profile.frequency) }))
+    : [], [uat, profile]);
   const allPaid = rows.length > 0 && rows.every(({ employee }) => payments.paidEmployeeIds.includes(employee.id));
   const totalNet = rows.reduce((sum, row) => sum + row.net, 0);
 
@@ -113,6 +144,9 @@ export default function PilotPaymentsPage() {
     try {
       const response = await fetch("/api/pilot/payments", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) });
       if (!response.ok) throw new Error("save failed");
+      const payload = await response.json();
+      setPayments(payload.state);
+      setApprovalStale(Boolean(payload.approvalStale));
       setSync("workspace");
     } catch {
       setSync("device");
@@ -129,7 +163,7 @@ export default function PilotPaymentsPage() {
   }
 
   async function finishPayroll() {
-    if (!payments.approved || !allPaid) return;
+    if (!payments.approved || approvalStale || !allPaid) return;
     const next = { ...payments, completedAt: new Date().toISOString() };
     await save(next);
     router.push("/uat/complete");
@@ -149,19 +183,20 @@ export default function PilotPaymentsPage() {
             <div className="rounded-2xl bg-[#f3e6da] px-5 py-3 text-right"><div className="text-xs text-[#7d6554]">Total net pay</div><div className="mt-1 text-xl font-bold">{totalNet.toLocaleString("en-CA", { style: "currency", currency: "CAD" })}</div></div>
           </div>
 
-          {!payments.approved && <div className="mt-6 rounded-xl border border-[#e2b999] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">Payroll still needs approval. Return to the guided payroll and approve the run before confirming payments.</div>}
+          {approvalStale && <div className="mt-6 rounded-xl border border-[#d89b6c] bg-[#fff0dc] px-4 py-3 text-sm font-semibold text-[#75451f]">Payroll changed since approval. Review the updated payroll and approve it again before sending or confirming employee payments.</div>}
+          {!approvalStale && !payments.approved && <div className="mt-6 rounded-xl border border-[#e2b999] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">Payroll still needs approval. Return to the guided payroll and approve the run before confirming payments.</div>}
 
           <div className="mt-6 space-y-3">
             {rows.map(({ employee, net }) => {
               const paid = payments.paidEmployeeIds.includes(employee.id);
               return <div key={employee.id} className={`rounded-2xl border p-4 sm:p-5 ${paid ? "border-[#cfe0c2] bg-[#f6fbf2]" : "border-[#e2d4c8] bg-white"}`}>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div><div className="font-semibold">{employee.name}</div><div className="mt-1 text-xs text-[#826b5a]">Business e-transfer · {employee.id}</div></div>
+                  <div><div className="font-semibold">{employee.name}</div><div className="mt-1 text-xs text-[#826b5a]">Business e-transfer · {employee.id}{employee.status === "Terminating" || employee.status === "Terminated" ? ` · final pay${employee.terminationDate ? ` · last day ${employee.terminationDate}` : ""}` : ""}</div></div>
                   <div className="text-left sm:text-right"><div className="text-xs text-[#826b5a]">Send</div><div className="font-mono text-xl font-bold">{net.toLocaleString("en-CA", { style: "currency", currency: "CAD" })}</div></div>
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
-                  <label className="text-xs font-semibold text-[#745948]">Bank confirmation / reference<input value={payments.references[employee.id] ?? ""} onChange={(e) => updateReference(employee.id, e.target.value)} placeholder="e.g. Interac confirmation 123456" className="mt-1.5 w-full rounded-xl border border-[#d8c8ba] bg-white px-3 py-2.5 text-sm font-normal" /></label>
-                  <button disabled={!payments.approved} onClick={() => togglePaid(employee.id)} className={`self-end rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-40 ${paid ? "border border-[#b9d2a9] bg-white text-[#3f6330]" : "bg-[#5a321f] text-white"}`}>{paid ? "✓ Paid" : "Mark paid"}</button>
+                  <label className="text-xs font-semibold text-[#745948]">Bank confirmation / reference<input disabled={!payments.approved || approvalStale} value={payments.references[employee.id] ?? ""} onChange={(e) => updateReference(employee.id, e.target.value)} placeholder="e.g. Interac confirmation 123456" className="mt-1.5 w-full rounded-xl border border-[#d8c8ba] bg-white px-3 py-2.5 text-sm font-normal disabled:bg-[#f3eee9]" /></label>
+                  <button disabled={!payments.approved || approvalStale} onClick={() => togglePaid(employee.id)} className={`self-end rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-40 ${paid ? "border border-[#b9d2a9] bg-white text-[#3f6330]" : "bg-[#5a321f] text-white"}`}>{paid ? "✓ Paid" : "Mark paid"}</button>
                 </div>
               </div>;
             })}
@@ -169,7 +204,7 @@ export default function PilotPaymentsPage() {
 
           <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-[#eadfd4] pt-6">
             <span className="text-xs text-[#846f60]">{sync === "workspace" ? "Payment checklist saved to your pilot workspace" : sync === "saving" ? "Saving payment checklist…" : "Payment checklist saved on this device"}</span>
-            <button disabled={!payments.approved || !allPaid} onClick={finishPayroll} className="rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white disabled:opacity-35">{allPaid ? "Finish payroll" : `Paid ${payments.paidEmployeeIds.length} of ${rows.length}`}</button>
+            <button disabled={!payments.approved || approvalStale || !allPaid} onClick={finishPayroll} className="rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white disabled:opacity-35">{allPaid ? "Finish payroll" : `Paid ${payments.paidEmployeeIds.length} of ${rows.length}`}</button>
           </div>
         </section>
       </div>
