@@ -139,7 +139,11 @@ export default function LifecycleUatPage() {
     if (!state || !selected) return;
     const amount = Number(bonusAmount);
     if (!Number.isFinite(amount) || amount <= 0) { setNotice("Enter the taxable extra-pay amount."); return; }
-    const nextState = { ...state, ready: false, employees: state.employees.map((employee) => employee.id === selected.id ? { ...employee, extraTaxablePay: amount } : employee) };
+    const nextState: WorkspaceState = {
+      ...state,
+      ready: false,
+      employees: state.employees.map((employee) => employee.id === selected.id ? { ...employee, extraTaxablePayCents: dollarsToCents(bonusAmount) } : employee),
+    };
     try { await persist(nextState, `${amount.toLocaleString("en-CA", { style: "currency", currency: "CAD" })} of extra taxable pay has been added for ${selected.name}.`); setBonusAmount(""); }
     catch (error) { setNotice(error instanceof Error ? error.message : "Unable to save extra pay."); }
   }
