@@ -2,96 +2,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { calculateAlbertaPayroll } from "@/lib/payroll/statutory/calculate";
-import { dollarsToCents } from "@/lib/payroll/money";
-import { buildFinalPay, isEmployeeInPayPeriod } from "@/lib/payroll/employee-lifecycle";
+import {
+  PILOT_STARTER_STATE,
+  PILOT_UAT_STORAGE_KEY,
+  pilotCalculateEmployee,
+  pilotEmployeeIsInRun,
+  type PilotProfile,
+  type PilotUatState,
+} from "@/lib/payroll/pilot-uat";
 
-type FinalPay = { vacationPay: number; overtimePay: number; otherTaxablePay: number; reimbursement: number };
-type UatEmployee = {
-  id: string;
-  name: string;
-  payType: "Salary" | "Hourly";
-  rate: number;
-  status: "Active" | "New hire" | "Terminating" | "Terminated";
-  hireDate?: string;
-  rateEffectiveDate?: string;
-  terminationDate?: string;
-  extraTaxablePay?: number;
-  finalPay?: FinalPay;
-};
-type Timesheet = { regular: number; overtime: number; vacation: number };
-type UatState = { employees: UatEmployee[]; timesheets: Record<string, Timesheet>; ready: boolean };
-type PilotProfile = { businessName: string; province: string; frequency: string; employeeCount: number };
 type PaymentState = { approved: boolean; approvedFingerprint?: string | null; paidEmployeeIds: string[]; references: Record<string, string>; completedAt: string | null };
 
-const uatKey = "coffee-payroll:pilot-uat";
 const paymentKey = "coffee-payroll:pilot-payments";
 const emptyPayments: PaymentState = { approved: false, approvedFingerprint: null, paidEmployeeIds: [], references: {}, completedAt: null };
-const runPeriod = { periodStart: "2026-08-16", periodEnd: "2026-08-31", payDate: "2026-09-04" } as const;
-
-const starterState: UatState = {
-  employees: [
-    { id: "EMP-0001", name: "Avery Chen", payType: "Salary", rate: 80000, status: "Active", hireDate: "2024-01-08" },
-    { id: "EMP-0002", name: "Noah Williams", payType: "Hourly", rate: 30, status: "Active", hireDate: "2024-05-13" },
-    { id: "EMP-0003", name: "Priya Singh", payType: "Salary", rate: 111000, status: "Active", hireDate: "2023-09-05" },
-    { id: "EMP-0004", name: "Liam Martin", payType: "Hourly", rate: 29.5, status: "Active", hireDate: "2025-02-03" },
-  ],
-  timesheets: { "EMP-0002": { regular: 80, overtime: 2.5, vacation: 0 }, "EMP-0004": { regular: 72, overtime: 0, vacation: 0 } },
-  ready: false,
-};
-
-const baselineYtd: Record<string, { pensionableEarningsCents: number; cppCents: number; cpp2Cents: number; eiCents: number }> = {
-  "EMP-0001": { pensionableEarningsCents: 4_923_072, cppCents: 280_000, cpp2Cents: 0, eiCents: 80_000 },
-  "EMP-0002": { pensionableEarningsCents: 3_600_000, cppCents: 210_000, cpp2Cents: 0, eiCents: 58_000 },
-  "EMP-0003": { pensionableEarningsCents: 6_826_923, cppCents: 390_000, cpp2Cents: 0, eiCents: 111_000 },
-  "EMP-0004": { pensionableEarningsCents: 2_900_000, cppCents: 165_000, cpp2Cents: 0, eiCents: 47_000 },
-};
-
-function periodsPerYear(frequency: string): 12 | 24 | 26 | 52 {
-  if (frequency === "Weekly") return 52;
-  if (frequency === "Semi-monthly") return 24;
-  if (frequency === "Monthly") return 12;
-  return 26;
-}
-
-function employeeIsInRun(employee: UatEmployee) {
-  try {
-    return isEmployeeInPayPeriod({ hireDate: employee.hireDate ?? "2020-01-01", terminationDate: employee.terminationDate ?? null, status: employee.status }, runPeriod);
-  } catch {
-    return true;
-  }
-}
-
-function netPay(employee: UatEmployee, timesheets: Record<string, Timesheet>, frequency: string) {
-  const ppy = periodsPerYear(frequency);
-  const time = timesheets[employee.id] ?? { regular: 0, overtime: 0, vacation: 0 };
-  const ordinaryGross = employee.payType === "Salary"
-    ? employee.rate / ppy
-    : time.regular * employee.rate + time.overtime * employee.rate * 1.5 + time.vacation * employee.rate;
-  const final = buildFinalPay({
-    vacationPayCents: dollarsToCents(String(employee.finalPay?.vacationPay ?? 0)),
-    overtimePayCents: dollarsToCents(String(employee.finalPay?.overtimePay ?? 0)),
-    otherTaxablePayCents: dollarsToCents(String(employee.finalPay?.otherTaxablePay ?? 0)),
-    reimbursementCents: dollarsToCents(String(employee.finalPay?.reimbursement ?? 0)),
-  });
-  const taxableGross = ordinaryGross + (employee.extraTaxablePay ?? 0) + final.taxableGrossCents / 100;
-  const result = calculateAlbertaPayroll({
-    payDate: runPeriod.payDate,
-    province: "AB",
-    incomePath: "regular-periodic",
-    payPeriodsPerYear: ppy,
-    periodsRemainingIncludingCurrent: Math.max(1, Math.round(ppy * 0.33)),
-    cashEarningsCents: dollarsToCents(taxableGross.toFixed(2)),
-    federalClaimCents: 1_645_200,
-    albertaClaimCents: 2_276_900,
-    yearToDate: baselineYtd[employee.id] ?? { pensionableEarningsCents: 0, cppCents: 0, cpp2Cents: 0, eiCents: 0 },
-  });
-  return result.netPayCents / 100 + final.reimbursementCents / 100;
-}
 
 export default function PilotPaymentsPage() {
   const router = useRouter();
-  const [uat, setUat] = useState<UatState>(starterState);
+  const [uat, setUat] = useState<PilotUatState>(PILOT_STARTER_STATE);
   const [profile, setProfile] = useState<PilotProfile>({ businessName: "My business", province: "Alberta", frequency: "Biweekly", employeeCount: 4 });
   const [payments, setPayments] = useState<PaymentState>(emptyPayments);
   const [approvalStale, setApprovalStale] = useState(false);
@@ -106,7 +33,7 @@ export default function PilotPaymentsPage() {
           const data = await workspace.json();
           if (!cancelled) { setUat(data.state); setProfile(data.profile); }
         } else {
-          const raw = window.localStorage.getItem(uatKey);
+          const raw = window.localStorage.getItem(PILOT_UAT_STORAGE_KEY);
           if (raw && !cancelled) setUat(JSON.parse(raw));
         }
 
@@ -132,7 +59,9 @@ export default function PilotPaymentsPage() {
   }, []);
 
   const rows = useMemo(() => profile.province === "Alberta"
-    ? uat.employees.filter(employeeIsInRun).map((employee) => ({ employee, net: netPay(employee, uat.timesheets, profile.frequency) }))
+    ? uat.employees
+      .filter(pilotEmployeeIsInRun)
+      .map((employee) => ({ employee, net: pilotCalculateEmployee(employee, uat.timesheets, profile.frequency).net }))
     : [], [uat, profile]);
   const allPaid = rows.length > 0 && rows.every(({ employee }) => payments.paidEmployeeIds.includes(employee.id));
   const totalNet = rows.reduce((sum, row) => sum + row.net, 0);
