@@ -132,7 +132,7 @@ export default function GuidedPayrollPreviewPage() {
   async function approvePayroll() {
     setApprovalError("");
     if (pendingTaxSetup.length > 0) {
-      setApprovalError("New-hire tax setup needs to be reviewed before this payroll can be approved.");
+      setApprovalError("Employee statutory setup needs to be reviewed before this payroll can be approved.");
       router.push("/uat/tax-setup");
       return;
     }
@@ -146,7 +146,7 @@ export default function GuidedPayrollPreviewPage() {
       if (!response.ok) {
         setPayments((current) => ({ ...current, approved: false, completedAt: null }));
         setApprovalError(payload.error ?? "Payroll could not be approved yet.");
-        if (payload.code === "NEW_HIRE_TAX_SETUP_REQUIRED") router.push("/uat/tax-setup");
+        if (payload.code === "EMPLOYEE_TAX_SETUP_REQUIRED" || payload.code === "NEW_HIRE_TAX_SETUP_REQUIRED") router.push("/uat/tax-setup");
         return;
       }
       setPayments(payload.state);
@@ -179,7 +179,7 @@ export default function GuidedPayrollPreviewPage() {
 
         {pendingTaxSetup.length > 0 && (
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e2b999] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">
-            <div><strong>{pendingTaxSetup.length} new hire{pendingTaxSetup.length === 1 ? " needs" : "s need"} tax setup review before approval.</strong><div className="mt-1 text-xs">Coffee Payroll will keep approval locked until the checkpoint is complete.</div></div>
+            <div><strong>{pendingTaxSetup.length} employee{pendingTaxSetup.length === 1 ? " needs" : "s need"} statutory setup review before approval.</strong><div className="mt-1 text-xs">Coffee Payroll will keep approval locked until the required checkpoint is complete.</div></div>
             <button onClick={() => router.push("/uat/tax-setup")} className="rounded-lg bg-[#5a321f] px-4 py-2 text-xs font-semibold text-white">Review tax setup</button>
           </div>
         )}
