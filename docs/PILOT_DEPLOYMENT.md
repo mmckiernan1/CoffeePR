@@ -13,6 +13,21 @@ Coffee Payroll already uses the Cloudflare Vite plugin and a D1 binding named `D
 
 GETUS can still be used as the domain registrar or DNS/communications provider if desired. The application itself should stay on the platform that already matches the code and D1 binding unless we deliberately re-platform later.
 
+## Automated verification
+
+The feature branch now includes `.github/workflows/pilot-ci.yml`.
+
+For pull requests it runs:
+
+```text
+locked dependency install
+→ lint
+→ build
+→ core payroll tests
+```
+
+Do not merge the pilot branch while this workflow is failing.
+
 ## Before putting the pilot online
 
 ### 1. Supabase
