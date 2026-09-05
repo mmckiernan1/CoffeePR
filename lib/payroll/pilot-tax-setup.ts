@@ -6,6 +6,12 @@ export type PilotTaxSetupReview = {
   reviewedAt?: string;
 };
 
+export type PilotTaxSetupEmployee = {
+  status?: string;
+  taxSetupComplete?: boolean;
+  taxSetupReview?: unknown;
+};
+
 export const EMPTY_PILOT_TAX_SETUP_REVIEW: PilotTaxSetupReview = {
   federalTd1: false,
   provincialTd1: false,
@@ -30,4 +36,11 @@ export function normalizePilotTaxSetupReview(input: unknown): PilotTaxSetupRevie
 export function pilotTaxSetupReviewComplete(input: unknown): boolean {
   const review = normalizePilotTaxSetupReview(input);
   return Boolean(review && review.federalTd1 && review.provincialTd1 && review.cppEi && review.openingYtd);
+}
+
+export function pilotEmployeeTaxSetupReady(employee: PilotTaxSetupEmployee): boolean {
+  if (employee.taxSetupComplete === true) return true;
+  if (pilotTaxSetupReviewComplete(employee.taxSetupReview)) return true;
+  if (employee.taxSetupComplete === false) return false;
+  return employee.status !== "New hire";
 }
