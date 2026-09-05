@@ -19,6 +19,7 @@ export type GuidedPayrollEmployee = {
 
 type Props = {
   approved: boolean;
+  paymentsComplete: boolean;
   timeReady: boolean;
   employees: readonly GuidedPayrollEmployee[];
   gross: number;
@@ -50,7 +51,7 @@ function employeeCue(employee: GuidedPayrollEmployee) {
   return { isNew, isLeaving, needsAttention, changeLabel };
 }
 
-export function GuidedPayrollRun({ approved, timeReady, employees, gross, net, remittance, fee, onHome, onOpenEmployees, onOpenTime: _onOpenTime, onOpenReview, onApprove, onOpenPayments, onOpenReports, runKey = "run-17" }: Props) {
+export function GuidedPayrollRun({ approved, paymentsComplete, timeReady, employees, gross, net, remittance, fee, onHome, onOpenEmployees, onOpenTime: _onOpenTime, onOpenReview, onApprove, onOpenPayments, onOpenReports, runKey = "run-17" }: Props) {
   const [step, setStep] = useState(0);
   const [changesConfirmed, setChangesConfirmed] = useState(false);
   const [employeesConfirmed, setEmployeesConfirmed] = useState(false);
@@ -59,7 +60,7 @@ export function GuidedPayrollRun({ approved, timeReady, employees, gross, net, r
   const hourlyEmployees = useMemo(() => employees.filter((employee) => employee.payType.toLowerCase() === "hourly"), [employees]);
   const salariedCount = employees.length - hourlyEmployees.length;
   const attentionEmployees = useMemo(() => employees.filter((employee) => employeeCue(employee).needsAttention), [employees]);
-  const completedThrough = approved ? 4 : timeReady && employeesConfirmed && changesConfirmed ? 2 : employeesConfirmed && changesConfirmed ? 1 : changesConfirmed ? 0 : -1;
+  const completedThrough = paymentsComplete ? 5 : approved ? 3 : timeReady && employeesConfirmed && changesConfirmed ? 2 : employeesConfirmed && changesConfirmed ? 1 : changesConfirmed ? 0 : -1;
   const totalCash = net + remittance + fee;
 
   useEffect(() => {
@@ -70,7 +71,7 @@ export function GuidedPayrollRun({ approved, timeReady, employees, gross, net, r
         const raw = window.sessionStorage.getItem(storageKey);
         if (raw) {
           const saved = JSON.parse(raw) as Partial<SavedProgress>;
-          if (typeof saved.step === "number") setStep(Math.min(Math.max(saved.step, 0), 5));
+          if (typeof saved.step === "number") setStep(Math.min(Math.max(saved.step, 0), paymentsComplete ? 5 : 4));
           if (typeof saved.changesConfirmed === "boolean") setChangesConfirmed(saved.changesConfirmed);
           if (typeof saved.employeesConfirmed === "boolean") setEmployeesConfirmed(saved.employeesConfirmed);
         }
@@ -78,15 +79,22 @@ export function GuidedPayrollRun({ approved, timeReady, employees, gross, net, r
       setHydrated(true);
     }, 0);
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [storageKey]);
+  }, [paymentsComplete, storageKey]);
 
   useEffect(() => {
     if (!hydrated) return;
     try { window.sessionStorage.setItem(storageKey, JSON.stringify({ step, changesConfirmed, employeesConfirmed })); } catch { /* navigation stays usable */ }
   }, [step, changesConfirmed, employeesConfirmed, hydrated, storageKey]);
 
+  useEffect(() => {
+    if (hydrated && paymentsComplete) setStep(5);
+  }, [hydrated, paymentsComplete]);
+
   function saveProgress(progress: SavedProgress) { try { window.sessionStorage.setItem(storageKey, JSON.stringify(progress)); } catch { /* navigation stays usable */ } }
-  function go(next: number) { setStep(Math.min(Math.max(next, 0), 5)); }
+  function go(next: number) {
+    const maxStep = paymentsComplete ? 5 : 4;
+    setStep(Math.min(Math.max(next, 0), maxStep));
+  }
   function openEmployeeChanges() { const progress = { step: 0, changesConfirmed: true, employeesConfirmed }; setChangesConfirmed(true); saveProgress(progress); onOpenEmployees(); }
   function openEmployeesFromRoster() { saveProgress({ step: 1, changesConfirmed, employeesConfirmed }); onOpenEmployees(); }
   function openTimeEntry() { saveProgress({ step: 2, changesConfirmed, employeesConfirmed }); window.location.assign("/uat/time"); }
@@ -124,9 +132,15 @@ export function GuidedPayrollRun({ approved, timeReady, employees, gross, net, r
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#e6ebf2] pt-5"><p className="text-xs text-[#647087]">Detailed tax, CPP and EI calculations are available one click deeper.</p><Button type="button" onClick={() => go(4)} className="bg-[#1557d8] text-white hover:bg-[#0f47b5]">Yes, this payroll looks right <ChevronRight className="size-4" /></Button></div>
       </div>}
 
-      {step === 4 && <div className="grid gap-5 lg:grid-cols-[1fr_320px]"><div><div className="flex items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#edf3ff] text-[#1557d8]"><LockKeyhole className="size-5" /></span><div><h2 className="text-xl font-semibold text-[#172033]">Approve and pay</h2><p className="mt-1 text-sm leading-6 text-[#647087]">This is the deliberate final step. Approval locks the payroll record and opens employee payment.</p></div></div>{!approved ? <Button type="button" onClick={onApprove} className="mt-6 bg-[#1557d8] text-white hover:bg-[#0f47b5]"><LockKeyhole className="size-4" />Approve payroll</Button> : <div className="mt-6 flex flex-wrap gap-3"><Button type="button" onClick={openPayments} className="bg-[#1557d8] text-white hover:bg-[#0f47b5]"><Landmark className="size-4" />Pay employees</Button><Button type="button" variant="outline" onClick={() => go(5)} className="border-[#c9d5e6] bg-white text-[#17428e]">Continue when paid <ChevronRight className="size-4" /></Button></div>}</div><aside className="rounded-2xl border border-[#dce4f0] bg-white p-5"><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#647087]">Cash required</p><p className="mt-2 font-mono text-2xl font-bold text-[#172033]">{cad.format(totalCash)}</p><div className="mt-4 space-y-2 text-xs text-[#647087]"><Line label="Employee deposits" value={net} /><Line label="CRA obligation" value={remittance} /><Line label="Coffee Payroll fee" value={fee} /></div></aside></div>}
+      {step === 4 && <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+        <div>
+          <div className="flex items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#edf3ff] text-[#1557d8]"><LockKeyhole className="size-5" /></span><div><p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#647087]">Step 5 · Approve & pay</p><h2 className="mt-1 text-2xl font-semibold text-[#172033]">{approved ? "Payroll approved. Now pay your employees." : "Approve this payroll"}</h2><p className="mt-1 text-sm leading-6 text-[#647087]">{approved ? "Coffee Payroll will take you through each business e-transfer and record your confirmation. Payroll is not Done until every employee payment is confirmed." : "Approval deliberately locks this version of the payroll. If payroll inputs change later, you will need to review and approve the updated version again."}</p></div></div>
+          {!approved ? <Button type="button" onClick={onApprove} className="mt-6 bg-[#1557d8] text-white hover:bg-[#0f47b5]"><LockKeyhole className="size-4" />Approve payroll</Button> : <div className="mt-6"><div className="mb-4 rounded-xl border border-[#d4e7ca] bg-[#f5fbf1] px-4 py-3 text-sm text-[#3d5a2f]"><strong>✓ Payroll approved.</strong> The next required action is to send and confirm the employee e-transfers.</div><Button type="button" onClick={openPayments} className="bg-[#1557d8] text-white hover:bg-[#0f47b5]"><Landmark className="size-4" />Send & confirm employee payments <ChevronRight className="size-4" /></Button></div>}
+        </div>
+        <aside className="rounded-2xl border border-[#dce4f0] bg-white p-5"><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#647087]">Cash required</p><p className="mt-2 font-mono text-2xl font-bold text-[#172033]">{cad.format(totalCash)}</p><div className="mt-4 space-y-2 text-xs text-[#647087]"><Line label="Employee deposits" value={net} /><Line label="CRA obligation" value={remittance} /><Line label="Coffee Payroll fee" value={fee} /></div><p className="mt-4 border-t border-[#e6ebf2] pt-4 text-xs leading-5 text-[#647087]">Coffee Payroll records the payment checklist. You remain in control of the actual business-bank e-transfers.</p></aside>
+      </div>}
 
-      {step === 5 && <div className="py-2 text-center"><span className="mx-auto grid size-16 place-items-center rounded-2xl bg-[#eef9e8] text-[#34701d]"><Check className="size-8" /></span><h2 className="mt-5 text-2xl font-semibold text-[#172033]">You did your payroll.</h2><p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[#647087]">Run 17 is approved. Employee payments, CRA amounts and payroll records are together and ready for follow-up.</p><div className="mx-auto mt-6 grid max-w-2xl gap-3 sm:grid-cols-3"><Summary label="Employees" textValue={String(employees.length)} /><Summary label="Deposits" value={net} accent /><Summary label="CRA" value={remittance} /></div><div className="mt-6 flex flex-wrap justify-center gap-3"><Button type="button" variant="outline" onClick={onOpenReports} className="border-[#c9d5e6] bg-white text-[#17428e]"><ReceiptText className="size-4" />Reports & statements</Button><Button type="button" onClick={onHome} className="bg-[#1557d8] text-white hover:bg-[#0f47b5]">Back to main menu</Button></div></div>}
+      {step === 5 && paymentsComplete && <div className="py-2 text-center"><span className="mx-auto grid size-16 place-items-center rounded-2xl bg-[#eef9e8] text-[#34701d]"><Check className="size-8" /></span><h2 className="mt-5 text-2xl font-semibold text-[#172033]">You did your payroll.</h2><p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[#647087]">Run 17 is approved and every employee payment has been confirmed. Your payroll is complete.</p><div className="mx-auto mt-6 grid max-w-2xl gap-3 sm:grid-cols-3"><Summary label="Employees" textValue={String(employees.length)} /><Summary label="Deposits" value={net} accent /><Summary label="CRA" value={remittance} /></div><div className="mt-6 flex flex-wrap justify-center gap-3"><Button type="button" variant="outline" onClick={onOpenReports} className="border-[#c9d5e6] bg-white text-[#17428e]"><ReceiptText className="size-4" />Reports & statements</Button><Button type="button" onClick={onHome} className="bg-[#1557d8] text-white hover:bg-[#0f47b5]">Back to main menu</Button></div></div>}
     </RunPayrollShell>
   );
 }
