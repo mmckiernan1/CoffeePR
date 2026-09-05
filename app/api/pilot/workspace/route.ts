@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getCoffeePayrollUser } from "@/lib/auth/current-user";
 import { pilotWorkspaceScope } from "@/lib/pilot/workspace-scope";
 import { dollarsToCents } from "@/lib/payroll/money";
+import { normalizePilotTaxSetupReview } from "@/lib/payroll/pilot-tax-setup";
 import { PILOT_STARTER_STATE, type PilotFinalPay as FinalPay, type PilotProfile, type PilotRateHistoryEntry as RateHistoryEntry, type PilotTimesheet as Timesheet, type PilotUatEmployee as UatEmployee, type PilotUatState } from "@/lib/payroll/pilot-uat";
 
 type LegacyFinalPay = {
@@ -111,6 +112,8 @@ function normalizeState(input: unknown): PilotUatState | null {
     if (employee.changeNote !== undefined && (typeof employee.changeNote !== "string" || employee.changeNote.length > 500)) return null;
     if (employee.taxSetupComplete !== undefined && typeof employee.taxSetupComplete !== "boolean") return null;
 
+    const taxSetupReview = employee.taxSetupReview === undefined ? undefined : normalizePilotTaxSetupReview(employee.taxSetupReview);
+    if (employee.taxSetupReview !== undefined && !taxSetupReview) return null;
     const extraTaxablePayCents = normalizeExtraPay(employee);
     if (extraTaxablePayCents === null) return null;
     const finalPay = normalizeFinalPay(employee.finalPay);
@@ -131,6 +134,7 @@ function normalizeState(input: unknown): PilotUatState | null {
       ...(extraTaxablePayCents !== undefined ? { extraTaxablePayCents } : {}),
       ...(typeof employee.changeNote === "string" ? { changeNote: employee.changeNote } : {}),
       ...(typeof employee.taxSetupComplete === "boolean" ? { taxSetupComplete: employee.taxSetupComplete } : {}),
+      ...(taxSetupReview ? { taxSetupReview } : {}),
       ...(finalPay ? { finalPay } : {}),
     });
   }
