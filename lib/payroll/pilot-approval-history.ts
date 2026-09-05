@@ -15,6 +15,7 @@ export type PilotApprovalSnapshot = {
   profile: PilotApprovalProfile;
   employees: PilotApprovalEmployee[];
   timesheets: Record<string, unknown>;
+  openingBalances: Record<string, unknown>;
 };
 
 export type PilotPaymentState = {
@@ -62,6 +63,8 @@ export function normalizePilotApprovalSnapshot(input: unknown): PilotApprovalSna
     !Array.isArray(value.employees) || value.employees.length > 250 ||
     !value.timesheets || typeof value.timesheets !== "object" || Array.isArray(value.timesheets)
   ) return null;
+  const openingBalances = value.openingBalances ?? {};
+  if (!openingBalances || typeof openingBalances !== "object" || Array.isArray(openingBalances)) return null;
   if (!value.employees.every((employee) => employee && typeof employee === "object" && typeof employee.id === "string" && employee.id.length > 0 && employee.id.length <= 80)) return null;
   return {
     snapshotId: value.snapshotId,
@@ -77,6 +80,7 @@ export function normalizePilotApprovalSnapshot(input: unknown): PilotApprovalSna
     profile: { province: value.profile.province, frequency: value.profile.frequency },
     employees: value.employees,
     timesheets: value.timesheets,
+    openingBalances: openingBalances as Record<string, unknown>,
   };
 }
 
