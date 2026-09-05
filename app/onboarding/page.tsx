@@ -1,9 +1,17 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const steps = ["Business", "Payroll", "Employees", "Ready"] as const;
+const localProfileKey = "coffee-payroll:pilot-profile";
+
+type PilotProfile = {
+  businessName: string;
+  province: string;
+  frequency: string;
+  employeeCount: number;
+};
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -12,21 +20,94 @@ export default function OnboardingPage() {
   const [province, setProvince] = useState("Alberta");
   const [frequency, setFrequency] = useState("Biweekly");
   const [employeeCount, setEmployeeCount] = useState("4");
+  const [saveStatus, setSaveStatus] = useState("Loading your workspace…");
+  const [cloudAvailable, setCloudAvailable] = useState(false);
 
-  function next(event?: FormEvent) {
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const response = await fetch("/api/pilot/workspace", { cache: "no-store" });
+        if (response.ok) {
+          const payload = await response.json();
+          if (cancelled) return;
+          const profile = payload.profile as PilotProfile;
+          setBusinessName(profile.businessName === "My business" ? "" : profile.businessName);
+          setProvince(profile.province || "Alberta");
+          setFrequency(profile.frequency || "Biweekly");
+          setEmployeeCount(String(profile.employeeCount || 4));
+          setCloudAvailable(true);
+          setSaveStatus("Saved to your Coffee Payroll workspace");
+          return;
+        }
+      } catch {
+        // Fall back to this browser for preview/UAT until hosted authentication is configured.
+      }
+
+      const local = window.localStorage.getItem(localProfileKey);
+      if (local) {
+        try {
+          const profile = JSON.parse(local) as PilotProfile;
+          if (!cancelled) {
+            setBusinessName(profile.businessName ?? "");
+            setProvince(profile.province ?? "Alberta");
+            setFrequency(profile.frequency ?? "Biweekly");
+            setEmployeeCount(String(profile.employeeCount ?? 4));
+          }
+        } catch {
+          // Ignore malformed preview state.
+        }
+      }
+      if (!cancelled) setSaveStatus("Saved on this device · sign in for workspace sync");
+    }
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  async function saveProfile() {
+    const profile: PilotProfile = {
+      businessName: businessName.trim() || "My business",
+      province,
+      frequency,
+      employeeCount: Math.max(1, Number(employeeCount) || 1),
+    };
+    window.localStorage.setItem(localProfileKey, JSON.stringify(profile));
+
+    if (!cloudAvailable) {
+      setSaveStatus("Saved on this device · sign in for workspace sync");
+      return;
+    }
+
+    setSaveStatus("Saving…");
+    try {
+      const response = await fetch("/api/pilot/workspace", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile }),
+      });
+      if (!response.ok) throw new Error("save failed");
+      setSaveStatus("Saved to your Coffee Payroll workspace");
+    } catch {
+      setCloudAvailable(false);
+      setSaveStatus("Saved on this device · workspace sync unavailable");
+    }
+  }
+
+  async function next(event?: FormEvent) {
     event?.preventDefault();
+    await saveProfile();
     setStep((current) => Math.min(current + 1, steps.length - 1));
   }
 
   return (
     <main className="min-h-screen bg-[#f4eadf] px-4 py-8 text-[#332118] sm:px-6">
       <div className="mx-auto max-w-5xl">
-        <header className="flex items-center justify-between gap-4">
+        <header className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#5a321f] text-xl text-white">☕</div>
             <div><div className="text-2xl font-semibold">Coffee Payroll</div><div className="text-[10px] tracking-[0.3em] text-[#846755]">stress free payroll</div></div>
           </div>
-          <button onClick={() => router.push("/")} className="text-sm font-semibold text-[#6b4a36] hover:underline">Do this later</button>
+          <div className="flex items-center gap-4"><span className="text-xs font-semibold text-[#846755]">{saveStatus}</span><button onClick={() => router.push("/")} className="text-sm font-semibold text-[#6b4a36] hover:underline">Do this later</button></div>
         </header>
 
         <section className="mt-8 overflow-hidden rounded-[30px] border border-[#decdbd] bg-[#fffaf5] shadow-[0_24px_70px_rgba(72,42,24,0.12)]">
@@ -49,8 +130,8 @@ export default function OnboardingPage() {
             </form>}
 
             {step === 1 && <div className="mx-auto max-w-2xl">
-              <h1 className="text-4xl font-semibold tracking-tight">How do you normally pay people?</h1>
-              <p className="mt-3 text-[#745948]">For the pilot, Coffee Payroll keeps employee payment simple and assumes business e-transfer.</p>
+              <h1 className="text-4xl font-semibold tracking-tight">How often do you run payroll?</h1>
+              <p className="mt-3 text-[#745948]">For the pilot, employee payment stays simple and uses business e-transfer.</p>
               <div className="mt-8 grid gap-4">
                 <button onClick={() => setFrequency("Weekly")} className={`rounded-2xl border p-5 text-left ${frequency === "Weekly" ? "border-[#6a3b24] bg-[#f6eadf]" : "border-[#ded0c3] bg-white"}`}><strong>Weekly</strong><div className="mt-1 text-sm text-[#796050]">Good for highly variable hourly teams.</div></button>
                 <button onClick={() => setFrequency("Biweekly")} className={`rounded-2xl border p-5 text-left ${frequency === "Biweekly" ? "border-[#6a3b24] bg-[#f6eadf]" : "border-[#ded0c3] bg-white"}`}><strong>Biweekly</strong><div className="mt-1 text-sm text-[#796050]">A common small-business schedule.</div></button>
@@ -63,7 +144,7 @@ export default function OnboardingPage() {
               <h1 className="text-4xl font-semibold tracking-tight">Let’s get your people ready</h1>
               <p className="mt-3 text-[#745948]">You can add employees now, or start with the UAT sample team and replace them later.</p>
               <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                <button onClick={() => router.push("/?workspace=employees")} className="rounded-2xl border border-[#d8c8ba] bg-white p-6 text-left"><strong>Add employees now</strong><p className="mt-2 text-sm text-[#745948]">Enter hires, salary or hourly rates and payroll details.</p></button>
+                <button onClick={async () => { await saveProfile(); router.push("/?workspace=employees"); }} className="rounded-2xl border border-[#d8c8ba] bg-white p-6 text-left"><strong>Add employees now</strong><p className="mt-2 text-sm text-[#745948]">Enter hires, salary or hourly rates and payroll details.</p></button>
                 <button onClick={() => next()} className="rounded-2xl border border-[#d8c8ba] bg-white p-6 text-left"><strong>Use the UAT sample team</strong><p className="mt-2 text-sm text-[#745948]">Four fictional employees are ready for testing.</p></button>
               </div>
               <button onClick={() => setStep(1)} className="mt-8 rounded-xl border border-[#d6c6b8] px-5 py-3 font-semibold">Back</button>
