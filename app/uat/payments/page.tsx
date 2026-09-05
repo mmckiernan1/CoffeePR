@@ -84,8 +84,8 @@ export default function PilotPaymentsPage() {
   const rows = useMemo(() => profile.province === "Alberta"
     ? uat.employees
       .filter(pilotEmployeeIsInRun)
-      .map((employee) => ({ employee, net: pilotCalculateEmployee(employee, uat.timesheets, profile.frequency).net }))
-    : [], [uat, profile]);
+      .map((employee) => ({ employee, net: pilotCalculateEmployee(employee, uat.timesheets, profile.frequency, uat.openingBalances ?? {}).net }))
+    : [], [uat.employees, uat.timesheets, uat.openingBalances, profile]);
   const allPaid = rows.length > 0 && rows.every(({ employee }) => payments.paidEmployeeIds.includes(employee.id));
   const totalNet = rows.reduce((sum, row) => sum + row.net, 0);
 
