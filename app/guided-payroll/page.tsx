@@ -9,6 +9,7 @@ import {
   pilotCalculateEmployee,
   pilotChangeSummary,
   pilotEmployeeIsInRun,
+  pilotTaxSetupReady,
   type PilotProfile,
   type PilotUatState,
 } from "@/lib/payroll/pilot-uat";
@@ -24,6 +25,7 @@ export default function GuidedPayrollPreviewPage() {
   const [profile, setProfile] = useState<PilotProfile>({ businessName: "My business", province: "Alberta", frequency: "Biweekly", employeeCount: 4 });
   const [payments, setPayments] = useState<PaymentState>(emptyPayments);
   const [loadedFrom, setLoadedFrom] = useState<"loading" | "workspace" | "device">("loading");
+  const [approvalError, setApprovalError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -79,6 +81,7 @@ export default function GuidedPayrollPreviewPage() {
 
   const includedEmployees = useMemo(() => state.employees.filter(pilotEmployeeIsInRun), [state.employees]);
   const lifecycleChanges = useMemo(() => state.employees.filter((employee) => pilotChangeSummary(employee)), [state.employees]);
+  const pendingTaxSetup = useMemo(() => includedEmployees.filter((employee) => !pilotTaxSetupReady(employee)), [includedEmployees]);
 
   const calculated = useMemo(() => {
     if (profile.province !== "Alberta") return [];
@@ -125,22 +128,30 @@ export default function GuidedPayrollPreviewPage() {
   };
 
   async function approvePayroll() {
-    const next = { ...payments, approved: true, completedAt: null };
-    setPayments(next);
-    window.localStorage.setItem(paymentStorageKey, JSON.stringify(next));
+    setApprovalError("");
+    if (pendingTaxSetup.length > 0) {
+      setApprovalError("New-hire tax setup needs to be reviewed before this payroll can be approved.");
+      router.push("/uat/tax-setup");
+      return;
+    }
     try {
       const response = await fetch("/api/pilot/payments", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approved: true, completedAt: null }),
       });
-      if (response.ok) {
-        const payload = await response.json();
-        setPayments(payload.state);
-        window.localStorage.setItem(paymentStorageKey, JSON.stringify(payload.state));
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setPayments((current) => ({ ...current, approved: false, completedAt: null }));
+        setApprovalError(payload.error ?? "Payroll could not be approved yet.");
+        if (payload.code === "NEW_HIRE_TAX_SETUP_REQUIRED") router.push("/uat/tax-setup");
+        return;
       }
+      setPayments(payload.state);
+      window.localStorage.setItem(paymentStorageKey, JSON.stringify(payload.state));
     } catch {
-      // Device copy remains available for offline pilot use.
+      setPayments((current) => ({ ...current, approved: false, completedAt: null }));
+      setApprovalError("Approval could not be saved. Try again when the workspace connection is available.");
     }
   }
 
@@ -163,6 +174,15 @@ export default function GuidedPayrollPreviewPage() {
             {paymentsComplete && <button onClick={() => router.push("/uat/complete")} className="rounded-lg bg-[#5a321f] px-3 py-2 font-semibold text-white">Completed</button>}
           </div>
         </div>
+
+        {pendingTaxSetup.length > 0 && (
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e2b999] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">
+            <div><strong>{pendingTaxSetup.length} new hire{pendingTaxSetup.length === 1 ? " needs" : "s need"} tax setup review before approval.</strong><div className="mt-1 text-xs">Coffee Payroll will keep approval locked until the checkpoint is complete.</div></div>
+            <button onClick={() => router.push("/uat/tax-setup")} className="rounded-lg bg-[#5a321f] px-4 py-2 text-xs font-semibold text-white">Review tax setup</button>
+          </div>
+        )}
+
+        {approvalError && <div className="mb-5 rounded-xl border border-[#d89b6c] bg-[#fff0dc] px-4 py-3 text-sm font-semibold text-[#75451f]">{approvalError}</div>}
 
         {!supported && (
           <div className="mb-5 rounded-xl border border-[#e2b999] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">
