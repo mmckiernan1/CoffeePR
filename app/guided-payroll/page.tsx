@@ -225,12 +225,21 @@ export default function GuidedPayrollPreviewPage() {
       ? `${row?.regular ?? 0} regular · ${row?.overtime ?? 0} OT · $${employee.rate.toFixed(2)}/hr`
       : `$${employee.rate.toLocaleString("en-CA")}/yr · regular salary carries forward`;
     const detail = [lifecycle, ordinary, finalPayTotal > 0 ? `Final-pay items $${finalPayTotal.toFixed(2)}` : ""].filter(Boolean).join(" · ");
-    return { name: employee.name, payType: employee.payType, detail, netPay: employee.net };
+    return {
+      id: employee.id,
+      name: employee.name,
+      payType: employee.payType,
+      detail,
+      netPay: employee.net,
+      status: employee.status,
+      changeLabel: lifecycle || undefined,
+      needsAttention: Boolean(lifecycle),
+    };
   });
 
   const openWorkspace = (workspace: "employees" | "time" | "review" | "payments" | "reports") => {
     if (workspace === "employees") return router.push("/uat/lifecycle");
-    if (workspace === "time") return router.push("/uat");
+    if (workspace === "time") return router.push("/uat/time");
     if (workspace === "review") return router.push("/uat/review");
     if (workspace === "payments") return router.push("/uat/payments");
     router.push(`/?workspace=${workspace}`);
@@ -241,17 +250,23 @@ export default function GuidedPayrollPreviewPage() {
     setPayments(next);
     window.localStorage.setItem(paymentStorageKey, JSON.stringify(next));
     try {
-      await fetch("/api/pilot/payments", {
+      const response = await fetch("/api/pilot/payments", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approved: true, completedAt: null }),
       });
+      if (response.ok) {
+        const payload = await response.json();
+        setPayments(payload.state);
+        window.localStorage.setItem(paymentStorageKey, JSON.stringify(payload.state));
+      }
     } catch {
       // Device copy remains available for offline UAT.
     }
   }
 
   const supported = profile.province === "Alberta";
+  const paymentsComplete = Boolean(payments.approved && payments.completedAt);
 
   return (
     <main className="min-h-screen bg-[#f4eadf] text-[#332118]">
@@ -266,7 +281,7 @@ export default function GuidedPayrollPreviewPage() {
             {lifecycleChanges.length > 0 && <button onClick={() => router.push("/uat/lifecycle")} className="rounded-lg bg-[#fff0dc] px-3 py-2 font-semibold text-[#7b4b23]">{lifecycleChanges.length} employee change{lifecycleChanges.length === 1 ? "" : "s"}</button>}
             <span className={`rounded-lg px-3 py-2 font-semibold ${state.ready ? "bg-[#e8efdf] text-[#3d5a2f]" : "bg-[#f3e6da] text-[#7b543d]"}`}>Time: {state.ready ? "Ready" : "Needs work"}</span>
             {payments.approved && <span className="rounded-lg bg-[#e8efdf] px-3 py-2 font-semibold text-[#3d5a2f]">Approved</span>}
-            {payments.completedAt && <button onClick={() => router.push("/uat/complete")} className="rounded-lg bg-[#5a321f] px-3 py-2 font-semibold text-white">Completed</button>}
+            {paymentsComplete && <button onClick={() => router.push("/uat/complete")} className="rounded-lg bg-[#5a321f] px-3 py-2 font-semibold text-white">Completed</button>}
           </div>
         </div>
 
@@ -280,6 +295,7 @@ export default function GuidedPayrollPreviewPage() {
           <GuidedPayrollRun
             runKey="2026-17-pilot"
             approved={payments.approved}
+            paymentsComplete={paymentsComplete}
             timeReady={state.ready}
             employees={employees}
             gross={totals.gross}
