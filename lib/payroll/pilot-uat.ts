@@ -1,6 +1,6 @@
 import { buildFinalPay, isEmployeeInPayPeriod } from "@/lib/payroll/employee-lifecycle";
 import { dollarsToCents } from "@/lib/payroll/money";
-import { pilotTaxSetupReviewComplete, type PilotTaxSetupReview } from "@/lib/payroll/pilot-tax-setup";
+import { pilotEmployeeTaxSetupReady, type PilotTaxSetupReview } from "@/lib/payroll/pilot-tax-setup";
 import { calculateAlbertaPayroll } from "@/lib/payroll/statutory/calculate";
 
 export type PilotFinalPay = {
@@ -129,7 +129,7 @@ export function pilotEmployeeIsInRun(employee: PilotUatEmployee): boolean {
 }
 
 export function pilotTaxSetupReady(employee: PilotUatEmployee): boolean {
-  return employee.status !== "New hire" || employee.taxSetupComplete === true || pilotTaxSetupReviewComplete(employee.taxSetupReview);
+  return pilotEmployeeTaxSetupReady(employee);
 }
 
 export function pilotRateForDate(employee: PilotUatEmployee, date = PILOT_RUN_PERIOD.periodEnd): number {
@@ -250,7 +250,7 @@ export function pilotChangeSummary(employee: PilotUatEmployee, currency = false)
     ? value.toLocaleString("en-CA", { style: "currency", currency: "CAD" })
     : `$${value.toFixed(2)}`;
   if (employee.status === "New hire") changes.push(`New hire${employee.hireDate ? ` · hired ${employee.hireDate}` : ""}`);
-  if (employee.status === "New hire" && !pilotTaxSetupReady(employee)) changes.push("Tax setup needed");
+  if (!pilotTaxSetupReady(employee)) changes.push("Tax setup needed");
   if (employee.rateEffectiveDate) changes.push(`Pay changed ${employee.rateEffectiveDate}`);
   const extraPay = pilotExtraTaxablePayDollars(employee);
   if (extraPay > 0) changes.push(`Extra pay ${money(extraPay)}`);
