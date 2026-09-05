@@ -1,5 +1,6 @@
 import { buildFinalPay, isEmployeeInPayPeriod } from "@/lib/payroll/employee-lifecycle";
 import { dollarsToCents } from "@/lib/payroll/money";
+import { pilotTaxSetupReviewComplete, type PilotTaxSetupReview } from "@/lib/payroll/pilot-tax-setup";
 import { calculateAlbertaPayroll } from "@/lib/payroll/statutory/calculate";
 
 export type PilotFinalPay = {
@@ -38,6 +39,7 @@ export type PilotUatEmployee = {
   extraTaxablePayCents?: number;
   changeNote?: string;
   taxSetupComplete?: boolean;
+  taxSetupReview?: PilotTaxSetupReview;
   finalPay?: PilotFinalPay;
 };
 
@@ -127,7 +129,7 @@ export function pilotEmployeeIsInRun(employee: PilotUatEmployee): boolean {
 }
 
 export function pilotTaxSetupReady(employee: PilotUatEmployee): boolean {
-  return employee.status !== "New hire" || employee.taxSetupComplete === true;
+  return employee.status !== "New hire" || employee.taxSetupComplete === true || pilotTaxSetupReviewComplete(employee.taxSetupReview);
 }
 
 export function pilotRateForDate(employee: PilotUatEmployee, date = PILOT_RUN_PERIOD.periodEnd): number {
