@@ -25,7 +25,16 @@ export default function PilotTaxSetupPage() {
       .then(async (response) => {
         if (!response.ok) throw new Error("Sign in to review new-hire tax setup.");
         const payload = await response.json();
-        setState(payload.state);
+        const nextState = payload.state as PilotUatState;
+        setState(nextState);
+        setChecks(Object.fromEntries(nextState.employees
+          .filter((employee) => employee.status === "New hire" && employee.taxSetupReview)
+          .map((employee) => [employee.id, {
+            federalTd1: employee.taxSetupReview?.federalTd1 === true,
+            provincialTd1: employee.taxSetupReview?.provincialTd1 === true,
+            cppEi: employee.taxSetupReview?.cppEi === true,
+            openingYtd: employee.taxSetupReview?.openingYtd === true,
+          }])));
         setNotice("Review the statutory setup for each new hire. Coffee Payroll will keep approval locked until this is complete.");
       })
       .catch((error) => setNotice(error instanceof Error ? error.message : "Unable to load tax setup."));
@@ -56,10 +65,11 @@ export default function PilotTaxSetupPage() {
     }
     setSavingId(employeeId);
     setNotice(`Saving ${employee.name}'s statutory setup review…`);
+    const review = { ...(checks[employeeId] ?? emptyChecks), reviewedAt: new Date().toISOString() };
     const nextState: PilotUatState = {
       ...state,
       ready: false,
-      employees: state.employees.map((item) => item.id === employeeId ? { ...item, taxSetupComplete: true } : item),
+      employees: state.employees.map((item) => item.id === employeeId ? { ...item, taxSetupComplete: true, taxSetupReview: review } : item),
     };
     try {
       const response = await fetch("/api/pilot/workspace", {
@@ -70,7 +80,7 @@ export default function PilotTaxSetupPage() {
       if (!response.ok) throw new Error("Unable to save tax setup review.");
       const payload = await response.json();
       setState(payload.state);
-      setNotice(`${employee.name}'s statutory setup checkpoint is complete.`);
+      setNotice(`${employee.name}'s statutory setup checkpoint is complete and the review evidence was saved.`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Unable to save tax setup review.");
     } finally {
@@ -91,15 +101,15 @@ export default function PilotTaxSetupPage() {
         <section className="mt-6 rounded-[28px] border border-[#decdbd] bg-[#fffaf5] p-6 shadow-sm sm:p-8">
           <div className="text-xs font-bold uppercase tracking-[0.18em] text-[#967663]">Employee statutory setup</div>
           <h1 className="mt-2 text-3xl font-semibold">Get each new hire payroll-ready</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#795f4f]">Instead of a single “reviewed” button, Coffee Payroll now asks you to confirm the four items that affect a new employee’s first payroll. This pilot does not collect a SIN or retain copies of TD1 forms.</p>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#795f4f]">Coffee Payroll asks you to confirm the four items that affect a new employee’s first payroll and now keeps that review evidence with the pilot employee record. This pilot does not collect a SIN or retain copies of TD1 forms.</p>
 
-          <div className="mt-5 rounded-2xl border border-[#d9e2ce] bg-[#f7fbf4] p-4 text-xs leading-5 text-[#53684a]"><strong>Privacy by design:</strong> keep the signed TD1 forms and SIN in your secure employee records. This checkpoint records only that the payroll setup was reviewed.</div>
+          <div className="mt-5 rounded-2xl border border-[#d9e2ce] bg-[#f7fbf4] p-4 text-xs leading-5 text-[#53684a]"><strong>Privacy by design:</strong> keep the signed TD1 forms and SIN in your secure employee records. This checkpoint records only the review confirmations and when the review was completed.</div>
 
           {newHires.length === 0 ? <div className="mt-6 rounded-2xl border border-[#d7e5ce] bg-[#f7fbf4] p-5 text-sm text-[#4f6944]">There are no new hires waiting for statutory setup.</div> : <div className="mt-6 space-y-4">{newHires.map((employee) => {
             const ready = pilotTaxSetupReady(employee);
             const value = checks[employee.id] ?? emptyChecks;
             return <article key={employee.id} className={`rounded-2xl border p-5 ${ready ? "border-[#cfe0c2] bg-[#f6fbf2]" : "border-[#e3c39f] bg-white"}`}>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="font-semibold">{employee.name}</div><div className="mt-1 text-xs text-[#826b5a]">New hire · {employee.payType} · hired {employee.hireDate ?? "date not set"}</div></div>{ready && <span className="w-fit rounded-full bg-[#e8efdf] px-3 py-1.5 text-xs font-semibold text-[#3d5a2f]">✓ Statutory setup reviewed</span>}</div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="font-semibold">{employee.name}</div><div className="mt-1 text-xs text-[#826b5a]">New hire · {employee.payType} · hired {employee.hireDate ?? "date not set"}</div>{employee.taxSetupReview?.reviewedAt && <div className="mt-1 text-xs text-[#6d7d62]">Reviewed {new Date(employee.taxSetupReview.reviewedAt).toLocaleString("en-CA")}</div>}</div>{ready && <span className="w-fit rounded-full bg-[#e8efdf] px-3 py-1.5 text-xs font-semibold text-[#3d5a2f]">✓ Statutory setup reviewed</span>}</div>
 
               {!ready && <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <CheckRow checked={value.federalTd1} onChange={(checked) => updateCheck(employee.id, "federalTd1", checked)} title="Federal TD1 reviewed" detail="Confirm the employee’s federal claim information." />
