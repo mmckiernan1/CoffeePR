@@ -25,7 +25,7 @@ const choices: Array<{ id: Exclude<ChangeKind, null>; title: string; detail: str
   { id: "leave", title: "Someone left", detail: "Record their last day and final-pay items.", icon: "↗" },
   { id: "pay", title: "Pay changed", detail: "Update an hourly rate or annual salary.", icon: "$" },
   { id: "bonus", title: "Bonus or extra pay", detail: "Add taxable extra pay for this payroll.", icon: "★" },
-  { id: "absence", title: "Leave or absence", detail: "Go to hours and pay to record time away.", icon: "◷" },
+  { id: "absence", title: "Leave or absence", detail: "Record a leave or absence so it is visible during review.", icon: "◷" },
   { id: "other", title: "Something else", detail: "Leave a note so it is visible during review.", icon: "…" },
 ];
 
@@ -54,13 +54,13 @@ export default function LifecycleUatPage() {
   useEffect(() => {
     fetch("/api/pilot/workspace", { cache: "no-store" })
       .then(async (response) => {
-        if (!response.ok) throw new Error("Sign in to use the persistent UAT workspace.");
+        if (!response.ok) throw new Error("Sign in to save employee changes to your workspace.");
         const payload = await response.json();
         setState(payload.state);
         setEmployeeId(payload.state.employees[0]?.id ?? "");
         setNotice("Tell Coffee Payroll what changed. We’ll only ask for the details that matter.");
       })
-      .catch((error) => setNotice(error instanceof Error ? error.message : "Unable to load UAT workspace."));
+      .catch((error) => setNotice(error instanceof Error ? error.message : "Unable to load employee changes."));
   }, []);
 
   async function persist(nextState: WorkspaceState, message: string) {
@@ -181,7 +181,7 @@ export default function LifecycleUatPage() {
 
           <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {choices.map((choice) => (
-              <button key={choice.id} onClick={() => choice.id === "absence" ? router.push("/uat") : setKind(choice.id)} className={`rounded-2xl border p-5 text-left transition hover:-translate-y-0.5 hover:shadow-md ${kind === choice.id ? "border-[#8e6046] bg-[#fff6ec] ring-2 ring-[#d9bda8]" : "border-[#e2d4c8] bg-white"}`}>
+              <button key={choice.id} onClick={() => setKind(choice.id)} className={`rounded-2xl border p-5 text-left transition hover:-translate-y-0.5 hover:shadow-md ${kind === choice.id ? "border-[#8e6046] bg-[#fff6ec] ring-2 ring-[#d9bda8]" : "border-[#e2d4c8] bg-white"}`}>
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f3e6da] text-lg font-bold text-[#6c432e]">{choice.icon}</div>
                 <div className="mt-4 font-semibold">{choice.title}</div>
                 <div className="mt-1 text-xs leading-5 text-[#826b5a]">{choice.detail}</div>
@@ -198,9 +198,9 @@ export default function LifecycleUatPage() {
 
         {kind === "leave" && <form onSubmit={terminateEmployee} className="mt-5 rounded-[26px] border border-[#decdbd] bg-white p-6 shadow-sm sm:p-7"><h2 className="text-2xl font-semibold">Someone is leaving</h2><div className="mt-5 grid gap-4 sm:grid-cols-2">{employeePicker}<label className="text-sm font-medium">Last day employed<input type="date" value={terminationDate} onChange={(e) => setTerminationDate(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label><label className="text-sm font-medium">Vacation pay<input type="number" min="0" step="0.01" value={vacationPay} onChange={(e) => setVacationPay(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label><label className="text-sm font-medium">Overtime pay<input type="number" min="0" step="0.01" value={overtimePay} onChange={(e) => setOvertimePay(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label><label className="text-sm font-medium">Other taxable pay<input type="number" min="0" step="0.01" value={otherTaxablePay} onChange={(e) => setOtherTaxablePay(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label><label className="text-sm font-medium">Reimbursement<input type="number" min="0" step="0.01" value={reimbursement} onChange={(e) => setReimbursement(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label></div><button className="mt-6 rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white">Save leaving employee</button></form>}
 
-        {kind === "bonus" && <form onSubmit={addBonus} className="mt-5 rounded-[26px] border border-[#decdbd] bg-white p-6 shadow-sm sm:p-7"><h2 className="text-2xl font-semibold">Add bonus or extra pay</h2><div className="mt-5 grid gap-4 sm:grid-cols-2">{employeePicker}<label className="text-sm font-medium">Taxable extra pay<input type="number" min="0.01" step="0.01" value={bonusAmount} onChange={(e) => setBonusAmount(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label></div><p className="mt-4 text-xs leading-5 text-[#806858]">This pilot treats the amount as taxable cash earnings in the current payroll calculation.</p><button className="mt-5 rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white">Add extra pay</button></form>}
+        {kind === "bonus" && <form onSubmit={addBonus} className="mt-5 rounded-[26px] border border-[#decdbd] bg-white p-6 shadow-sm sm:p-7"><h2 className="text-2xl font-semibold">Add bonus or extra pay</h2><div className="mt-5 grid gap-4 sm:grid-cols-2">{employeePicker}<label className="text-sm font-medium">Taxable extra pay<input type="number" min="0.01" step="0.01" value={bonusAmount} onChange={(e) => setBonusAmount(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label></div><p className="mt-4 text-xs leading-5 text-[#806858]">Coffee Payroll will include this as taxable cash earnings in the current payroll calculation.</p><button className="mt-5 rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white">Add extra pay</button></form>}
 
-        {kind === "other" && <form onSubmit={saveOther} className="mt-5 rounded-[26px] border border-[#decdbd] bg-white p-6 shadow-sm sm:p-7"><h2 className="text-2xl font-semibold">What else changed?</h2><div className="mt-5">{employeePicker}<label className="mt-4 block text-sm font-medium">Short note<textarea value={otherNote} onChange={(e) => setOtherNote(e.target.value)} maxLength={500} rows={4} placeholder="Example: employee requested a payroll adjustment for review" className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label></div><button className="mt-5 rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white">Save note for review</button></form>}
+        {(kind === "absence" || kind === "other") && <form onSubmit={saveOther} className="mt-5 rounded-[26px] border border-[#decdbd] bg-white p-6 shadow-sm sm:p-7"><h2 className="text-2xl font-semibold">{kind === "absence" ? "Tell us about the leave or absence" : "What else changed?"}</h2><div className="mt-5">{employeePicker}<label className="mt-4 block text-sm font-medium">Short note<textarea value={otherNote} onChange={(e) => setOtherNote(e.target.value)} maxLength={500} rows={4} placeholder={kind === "absence" ? "Example: unpaid leave August 25–27" : "Example: employee requested a payroll adjustment for review"} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label></div><button className="mt-5 rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white">{kind === "absence" ? "Save leave for review" : "Save note for review"}</button></form>}
       </div>
     </main>
   );
