@@ -106,8 +106,8 @@ export default function GuidedPayrollPreviewPage() {
     const finalPay = pilotFinalPayDollars(employee.finalPay);
     const finalPayTotal = finalPay.vacationPay + finalPay.overtimePay + finalPay.otherTaxablePay + finalPay.reimbursement;
     const ordinary = employee.payType === "Hourly"
-      ? `${row?.regular ?? 0} regular · ${row?.overtime ?? 0} OT · $${employee.rate.toFixed(2)}/hr`
-      : `$${employee.rate.toLocaleString("en-CA")}/yr · regular salary carries forward`;
+      ? `${row?.regular ?? 0} regular · ${row?.overtime ?? 0} OT · $${employee.appliedRate.toFixed(2)}/hr`
+      : `$${employee.appliedRate.toLocaleString("en-CA")}/yr · regular salary carries forward`;
     const detail = [lifecycle, ordinary, finalPayTotal > 0 ? `Final-pay items $${finalPayTotal.toFixed(2)}` : ""].filter(Boolean).join(" · ");
     return {
       id: employee.id,
