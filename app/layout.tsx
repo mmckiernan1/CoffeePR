@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { PayrollRouteBridge } from "@/components/comcheq/payroll-route-bridge";
 
 export const metadata: Metadata = {
   title: "Comcheq Payroll",
@@ -17,7 +18,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en-CA">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <PayrollRouteBridge />
+        {children}
+      </body>
     </html>
   );
 }
