@@ -16,6 +16,7 @@ type UatEmployee = {
   hireDate?: string;
   rateEffectiveDate?: string;
   terminationDate?: string;
+  extraTaxablePay?: number;
   finalPay?: FinalPay;
 };
 type Timesheet = { regular: number; overtime: number; vacation: number };
@@ -73,7 +74,7 @@ function netPay(employee: UatEmployee, timesheets: Record<string, Timesheet>, fr
     otherTaxablePayCents: dollarsToCents(String(employee.finalPay?.otherTaxablePay ?? 0)),
     reimbursementCents: dollarsToCents(String(employee.finalPay?.reimbursement ?? 0)),
   });
-  const taxableGross = ordinaryGross + final.taxableGrossCents / 100;
+  const taxableGross = ordinaryGross + (employee.extraTaxablePay ?? 0) + final.taxableGrossCents / 100;
   const result = calculateAlbertaPayroll({
     payDate: runPeriod.payDate,
     province: "AB",
