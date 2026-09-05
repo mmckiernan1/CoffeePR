@@ -15,6 +15,17 @@ export type PilotRateHistoryEntry = {
   rate: number;
 };
 
+export type PilotOpeningBalance = {
+  asOfDate: string;
+  taxableEarningsCents: number;
+  pensionableEarningsCents: number;
+  insurableEarningsCents: number;
+  incomeTaxCents: number;
+  cppCents: number;
+  cpp2Cents: number;
+  eiCents: number;
+};
+
 type LegacyPilotFinalPay = {
   vacationPay?: number;
   overtimePay?: number;
@@ -52,6 +63,7 @@ export type PilotTimesheet = {
 export type PilotUatState = {
   employees: PilotUatEmployee[];
   timesheets: Record<string, PilotTimesheet>;
+  openingBalances?: Record<string, PilotOpeningBalance>;
   ready: boolean;
 };
 
@@ -94,6 +106,7 @@ export const PILOT_STARTER_STATE: PilotUatState = {
     "EMP-0002": { regular: 80, overtime: 2.5, vacation: 0 },
     "EMP-0004": { regular: 72, overtime: 0, vacation: 0 },
   },
+  openingBalances: {},
   ready: false,
 };
 
@@ -204,6 +217,7 @@ export function pilotCalculateEmployee(
   employee: PilotUatEmployee,
   timesheets: Record<string, PilotTimesheet>,
   frequency: string,
+  openingBalances: Record<string, PilotOpeningBalance> = {},
 ): PilotCalculatedEmployee {
   const appliedRate = pilotRateForDate(employee);
   const ordinaryGross = pilotRegularGross(employee, timesheets, frequency);
@@ -212,6 +226,18 @@ export function pilotCalculateEmployee(
   const gross = ordinaryGross + pilotExtraTaxablePayDollars(employee) + final.taxableGrossCents / 100;
   const reimbursement = final.reimbursementCents / 100;
   const ppy = pilotPeriodsPerYear(frequency);
+  const opening = openingBalances[employee.id];
+  const yearToDate = opening ? {
+    pensionableEarningsCents: opening.pensionableEarningsCents,
+    cppCents: opening.cppCents,
+    cpp2Cents: opening.cpp2Cents,
+    eiCents: opening.eiCents,
+  } : baselineYtd[employee.id] ?? {
+    pensionableEarningsCents: 0,
+    cppCents: 0,
+    cpp2Cents: 0,
+    eiCents: 0,
+  };
   const result = calculateAlbertaPayroll({
     payDate: PILOT_RUN_PERIOD.payDate,
     province: "AB",
@@ -221,12 +247,7 @@ export function pilotCalculateEmployee(
     cashEarningsCents: dollarsToCents(gross.toFixed(2)),
     federalClaimCents: 1_645_200,
     albertaClaimCents: 2_276_900,
-    yearToDate: baselineYtd[employee.id] ?? {
-      pensionableEarningsCents: 0,
-      cppCents: 0,
-      cpp2Cents: 0,
-      eiCents: 0,
-    },
+    yearToDate,
   });
 
   return {
