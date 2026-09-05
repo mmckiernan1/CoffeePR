@@ -21,7 +21,8 @@ type UpdateBody = {
 };
 
 type PilotProfile = { province: string; frequency: string };
-type PilotUatState = { employees: Array<Record<string, unknown> & { id: string }>; timesheets: Record<string, unknown> };
+type PilotEmployee = Record<string, unknown> & { id: string; status?: string; taxSetupComplete?: boolean };
+type PilotUatState = { employees: PilotEmployee[]; timesheets: Record<string, unknown> };
 
 const emptyState: PaymentState = {
   approved: false,
@@ -84,7 +85,7 @@ async function ensureState(user: { id: string; email: string }) {
   return wsId;
 }
 
-async function currentFingerprint(user: { id: string }) {
+async function currentRunInputs(user: { id: string }) {
   const db = database();
   const wsId = workspaceId(user.id);
   const profile = await db.prepare("SELECT province, pay_frequency AS frequency FROM pilot_workspace_profiles WHERE workspace_id = ? LIMIT 1")
@@ -94,7 +95,12 @@ async function currentFingerprint(user: { id: string }) {
   if (!profile || !uat?.stateJson) throw new Error("Open the pilot workspace before approving payroll.");
   const state = JSON.parse(uat.stateJson) as PilotUatState;
   if (!Array.isArray(state.employees) || !state.timesheets) throw new Error("Pilot payroll inputs are unavailable.");
-  return pilotRunFingerprint({ ...run, province: profile.province, frequency: profile.frequency, employees: state.employees, timesheets: state.timesheets });
+  const fingerprint = pilotRunFingerprint({ ...run, province: profile.province, frequency: profile.frequency, employees: state.employees, timesheets: state.timesheets });
+  return { state, fingerprint };
+}
+
+async function currentFingerprint(user: { id: string }) {
+  return (await currentRunInputs(user)).fingerprint;
 }
 
 async function storedState(user: { id: string; email: string }) {
@@ -138,9 +144,20 @@ export async function PUT(request: Request) {
     const body = (await request.json().catch(() => ({}))) as UpdateBody;
     const db = database();
     const { state: existing } = await storedState(user);
-    const fingerprint = await currentFingerprint(user);
+    const { state: uatState, fingerprint } = await currentRunInputs(user);
     const existingApprovalValid = existing.approved && existing.approvedFingerprint === fingerprint;
     const now = new Date().toISOString();
+
+    if (body.approved === true) {
+      const pendingTaxSetup = uatState.employees.filter((employee) => employee.status === "New hire" && employee.taxSetupComplete !== true);
+      if (pendingTaxSetup.length > 0) {
+        return NextResponse.json({
+          error: "New-hire tax setup must be reviewed before payroll approval.",
+          code: "NEW_HIRE_TAX_SETUP_REQUIRED",
+          employeeIds: pendingTaxSetup.map((employee) => employee.id),
+        }, { status: 409 });
+      }
+    }
 
     let next: PaymentState;
     if (body.reset) {
