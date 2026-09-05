@@ -37,6 +37,7 @@ Validate the small-business owner journey before real payroll data is used. UAT 
 - Confirm progress is retained when opening Employees, Time Entry, detailed Review, Payments or Reports.
 - Confirm payroll approval remains the deliberate lock point.
 - Confirm Gross pay, Employee deposits and CRA obligation are calculated from the current UAT hires, rates and timesheets.
+- Confirm approval persists when leaving and returning to the guided flow.
 
 ### 6. Detailed calculation review
 - From guided Review, choose **See payroll details**.
@@ -48,9 +49,19 @@ Validate the small-business owner journey before real payroll data is used. UAT 
 ### 7. Employee payment pilot
 - Business e-transfer is the visible pilot payment method.
 - EFT/bank-file upload controls are hidden during the pilot.
-- Confirm the user can see each employee's net pay and record the payment handoff.
+- From Approve & pay, open `/uat/payments`.
+- Confirm each employee's calculated net pay is shown as the amount to send.
+- Record a bank/e-transfer confirmation reference for each employee.
+- Mark each employee paid and confirm the checklist persists after navigation/refresh.
+- Confirm Coffee Payroll does not mark the payroll complete until the run is approved and every employee is marked paid.
 
-### 8. Reports and remittances
+### 8. Completion
+- After every employee is marked paid, choose **Finish payroll**.
+- Confirm `/uat/complete` shows **You did your payroll.**
+- Confirm the completion screen reflects the actual employee payment checklist rather than a manual acknowledgement.
+- Confirm reopening the guided payroll shows the run as Approved/Completed.
+
+### 9. Reports and remittances
 - Open payroll register.
 - Open employee pay statement.
 - Open CRA remittance summary.
@@ -62,11 +73,11 @@ The integrated UAT flow uses the repository's validated **Alberta regular-period
 
 Existing fictional employees retain fictional year-to-date balances so CPP, EI and income tax can be exercised realistically. Newly added fictional employees begin with zero year-to-date balances.
 
-The pilot therefore demonstrates a real end-to-end dependency:
+The pilot now demonstrates the dependency:
 
-**Hire / change / timesheet → guided payroll population → statutory calculation → employee-level Review → run totals.**
+**Hire / change / timesheet → guided payroll population → statutory calculation → employee-level Review → approval → e-transfer checklist → confirmed completion.**
 
-This is still UAT state, not production payroll history.
+This is still UAT state, not production payroll history. Coffee Payroll records the payment handoff and confirmation reference; the business owner sends the actual e-transfer through their bank.
 
 ## Existing foundation already present
 
@@ -83,6 +94,10 @@ Use `/guided-payroll` to test the owner-facing six-step payroll experience using
 
 Use `/uat/review` for employee-level calculation verification.
 
+Use `/uat/payments` for the business e-transfer checklist and confirmation references.
+
+Use `/uat/complete` to verify that completion depends on actual UAT payment status.
+
 Use `/onboarding` to test the new-customer setup journey.
 
 ## Production gates before real client payroll
@@ -91,7 +106,7 @@ Use `/onboarding` to test the new-customer setup journey.
 - Turn on the application authentication gate after credentials are verified.
 - Apply the pilot D1 migration in the hosted environment.
 - Verify authorization with at least two separate business test accounts so one business cannot access another business's payroll data.
-- Replace pilot snapshot persistence with durable transactional employee, effective-dated compensation, time-entry and pay-run records.
+- Replace pilot snapshot/payment persistence with durable transactional employee, effective-dated compensation, time-entry, pay-run and payment-handoff records.
 - Ensure production changes write auditable events and approved payroll snapshots are immutable.
 - Validate statutory rule packs for every province offered to customers.
 - Run automated build/test/lint and complete desktop/mobile visual walkthrough.
