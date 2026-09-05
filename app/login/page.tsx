@@ -1,12 +1,14 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [mode, setMode] = useState<"signin" | "signup">("signup");
+  const requestedMode = searchParams.get("mode") === "signin" ? "signin" : "signup";
+  const [mode, setMode] = useState<"signin" | "signup">(requestedMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -32,7 +34,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.replace("/");
+      router.replace("/guided-payroll");
     } catch (reason) {
       setMessage(reason instanceof Error ? reason.message : "Unable to continue.");
     } finally {
@@ -46,7 +48,12 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen bg-[#f4eadf] px-4 py-8 text-[#332118] sm:px-6">
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl overflow-hidden rounded-[32px] border border-[#decdbd] bg-[#fffaf5] shadow-[0_30px_90px_rgba(72,42,24,0.14)] lg:grid-cols-[1.05fr_0.95fr]">
+      <div className="mx-auto mb-5 flex max-w-6xl items-center justify-between gap-4">
+        <Link href="/" className="text-sm font-semibold text-[#5a321f]">← Coffee Payroll</Link>
+        <Link href={mode === "signin" ? "/login?mode=signup" : "/login?mode=signin"} className="text-sm font-semibold text-[#5a321f]">{mode === "signin" ? "Create account" : "Sign in"}</Link>
+      </div>
+
+      <div className="mx-auto grid min-h-[calc(100vh-7rem)] max-w-6xl overflow-hidden rounded-[32px] border border-[#decdbd] bg-[#fffaf5] shadow-[0_30px_90px_rgba(72,42,24,0.14)] lg:grid-cols-[1.05fr_0.95fr]">
         <section className="relative hidden overflow-hidden bg-[#ead8c5] p-12 lg:flex lg:flex-col lg:justify-between">
           <div>
             <div className="flex items-center gap-3">
