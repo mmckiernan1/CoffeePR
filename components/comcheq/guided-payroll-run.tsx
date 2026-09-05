@@ -1,16 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BadgeCheck, CalendarDays, Check, ChevronRight, Clock3, Landmark, LockKeyhole, ReceiptText, Users } from "lucide-react";
+import { BadgeCheck, CalendarDays, Check, ChevronRight, Clock3, Landmark, LockKeyhole, ReceiptText, UserPlus, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RunPayrollShell } from "@/components/comcheq/run-payroll-shell";
 
 export type GuidedPayrollEmployee = {
+  id: string;
   name: string;
   payType: string;
   detail: string;
   netPay: number;
+  status?: "Active" | "New hire" | "Terminating" | "Terminated";
+  changeLabel?: string;
+  needsAttention?: boolean;
 };
 
 type GuidedPayrollRunProps = {
@@ -63,6 +67,7 @@ export function GuidedPayrollRun({
 
   const storageKey = `coffee-payroll:guided-payroll:${runKey}`;
   const hourlyEmployees = useMemo(() => employees.filter((employee) => employee.payType.toLowerCase() === "hourly"), [employees]);
+  const attentionEmployees = useMemo(() => employees.filter((employee) => employee.needsAttention), [employees]);
   const completedThrough = approved ? 4 : timeReady && employeesConfirmed && changesConfirmed ? 2 : employeesConfirmed && changesConfirmed ? 1 : changesConfirmed ? 0 : -1;
   const totalCash = net + remittance + fee;
 
@@ -169,19 +174,66 @@ export function GuidedPayrollRun({
 
       {step === 1 && (
         <div>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div><h2 className="text-xl font-semibold text-[#172033]">Who are you paying?</h2><p className="mt-1 text-sm text-[#647087]">A quick check before entering this period&apos;s pay.</p></div>
-            <Button type="button" variant="outline" onClick={openEmployeesFromRoster} className="border-[#c9d5e6] bg-white text-[#17428e]">Manage employees</Button>
+          <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#647087]">Step 2 · Employees</p>
+              <h2 className="mt-1 text-2xl font-semibold text-[#172033]">Here&apos;s who we&apos;re paying this time</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-[#647087]">Coffee Payroll has carried forward your regular employee list. Check the people below, especially anyone who is new or leaving.</p>
+            </div>
+            <Button type="button" variant="ghost" onClick={openEmployeesFromRoster} className="h-9 px-3 text-xs text-[#647087] hover:bg-[#f4f7fb] hover:text-[#17428e]">Edit employee changes</Button>
           </div>
-          <div className="divide-y divide-[#e5ebf4] overflow-hidden rounded-2xl border border-[#dce4f0] bg-white">
-            {employees.map((employee) => (
-              <div key={employee.name} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><strong className="text-sm text-[#172033]">{employee.name}</strong>{employee.payType.toLowerCase() === "hourly" && <Badge className="border-0 bg-[#fff6df] text-[#725a22]">Hourly · hours needed</Badge>}</div><p className="mt-1 text-xs text-[#647087]">{employee.detail}</p></div>
-                <Badge className="w-fit border-0 bg-[#eef9e8] text-[#34701d]">Included</Badge>
-              </div>
-            ))}
+
+          {attentionEmployees.length > 0 && (
+            <div className="mb-4 rounded-xl border border-[#ead1b6] bg-[#fff8ee] px-4 py-3 text-sm text-[#755032]">
+              <strong>{attentionEmployees.length} employee {attentionEmployees.length === 1 ? "change needs" : "changes need"} a quick look.</strong> The rest of the employee list is carried forward normally.
+            </div>
+          )}
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {employees.map((employee) => {
+              const isHourly = employee.payType.toLowerCase() === "hourly";
+              const isNew = employee.status === "New hire";
+              const isLeaving = employee.status === "Terminating" || employee.status === "Terminated";
+              const tileClass = employee.needsAttention
+                ? "border-[#ddbf9f] bg-[#fffaf4] hover:border-[#c58d58] hover:shadow-sm"
+                : isNew
+                  ? "border-[#c9d9ef] bg-[#f8fbff]"
+                  : "border-[#dce4f0] bg-white";
+              const content = (
+                <>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <strong className="text-sm text-[#172033]">{employee.name}</strong>
+                        {isHourly && <Badge className="border border-[#eadfbd] bg-[#fff8e7] text-[#725a22]">Hourly</Badge>}
+                        {isNew && <Badge className="border-0 bg-[#eaf2ff] text-[#225caa]"><UserPlus className="mr-1 size-3" />New hire</Badge>}
+                        {isLeaving && <Badge className="border-0 bg-[#fff0e5] text-[#9a5127]">Leaving</Badge>}
+                      </div>
+                      <p className="mt-2 text-xs leading-5 text-[#647087]">{employee.detail}</p>
+                    </div>
+                    {!employee.needsAttention && <Badge className="shrink-0 border-0 bg-[#eef9e8] text-[#34701d]">Included</Badge>}
+                  </div>
+                  {employee.changeLabel && (
+                    <div className={`mt-3 flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${employee.needsAttention ? "bg-[#fff0dc] text-[#7a4a24]" : "bg-[#f3f6fa] text-[#53647b]"}`}>
+                      <span>{employee.changeLabel}</span>
+                      {employee.needsAttention && <span className="inline-flex items-center gap-1">Review <ChevronRight className="size-3.5" /></span>}
+                    </div>
+                  )}
+                </>
+              );
+
+              return employee.needsAttention ? (
+                <button key={employee.id} type="button" onClick={openEmployeesFromRoster} className={`rounded-2xl border p-4 text-left transition ${tileClass}`}>{content}</button>
+              ) : (
+                <div key={employee.id} className={`rounded-2xl border p-4 ${tileClass}`}>{content}</div>
+              );
+            })}
           </div>
-          <div className="mt-5 flex justify-end"><Button type="button" onClick={() => { setEmployeesConfirmed(true); go(2); }} className="bg-[#1557d8] text-white hover:bg-[#0f47b5]">Everyone looks right <ChevronRight className="size-4" /></Button></div>
+
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#e6ebf2] pt-5">
+            <p className="text-xs text-[#647087]">{employees.length} employee{employees.length === 1 ? "" : "s"} included in this payroll.</p>
+            <Button type="button" onClick={() => { setEmployeesConfirmed(true); go(2); }} className="bg-[#1557d8] text-white hover:bg-[#0f47b5]">Yes, this looks right <ChevronRight className="size-4" /></Button>
+          </div>
         </div>
       )}
 
@@ -189,7 +241,7 @@ export function GuidedPayrollRun({
         <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
           <div>
             <div className="flex items-start gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#edf3ff] text-[#1557d8]"><Clock3 className="size-5" /></span><div><h2 className="text-xl font-semibold text-[#172033]">Enter this pay</h2><p className="mt-1 text-sm leading-6 text-[#647087]">Salaried employees carry forward automatically. Enter hours or one-time pay only where needed.</p></div></div>
-            <div className="mt-5 space-y-3">{hourlyEmployees.map((employee) => <button key={employee.name} type="button" onClick={openTimeEntry} className="flex w-full items-center justify-between gap-3 rounded-xl border border-[#dce4f0] bg-white p-4 text-left transition hover:border-[#8fb0e8] hover:bg-[#f7f9fd]"><span><strong className="block text-sm">{employee.name}</strong><span className="mt-1 block text-xs text-[#647087]">{employee.detail}</span></span><span className="inline-flex items-center gap-1 text-xs font-semibold text-[#1557d8]">Enter hours <ChevronRight className="size-4" /></span></button>)}</div>
+            <div className="mt-5 space-y-3">{hourlyEmployees.map((employee) => <button key={employee.id} type="button" onClick={openTimeEntry} className="flex w-full items-center justify-between gap-3 rounded-xl border border-[#dce4f0] bg-white p-4 text-left transition hover:border-[#8fb0e8] hover:bg-[#f7f9fd]"><span><strong className="block text-sm">{employee.name}</strong><span className="mt-1 block text-xs text-[#647087]">{employee.detail}</span></span><span className="inline-flex items-center gap-1 text-xs font-semibold text-[#1557d8]">Enter hours <ChevronRight className="size-4" /></span></button>)}</div>
             <div className="mt-5 flex justify-end"><Button type="button" disabled={!timeReady} onClick={() => go(3)} className="bg-[#1557d8] text-white hover:bg-[#0f47b5] disabled:bg-[#aebbd0]">{timeReady ? "Hours and pay are ready" : "Finish hours to continue"}<ChevronRight className="size-4" /></Button></div>
           </div>
           <aside className="rounded-2xl border border-[#dce4f0] bg-[#f7f9fd] p-4"><CalendarDays className="size-5 text-[#1557d8]" /><h3 className="mt-3 text-sm font-semibold">Coffee Payroll handles the routine</h3><p className="mt-2 text-xs leading-5 text-[#647087]">Regular salary, recurring deductions and configured statutory rules continue automatically unless something changed.</p></aside>
