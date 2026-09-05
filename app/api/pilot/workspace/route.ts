@@ -1,6 +1,21 @@
 import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 import { getCoffeePayrollUser } from "@/lib/auth/current-user";
+import { dollarsToCents } from "@/lib/payroll/money";
+
+type FinalPay = {
+  vacationPayCents: number;
+  overtimePayCents: number;
+  otherTaxablePayCents: number;
+  reimbursementCents: number;
+};
+
+type LegacyFinalPay = {
+  vacationPay: number;
+  overtimePay: number;
+  otherTaxablePay: number;
+  reimbursement: number;
+};
 
 type UatEmployee = {
   id: string;
@@ -14,12 +29,7 @@ type UatEmployee = {
   extraTaxablePay?: number;
   changeNote?: string;
   taxSetupComplete?: boolean;
-  finalPay?: {
-    vacationPay: number;
-    overtimePay: number;
-    otherTaxablePay: number;
-    reimbursement: number;
-  };
+  finalPay?: FinalPay;
 };
 
 type Timesheet = { regular: number; overtime: number; vacation: number };
@@ -39,7 +49,7 @@ type PilotProfile = {
 
 type UpdateBody = {
   profile?: Partial<PilotProfile>;
-  state?: PilotUatState;
+  state?: unknown;
   resetState?: boolean;
 };
 
@@ -99,33 +109,98 @@ function validMoney(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value < 10_000_000;
 }
 
-function validState(input: unknown): input is PilotUatState {
-  if (!input || typeof input !== "object") return false;
-  const state = input as PilotUatState;
-  if (!Array.isArray(state.employees) || !state.timesheets || typeof state.timesheets !== "object" || typeof state.ready !== "boolean") return false;
-  if (state.employees.length > 250) return false;
-  return state.employees.every((employee) => {
-    if (!(employee && typeof employee.id === "string" && employee.id.length <= 80 &&
+function validCents(value: unknown) {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value < 1_000_000_000;
+}
+
+function normalizeFinalPay(input: unknown): FinalPay | undefined | null {
+  if (input === undefined) return undefined;
+  if (!input || typeof input !== "object") return null;
+  const value = input as Partial<FinalPay & LegacyFinalPay>;
+
+  if (
+    validCents(value.vacationPayCents) &&
+    validCents(value.overtimePayCents) &&
+    validCents(value.otherTaxablePayCents) &&
+    validCents(value.reimbursementCents)
+  ) {
+    return {
+      vacationPayCents: value.vacationPayCents as number,
+      overtimePayCents: value.overtimePayCents as number,
+      otherTaxablePayCents: value.otherTaxablePayCents as number,
+      reimbursementCents: value.reimbursementCents as number,
+    };
+  }
+
+  if (
+    validMoney(value.vacationPay) &&
+    validMoney(value.overtimePay) &&
+    validMoney(value.otherTaxablePay) &&
+    validMoney(value.reimbursement)
+  ) {
+    return {
+      vacationPayCents: dollarsToCents(String(value.vacationPay)),
+      overtimePayCents: dollarsToCents(String(value.overtimePay)),
+      otherTaxablePayCents: dollarsToCents(String(value.otherTaxablePay)),
+      reimbursementCents: dollarsToCents(String(value.reimbursement)),
+    };
+  }
+
+  return null;
+}
+
+function normalizeState(input: unknown): PilotUatState | null {
+  if (!input || typeof input !== "object") return null;
+  const state = input as { employees?: unknown; timesheets?: unknown; ready?: unknown };
+  if (!Array.isArray(state.employees) || !state.timesheets || typeof state.timesheets !== "object" || typeof state.ready !== "boolean") return null;
+  if (state.employees.length > 250) return null;
+
+  const employees: UatEmployee[] = [];
+  for (const rawEmployee of state.employees) {
+    if (!rawEmployee || typeof rawEmployee !== "object") return null;
+    const employee = rawEmployee as Record<string, unknown>;
+    if (!(typeof employee.id === "string" && employee.id.length <= 80 &&
       typeof employee.name === "string" && employee.name.length > 0 && employee.name.length <= 160 &&
       (employee.payType === "Salary" || employee.payType === "Hourly") &&
-      Number.isFinite(employee.rate) && employee.rate > 0 && employee.rate < 10_000_000 &&
-      (["Active", "New hire", "Terminating", "Terminated"] as const).includes(employee.status))) return false;
+      typeof employee.rate === "number" && Number.isFinite(employee.rate) && employee.rate > 0 && employee.rate < 10_000_000 &&
+      (["Active", "New hire", "Terminating", "Terminated"] as const).includes(employee.status as "Active" | "New hire" | "Terminating" | "Terminated"))) return null;
 
-    if (employee.hireDate !== undefined && !validIsoDate(employee.hireDate)) return false;
-    if (employee.rateEffectiveDate !== undefined && !validIsoDate(employee.rateEffectiveDate)) return false;
-    if (employee.terminationDate !== undefined && !validIsoDate(employee.terminationDate)) return false;
-    if ((employee.status === "Terminating" || employee.status === "Terminated") && !employee.terminationDate) return false;
-    if (employee.hireDate && employee.terminationDate && employee.terminationDate < employee.hireDate) return false;
-    if (employee.extraTaxablePay !== undefined && !validMoney(employee.extraTaxablePay)) return false;
-    if (employee.changeNote !== undefined && (typeof employee.changeNote !== "string" || employee.changeNote.length > 500)) return false;
-    if (employee.taxSetupComplete !== undefined && typeof employee.taxSetupComplete !== "boolean") return false;
+    if (employee.hireDate !== undefined && !validIsoDate(employee.hireDate)) return null;
+    if (employee.rateEffectiveDate !== undefined && !validIsoDate(employee.rateEffectiveDate)) return null;
+    if (employee.terminationDate !== undefined && !validIsoDate(employee.terminationDate)) return null;
+    if ((employee.status === "Terminating" || employee.status === "Terminated") && !employee.terminationDate) return null;
+    if (typeof employee.hireDate === "string" && typeof employee.terminationDate === "string" && employee.terminationDate < employee.hireDate) return null;
+    if (employee.extraTaxablePay !== undefined && !validMoney(employee.extraTaxablePay)) return null;
+    if (employee.changeNote !== undefined && (typeof employee.changeNote !== "string" || employee.changeNote.length > 500)) return null;
+    if (employee.taxSetupComplete !== undefined && typeof employee.taxSetupComplete !== "boolean") return null;
 
-    if (employee.finalPay) {
-      if (!validMoney(employee.finalPay.vacationPay) || !validMoney(employee.finalPay.overtimePay) ||
-        !validMoney(employee.finalPay.otherTaxablePay) || !validMoney(employee.finalPay.reimbursement)) return false;
-    }
-    return true;
-  });
+    const finalPay = normalizeFinalPay(employee.finalPay);
+    if (finalPay === null) return null;
+
+    employees.push({
+      id: employee.id,
+      name: employee.name,
+      payType: employee.payType,
+      rate: employee.rate,
+      status: employee.status as UatEmployee["status"],
+      ...(typeof employee.hireDate === "string" ? { hireDate: employee.hireDate } : {}),
+      ...(typeof employee.rateEffectiveDate === "string" ? { rateEffectiveDate: employee.rateEffectiveDate } : {}),
+      ...(typeof employee.terminationDate === "string" ? { terminationDate: employee.terminationDate } : {}),
+      ...(typeof employee.extraTaxablePay === "number" ? { extraTaxablePay: employee.extraTaxablePay } : {}),
+      ...(typeof employee.changeNote === "string" ? { changeNote: employee.changeNote } : {}),
+      ...(typeof employee.taxSetupComplete === "boolean" ? { taxSetupComplete: employee.taxSetupComplete } : {}),
+      ...(finalPay ? { finalPay } : {}),
+    });
+  }
+
+  const timesheets = state.timesheets as Record<string, unknown>;
+  for (const row of Object.values(timesheets)) {
+    if (!row || typeof row !== "object") return null;
+    const time = row as Record<string, unknown>;
+    if (![time.regular, time.overtime, time.vacation].every((value) => typeof value === "number" && Number.isFinite(value) && value >= 0 && value < 10_000)) return null;
+  }
+
+  return { employees, timesheets: state.timesheets as Record<string, Timesheet>, ready: state.ready };
 }
 
 async function ensureWorkspace(user: { id: string; email: string }) {
@@ -158,8 +233,8 @@ async function currentSnapshot(user: { id: string; email: string }) {
   let state = starterState;
   if (stateRow?.stateJson) {
     try {
-      const parsed = JSON.parse(stateRow.stateJson);
-      if (validState(parsed)) state = parsed;
+      const parsed = normalizeState(JSON.parse(stateRow.stateJson));
+      if (parsed) state = parsed;
     } catch {
       state = starterState;
     }
@@ -203,10 +278,11 @@ export async function PUT(request: Request) {
     if (body.resetState) {
       await db.prepare("UPDATE pilot_uat_states SET state_json = ?, updated_at = ?, updated_by = ? WHERE workspace_id = ?")
         .bind(JSON.stringify(starterState), now, user.email, wsId).run();
-    } else if (body.state) {
-      if (!validState(body.state)) return NextResponse.json({ error: "UAT state is invalid." }, { status: 400 });
+    } else if (body.state !== undefined) {
+      const normalized = normalizeState(body.state);
+      if (!normalized) return NextResponse.json({ error: "UAT state is invalid." }, { status: 400 });
       await db.prepare("UPDATE pilot_uat_states SET state_json = ?, updated_at = ?, updated_by = ? WHERE workspace_id = ?")
-        .bind(JSON.stringify(body.state), now, user.email, wsId).run();
+        .bind(JSON.stringify(normalized), now, user.email, wsId).run();
     }
 
     return NextResponse.json(await currentSnapshot(user));
