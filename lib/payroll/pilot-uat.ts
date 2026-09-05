@@ -9,6 +9,11 @@ export type PilotFinalPay = {
   reimbursementCents: number;
 };
 
+export type PilotRateHistoryEntry = {
+  effectiveDate: string;
+  rate: number;
+};
+
 type LegacyPilotFinalPay = {
   vacationPay?: number;
   overtimePay?: number;
@@ -25,6 +30,7 @@ export type PilotUatEmployee = {
   name: string;
   payType: "Salary" | "Hourly";
   rate: number;
+  rateHistory?: PilotRateHistoryEntry[];
   status: "Active" | "New hire" | "Terminating" | "Terminated";
   hireDate?: string;
   rateEffectiveDate?: string;
@@ -55,6 +61,7 @@ export type PilotProfile = {
 };
 
 export type PilotCalculatedEmployee = PilotUatEmployee & {
+  appliedRate: number;
   gross: number;
   reimbursement: number;
   incomeTax: number;
@@ -76,10 +83,10 @@ export const PILOT_RUN_PERIOD = {
 
 export const PILOT_STARTER_STATE: PilotUatState = {
   employees: [
-    { id: "EMP-0001", name: "Avery Chen", payType: "Salary", rate: 80000, status: "Active", hireDate: "2024-01-08", taxSetupComplete: true },
-    { id: "EMP-0002", name: "Noah Williams", payType: "Hourly", rate: 30, status: "Active", hireDate: "2024-05-13", taxSetupComplete: true },
-    { id: "EMP-0003", name: "Priya Singh", payType: "Salary", rate: 111000, status: "Active", hireDate: "2023-09-05", taxSetupComplete: true },
-    { id: "EMP-0004", name: "Liam Martin", payType: "Hourly", rate: 29.5, status: "Active", hireDate: "2025-02-03", taxSetupComplete: true },
+    { id: "EMP-0001", name: "Avery Chen", payType: "Salary", rate: 80000, rateHistory: [{ effectiveDate: "2024-01-08", rate: 80000 }], status: "Active", hireDate: "2024-01-08", taxSetupComplete: true },
+    { id: "EMP-0002", name: "Noah Williams", payType: "Hourly", rate: 30, rateHistory: [{ effectiveDate: "2024-05-13", rate: 30 }], status: "Active", hireDate: "2024-05-13", taxSetupComplete: true },
+    { id: "EMP-0003", name: "Priya Singh", payType: "Salary", rate: 111000, rateHistory: [{ effectiveDate: "2023-09-05", rate: 111000 }], status: "Active", hireDate: "2023-09-05", taxSetupComplete: true },
+    { id: "EMP-0004", name: "Liam Martin", payType: "Hourly", rate: 29.5, rateHistory: [{ effectiveDate: "2025-02-03", rate: 29.5 }], status: "Active", hireDate: "2025-02-03", taxSetupComplete: true },
   ],
   timesheets: {
     "EMP-0002": { regular: 80, overtime: 2.5, vacation: 0 },
@@ -121,6 +128,22 @@ export function pilotEmployeeIsInRun(employee: PilotUatEmployee): boolean {
 
 export function pilotTaxSetupReady(employee: PilotUatEmployee): boolean {
   return employee.status !== "New hire" || employee.taxSetupComplete === true;
+}
+
+export function pilotRateForDate(employee: PilotUatEmployee, date = PILOT_RUN_PERIOD.periodEnd): number {
+  const history = (employee.rateHistory ?? [])
+    .filter((entry) => entry.effectiveDate <= date)
+    .sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate));
+  return history.at(-1)?.rate ?? employee.rate;
+}
+
+export function pilotRateHistoryWithChange(employee: PilotUatEmployee, effectiveDate: string, rate: number): PilotRateHistoryEntry[] {
+  const baselineDate = employee.hireDate ?? "2020-01-01";
+  const existing = employee.rateHistory?.length
+    ? employee.rateHistory
+    : [{ effectiveDate: employee.rateEffectiveDate ?? baselineDate, rate: employee.rate }];
+  const withoutSameDate = existing.filter((entry) => entry.effectiveDate !== effectiveDate);
+  return [...withoutSameDate, { effectiveDate, rate }].sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate));
 }
 
 function pilotFinalPayCents(finalPay: PilotFinalPay | undefined): PilotFinalPay {
@@ -169,9 +192,10 @@ export function pilotRegularGross(
   timesheets: Record<string, PilotTimesheet>,
   frequency: string,
 ): number {
-  if (employee.payType === "Salary") return employee.rate / pilotPeriodsPerYear(frequency);
+  const rate = pilotRateForDate(employee);
+  if (employee.payType === "Salary") return rate / pilotPeriodsPerYear(frequency);
   const row = timesheets[employee.id] ?? { regular: 0, overtime: 0, vacation: 0 };
-  return row.regular * employee.rate + row.overtime * employee.rate * 1.5 + row.vacation * employee.rate;
+  return row.regular * rate + row.overtime * rate * 1.5 + row.vacation * rate;
 }
 
 export function pilotCalculateEmployee(
@@ -179,6 +203,7 @@ export function pilotCalculateEmployee(
   timesheets: Record<string, PilotTimesheet>,
   frequency: string,
 ): PilotCalculatedEmployee {
+  const appliedRate = pilotRateForDate(employee);
   const ordinaryGross = pilotRegularGross(employee, timesheets, frequency);
   const finalPay = pilotFinalPayCents(employee.finalPay);
   const final = buildFinalPay(finalPay);
@@ -204,6 +229,7 @@ export function pilotCalculateEmployee(
 
   return {
     ...employee,
+    appliedRate,
     gross,
     reimbursement,
     incomeTax: result.deductions.incomeTaxCents / 100,
