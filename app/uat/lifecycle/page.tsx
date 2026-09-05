@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { dollarsToCents } from "@/lib/payroll/money";
-import type { PilotUatEmployee as Employee, PilotUatState as WorkspaceState } from "@/lib/payroll/pilot-uat";
+import { pilotRateHistoryWithChange, type PilotUatEmployee as Employee, type PilotUatState as WorkspaceState } from "@/lib/payroll/pilot-uat";
 
 type ChangeKind = "hire" | "leave" | "pay" | "bonus" | "absence" | "other" | null;
 
@@ -81,7 +81,7 @@ export default function LifecycleUatPage() {
       return;
     }
     const id = nextEmployeeId();
-    const employee: Employee = { id, name: hireName.trim(), payType: hireType, rate, status: "New hire", hireDate };
+    const employee: Employee = { id, name: hireName.trim(), payType: hireType, rate, rateHistory: [{ effectiveDate: hireDate, rate }], status: "New hire", hireDate };
     const nextState: WorkspaceState = {
       ...state,
       ready: false,
@@ -102,8 +102,17 @@ export default function LifecycleUatPage() {
       setNotice("Enter a positive rate or salary and a valid effective date.");
       return;
     }
-    const nextState = { ...state, ready: false, employees: state.employees.map((employee) => employee.id === selected.id ? { ...employee, rate, rateEffectiveDate: effectiveDate } : employee) };
-    try { await persist(nextState, `${selected.name}'s ${selected.payType === "Hourly" ? "hourly rate" : "annual salary"} is effective ${effectiveDate}.`); setNewRate(""); }
+    const nextState: WorkspaceState = {
+      ...state,
+      ready: false,
+      employees: state.employees.map((employee) => employee.id === selected.id ? {
+        ...employee,
+        rate,
+        rateEffectiveDate: effectiveDate,
+        rateHistory: pilotRateHistoryWithChange(employee, effectiveDate, rate),
+      } : employee),
+    };
+    try { await persist(nextState, `${selected.name}'s ${selected.payType === "Hourly" ? "hourly rate" : "annual salary"} is effective ${effectiveDate}. Prior rates remain in history.`); setNewRate(""); }
     catch (error) { setNotice(error instanceof Error ? error.message : "Unable to save pay change."); }
   }
 
@@ -194,7 +203,7 @@ export default function LifecycleUatPage() {
 
         {kind === "hire" && <form onSubmit={addHire} className="mt-5 rounded-[26px] border border-[#decdbd] bg-white p-6 shadow-sm sm:p-7"><h2 className="text-2xl font-semibold">Tell us about the new employee</h2><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-sm font-medium">Employee name<input value={hireName} onChange={(e) => setHireName(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label><label className="text-sm font-medium">Hire date<input type="date" value={hireDate} onChange={(e) => setHireDate(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label><label className="text-sm font-medium">Paid by<select value={hireType} onChange={(e) => setHireType(e.target.value as "Salary" | "Hourly")} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5"><option>Hourly</option><option>Salary</option></select></label><label className="text-sm font-medium">{hireType === "Hourly" ? "Hourly rate" : "Annual salary"}<input type="number" min="0.01" step="0.01" value={hireRate} onChange={(e) => setHireRate(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label></div><button className="mt-6 rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white">Add employee</button></form>}
 
-        {kind === "pay" && <form onSubmit={applyRateChange} className="mt-5 rounded-[26px] border border-[#decdbd] bg-white p-6 shadow-sm sm:p-7"><h2 className="text-2xl font-semibold">What changed with their pay?</h2><div className="mt-5 grid gap-4 sm:grid-cols-2">{employeePicker}<label className="text-sm font-medium">Effective date<input type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label><label className="text-sm font-medium sm:col-span-2">{selected?.payType === "Salary" ? "New annual salary" : "New hourly rate"}<input type="number" min="0.01" step="0.01" value={newRate} onChange={(e) => setNewRate(e.target.value)} placeholder={selected ? String(selected.rate) : ""} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label></div><button className="mt-6 rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white">Save pay change</button></form>}
+        {kind === "pay" && <form onSubmit={applyRateChange} className="mt-5 rounded-[26px] border border-[#decdbd] bg-white p-6 shadow-sm sm:p-7"><h2 className="text-2xl font-semibold">What changed with their pay?</h2><div className="mt-5 grid gap-4 sm:grid-cols-2">{employeePicker}<label className="text-sm font-medium">Effective date<input type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label><label className="text-sm font-medium sm:col-span-2">{selected?.payType === "Salary" ? "New annual salary" : "New hourly rate"}<input type="number" min="0.01" step="0.01" value={newRate} onChange={(e) => setNewRate(e.target.value)} placeholder={selected ? String(selected.rate) : ""} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label></div><p className="mt-4 text-xs leading-5 text-[#806858]">Coffee Payroll keeps the prior rate so earlier payrolls can still be reproduced.</p><button className="mt-5 rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white">Save pay change</button></form>}
 
         {kind === "leave" && <form onSubmit={terminateEmployee} className="mt-5 rounded-[26px] border border-[#decdbd] bg-white p-6 shadow-sm sm:p-7"><h2 className="text-2xl font-semibold">Someone is leaving</h2><div className="mt-5 grid gap-4 sm:grid-cols-2">{employeePicker}<label className="text-sm font-medium">Last day employed<input type="date" value={terminationDate} onChange={(e) => setTerminationDate(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label><label className="text-sm font-medium">Vacation pay<input type="number" min="0" step="0.01" value={vacationPay} onChange={(e) => setVacationPay(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label><label className="text-sm font-medium">Overtime pay<input type="number" min="0" step="0.01" value={overtimePay} onChange={(e) => setOvertimePay(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label><label className="text-sm font-medium">Other taxable pay<input type="number" min="0" step="0.01" value={otherTaxablePay} onChange={(e) => setOtherTaxablePay(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label><label className="text-sm font-medium">Reimbursement<input type="number" min="0" step="0.01" value={reimbursement} onChange={(e) => setReimbursement(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label></div><button className="mt-6 rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white">Save leaving employee</button></form>}
 
