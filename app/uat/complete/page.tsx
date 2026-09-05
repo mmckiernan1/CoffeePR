@@ -4,7 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isEmployeeInPayPeriod } from "@/lib/payroll/employee-lifecycle";
 
-type PaymentState = { approved: boolean; approvedFingerprint?: string | null; paidEmployeeIds: string[]; references: Record<string, string>; completedAt: string | null };
+type ApprovalSnapshot = {
+  approvedAt: string;
+  approvedBy: string;
+  fingerprint: string;
+  run: { runKey: string; periodStart: string; periodEnd: string; payDate: string };
+  employees: Array<{ id: string }>;
+};
+type PaymentState = { approved: boolean; approvedFingerprint?: string | null; paidEmployeeIds: string[]; references: Record<string, string>; completedAt: string | null; approvalHistory?: ApprovalSnapshot[] };
 type UatEmployee = {
   id: string;
   name: string;
@@ -40,7 +47,7 @@ function nextPayDate(frequency: string) {
 
 export default function PilotCompletePage() {
   const router = useRouter();
-  const [payments, setPayments] = useState<PaymentState>({ approved: false, approvedFingerprint: null, paidEmployeeIds: [], references: {}, completedAt: null });
+  const [payments, setPayments] = useState<PaymentState>({ approved: false, approvedFingerprint: null, paidEmployeeIds: [], references: {}, completedAt: null, approvalHistory: [] });
   const [uat, setUat] = useState<UatState | null>(null);
   const [profile, setProfile] = useState<PilotProfile>({ businessName: "My business", province: "Alberta", frequency: "Biweekly", employeeCount: 4 });
   const [approvalStale, setApprovalStale] = useState(false);
@@ -88,6 +95,8 @@ export default function PilotCompletePage() {
   const referenceCount = useMemo(() => includedEmployees.filter((employee) => Boolean(payments.references[employee.id]?.trim())).length, [includedEmployees, payments.references]);
   const complete = Boolean(!approvalStale && payments.approved && payments.completedAt && employeeCount > 0 && paidCount === employeeCount);
   const nextDate = nextPayDate(profile.frequency);
+  const latestApproval = payments.approvalHistory?.at(-1) ?? null;
+  const approvalTime = latestApproval ? new Date(latestApproval.approvedAt).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" }) : null;
 
   return (
     <main className="min-h-screen bg-[#f4eadf] px-4 py-10 text-[#332118] sm:px-6">
@@ -109,6 +118,13 @@ export default function PilotCompletePage() {
                 <div className="rounded-2xl border border-[#e2d5c9] bg-white p-4 text-center"><div className="text-xs text-[#856f60]">Bank refs</div><div className="mt-1 text-2xl font-bold">{referenceCount}</div></div>
                 <div className="rounded-2xl border border-[#e2d5c9] bg-white p-4 text-center"><div className="text-xs text-[#856f60]">Status</div><div className="mt-1 text-lg font-bold">Complete</div></div>
               </div>
+
+              {latestApproval && (
+                <div className="mx-auto mt-5 max-w-2xl rounded-2xl border border-[#d7e5ce] bg-[#f7fbf4] p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#5f7654]">Approval record</p><p className="mt-1 text-sm font-semibold text-[#3d5a2f]">This payroll has a saved approval snapshot.</p></div><span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#5f7654]">{latestApproval.employees.length} employee{latestApproval.employees.length === 1 ? "" : "s"}</span></div>
+                  <div className="mt-4 grid gap-2 text-xs text-[#5f7654] sm:grid-cols-2"><div><span className="font-semibold">Approved:</span> {approvalTime}</div><div><span className="font-semibold">Approved by:</span> {latestApproval.approvedBy}</div><div><span className="font-semibold">Run:</span> {latestApproval.run.runKey}</div><div><span className="font-semibold">Snapshot:</span> {latestApproval.fingerprint.slice(0, 18)}…</div></div>
+                </div>
+              )}
 
               <div className="mt-8 border-t border-[#eadfd4] pt-7">
                 <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#967663]">A few useful things before you go</p><h2 className="mt-1 text-2xl font-semibold">Payroll is done. The follow-up is here when you need it.</h2></div><div className="rounded-xl bg-[#f3e6da] px-4 py-2.5 text-right"><div className="text-xs text-[#806858]">Next pay date</div><div className="mt-0.5 font-semibold">{nextDate}</div></div></div>
