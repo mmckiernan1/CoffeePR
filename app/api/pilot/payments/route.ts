@@ -4,6 +4,7 @@ import { getCoffeePayrollUser } from "@/lib/auth/current-user";
 
 type PaymentState = {
   approved: boolean;
+  approvedFingerprint: string | null;
   paidEmployeeIds: string[];
   references: Record<string, string>;
   completedAt: string | null;
@@ -11,6 +12,7 @@ type PaymentState = {
 
 type UpdateBody = {
   approved?: boolean;
+  approvedFingerprint?: string | null;
   paidEmployeeIds?: string[];
   references?: Record<string, string>;
   completedAt?: string | null;
@@ -19,6 +21,7 @@ type UpdateBody = {
 
 const emptyState: PaymentState = {
   approved: false,
+  approvedFingerprint: null,
   paidEmployeeIds: [],
   references: {},
   completedAt: null,
@@ -38,14 +41,22 @@ function rowId(userId: string) {
   return `PAY-UAT-${userId}`;
 }
 
-function validState(input: unknown): input is PaymentState {
-  if (!input || typeof input !== "object") return false;
-  const state = input as PaymentState;
-  if (typeof state.approved !== "boolean" || !Array.isArray(state.paidEmployeeIds) || !state.references || typeof state.references !== "object") return false;
-  if (state.paidEmployeeIds.length > 250) return false;
-  if (!state.paidEmployeeIds.every((id) => typeof id === "string" && id.length <= 80)) return false;
-  if (state.completedAt !== null && typeof state.completedAt !== "string") return false;
-  return Object.entries(state.references).every(([id, value]) => id.length <= 80 && typeof value === "string" && value.length <= 120);
+function normalizeState(input: unknown): PaymentState | null {
+  if (!input || typeof input !== "object") return null;
+  const state = input as Partial<PaymentState>;
+  if (typeof state.approved !== "boolean" || !Array.isArray(state.paidEmployeeIds) || !state.references || typeof state.references !== "object") return null;
+  if (state.paidEmployeeIds.length > 250) return null;
+  if (!state.paidEmployeeIds.every((id) => typeof id === "string" && id.length <= 80)) return null;
+  if (state.completedAt !== null && state.completedAt !== undefined && typeof state.completedAt !== "string") return null;
+  if (state.approvedFingerprint !== null && state.approvedFingerprint !== undefined && (typeof state.approvedFingerprint !== "string" || state.approvedFingerprint.length > 120)) return null;
+  if (!Object.entries(state.references).every(([id, value]) => id.length <= 80 && typeof value === "string" && value.length <= 120)) return null;
+  return {
+    approved: state.approved,
+    approvedFingerprint: state.approvedFingerprint ?? null,
+    paidEmployeeIds: state.paidEmployeeIds,
+    references: state.references,
+    completedAt: state.completedAt ?? null,
+  };
 }
 
 async function ensureState(user: { id: string; email: string }) {
@@ -66,8 +77,8 @@ async function readState(user: { id: string; email: string }) {
   const row = await db.prepare("SELECT state_json AS stateJson, updated_at AS updatedAt FROM pilot_uat_states WHERE id = ? AND workspace_id = ? LIMIT 1")
     .bind(rowId(user.id), wsId).first<{ stateJson: string; updatedAt: string }>();
   try {
-    const parsed = JSON.parse(row?.stateJson ?? "{}");
-    if (validState(parsed)) return { state: parsed, updatedAt: row?.updatedAt ?? null };
+    const parsed = normalizeState(JSON.parse(row?.stateJson ?? "{}"));
+    if (parsed) return { state: parsed, updatedAt: row?.updatedAt ?? null };
   } catch {
     // Fall back to a clean pilot payment state.
   }
@@ -93,13 +104,14 @@ export async function PUT(request: Request) {
     const { state: existing } = await readState(user);
     const now = new Date().toISOString();
 
-    const next: PaymentState = body.reset ? emptyState : {
+    const next = body.reset ? emptyState : normalizeState({
       approved: body.approved ?? existing.approved,
+      approvedFingerprint: body.approvedFingerprint === undefined ? existing.approvedFingerprint : body.approvedFingerprint,
       paidEmployeeIds: body.paidEmployeeIds ?? existing.paidEmployeeIds,
       references: body.references ?? existing.references,
       completedAt: body.completedAt === undefined ? existing.completedAt : body.completedAt,
-    };
-    if (!validState(next)) return NextResponse.json({ error: "Payment UAT state is invalid." }, { status: 400 });
+    });
+    if (!next) return NextResponse.json({ error: "Payment UAT state is invalid." }, { status: 400 });
 
     await db.prepare("UPDATE pilot_uat_states SET state_json = ?, updated_at = ?, updated_by = ? WHERE id = ? AND workspace_id = ?")
       .bind(JSON.stringify(next), now, user.email, rowId(user.id), workspaceId(user.id)).run();
