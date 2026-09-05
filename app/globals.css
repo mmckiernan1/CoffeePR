@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "tw-animate-css";
+@import "../node_modules/tw-animate-css/dist/tw-animate.css";
 @import "../vendor/shadcn-tailwind-4.13.0.css";
 
 @utility scrollbar-thin {
@@ -29,28 +29,62 @@
   --primary-foreground: #ffffff;
   --secondary: #eaf1ff;
   --secondary-foreground: #17428e;
-  --muted: #f1f4f9;
+  --muted: #f7f9fc;
   --muted-foreground: #647087;
-  --accent: #eef9e8;
-  --accent-foreground: #34701d;
-  --destructive: #d92d20;
+  --accent: #edf3ff;
+  --accent-foreground: #1557d8;
+  --destructive: #dc2626;
   --border: #dce4f0;
-  --input: #c9d5e6;
+  --input: #dce4f0;
   --ring: #1557d8;
+  --radius: 0.625rem;
   --chart-1: #1557d8;
-  --chart-2: #3d7bf0;
-  --chart-3: #72a3ff;
-  --chart-4: #83b85a;
-  --chart-5: #0d3f9e;
-  --radius: 0.75rem;
+  --chart-2: #4f79c9;
+  --chart-3: #7a98d2;
+  --chart-4: #a7bbe0;
+  --chart-5: #d3def0;
   --sidebar: #ffffff;
   --sidebar-foreground: #172033;
   --sidebar-primary: #1557d8;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #edf3ff;
-  --sidebar-accent-foreground: #17428e;
+  --sidebar-accent-foreground: #1557d8;
   --sidebar-border: #dce4f0;
   --sidebar-ring: #1557d8;
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  --card: #111827;
+  --card-foreground: #f8fafc;
+  --popover: #111827;
+  --popover-foreground: #f8fafc;
+  --primary: #5b8def;
+  --primary-foreground: #ffffff;
+  --secondary: #1e293b;
+  --secondary-foreground: #e2e8f0;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #1e3a8a;
+  --accent-foreground: #dbeafe;
+  --destructive: #ef4444;
+  --border: #334155;
+  --input: #334155;
+  --ring: #5b8def;
+  --chart-1: #5b8def;
+  --chart-2: #7aa3ef;
+  --chart-3: #9bb9f2;
+  --chart-4: #bdd0f6;
+  --chart-5: #dce7fa;
+  --sidebar: #111827;
+  --sidebar-foreground: #f8fafc;
+  --sidebar-primary: #5b8def;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1e293b;
+  --sidebar-accent-foreground: #dbeafe;
+  --sidebar-border: #334155;
+  --sidebar-ring: #5b8def;
 }
 
 @theme inline {
@@ -77,6 +111,10 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -85,222 +123,12 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo,
-    "Liberation Mono", "Courier New", monospace;
+}
+
+* {
+  @apply border-border outline-ring/50;
 }
 
 body {
-  background:
-    radial-gradient(circle at 92% 0%, rgb(220 234 255 / 0.82), transparent 31rem),
-    radial-gradient(circle at 6% 20%, rgb(235 243 255 / 0.92), transparent 28rem),
-    var(--background);
-  color: var(--foreground);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-}
-
-/* Comcheq brand bridge: map legacy prototype colours into one vibrant cobalt system. */
-[class*="bg-[#6d4aff]"],
-[class*="bg-[#8066ef]"],
-[class*="bg-[#e00087]"] {
-  background-color: #1557d8 !important;
-}
-
-[class*="hover:bg-[#5934d1]"]:hover,
-[class*="hover:bg-[#b91c77]"]:hover {
-  background-color: #0f46b8 !important;
-}
-
-[class*="text-[#6d4aff]"],
-[class*="text-[#7757e8]"],
-[class*="text-[#5b35c7]"],
-[class*="text-[#d946ef]"],
-[class*="text-[#a21caf]"] {
-  color: #1557d8 !important;
-}
-
-[class*="bg-[#eee9ff]"],
-[class*="bg-[#f4f0ff]"] {
-  background-color: #e8f0ff !important;
-}
-
-[class*="bg-[#f6f2ff]"],
-[class*="bg-[#f3eeff]"],
-[class*="bg-[#f1edff]"],
-[class*="bg-[#efeaff]"] {
-  background-color: #f1f5ff !important;
-}
-
-[class*="border-[#b9a4f2]"],
-[class*="border-[#c7b8ed]"],
-[class*="border-[#cdbfe4]"],
-[class*="border-[#d8c9f4]"] {
-  border-color: #b9cdf2 !important;
-}
-
-[class*="ring-[#eee9ff]"] {
-  --tw-ring-color: #d3e1fb !important;
-}
-
-[class*="from-[#6d4aff]"] {
-  --tw-gradient-from: #1557d8 !important;
-}
-
-[class*="via-[#8066ef]"] {
-  --tw-gradient-via: #3475ed !important;
-}
-
-[class*="to-[#00a9a5]"] {
-  --tw-gradient-to: #5a96ff !important;
-}
-
-[class*="from-[#5633b7]"],
-[class*="from-[#4a1742]"] {
-  --tw-gradient-from: #103b93 !important;
-}
-
-[class*="to-[#117d83]"],
-[class*="to-[#0f7775]"] {
-  --tw-gradient-to: #1557d8 !important;
-}
-
-/* Retire teal as a competing brand colour. Blue communicates navigation and progress. */
-[class*="bg-[#00a9a5]"],
-[class*="bg-[#00a29a]"],
-[class*="bg-[#48b9ae]"] {
-  background-color: #3d7bf0 !important;
-}
-
-[class*="hover:bg-[#0b8d88]"]:hover,
-[class*="hover:bg-[#087f7a]"]:hover {
-  background-color: #2767d7 !important;
-}
-
-[class*="text-[#00a29a]"],
-[class*="text-[#0b8d88]"],
-[class*="text-[#0f6f74]"],
-[class*="text-[#008b85]"],
-[class*="text-[#086d69]"] {
-  color: #2466d6 !important;
-}
-
-/* Green is reserved for successful, balanced or completed states. */
-[class*="text-[#0f766e]"] {
-  color: #34701d !important;
-}
-
-[class*="bg-[#e9f7f6]"],
-[class*="bg-[#ddf8f4]"],
-[class*="bg-[#effcf9]"] {
-  background-color: #edf4ff !important;
-}
-
-[class*="bg-[#dcfce7]"] {
-  background-color: #eef9e8 !important;
-}
-
-[class*="border-[#c9e8e5]"],
-[class*="border-[#59cfc7]"] {
-  border-color: #c4d7f5 !important;
-}
-
-[class*="ring-[#dff7f5]"] {
-  --tw-ring-color: #d9e7fb !important;
-}
-
-/* Neutral working surfaces stay bright and slightly cool instead of muddy grey or mauve. */
-[class*="bg-[#faf8ff]"],
-[class*="bg-[#fcfaff]"],
-[class*="bg-[#fbf9ff]"] {
-  background-color: #f8faff !important;
-}
-
-[class*="bg-[#f7f4fa]"],
-[class*="bg-[#f6f2f8]"],
-[class*="bg-[#f5f1ff]"],
-[class*="bg-[#f2eef7]"],
-[class*="bg-[#f1edf5]"] {
-  background-color: #f2f5fa !important;
-}
-
-[class*="border-[#ded6e8]"],
-[class*="border-[#eae3f0]"],
-[class*="border-[#eee8f2]"],
-[class*="border-[#e5ddee]"],
-[class*="border-[#d2c7e1]"] {
-  border-color: #dce4f0 !important;
-}
-
-[class*="text-[#2f2447]"],
-[class*="text-[#35284b]"] {
-  color: #172033 !important;
-}
-
-[class*="text-[#655b73]"],
-[class*="text-[#746a80]"],
-[class*="text-[#847990]"],
-[class*="text-[#9a8da9]"],
-[class*="text-[#9d90ab]"],
-[class*="text-[#5e506f]"] {
-  color: #647087 !important;
-}
-
-/* Keep the lime highlight purposeful for release/continue actions. */
-[class*="bg-[#c7f36b]"] {
-  background-color: #b7ef45 !important;
-}
-
-[class*="text-[#ded2ff]"],
-[class*="text-[#eee9ff]"],
-[class*="text-[#f3efff]"] {
-  color: #ffffff !important;
-}
-
-/* Legacy gradients become recognizably Comcheq rather than grey or red-purple. */
-.bg-gradient-to-br[class*="from-[#6d4aff]"][class*="to-[#00a9a5]"] {
-  background-image: linear-gradient(135deg, #1557d8, #4b8cff) !important;
-}
-
-.bg-gradient-to-br[class*="from-[#5633b7]"][class*="to-[#117d83]"],
-.bg-gradient-to-br[class*="from-[#4a1742]"][class*="to-[#0f7775]"],
-.bg-gradient-to-br[class*="from-[#5f3bd6]"][class*="to-[#00a9a5]"] {
-  background-image: linear-gradient(135deg, #103b93, #1557d8) !important;
-}
-
-.bg-gradient-to-r[class*="from-[#c026d3]"][class*="to-[#0f9f9a]"] {
-  background-image: linear-gradient(90deg, #1557d8, #4b8cff) !important;
-}
-
-[class*="bg-[#c7f36b]"][class*="text-[#6d4aff]"] {
-  color: #17315e !important;
-}
-
-button,
-[role="button"] {
-  touch-action: manipulation;
-}
-
-input[type="date"] {
-  min-height: 2.75rem;
-  font-size: 1rem;
-  font-variant-numeric: tabular-nums;
-}
-
-@media (max-width: 768px) {
-  input,
-  textarea,
-  [role="combobox"] {
-    min-height: 2.75rem;
-    font-size: 1rem !important;
-  }
-
-  button,
-  [role="button"] {
-    min-height: 2.75rem;
-  }
+  @apply bg-background text-foreground;
 }
