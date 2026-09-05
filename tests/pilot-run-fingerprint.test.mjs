@@ -15,6 +15,7 @@ function sample() {
       { id: "EMP-1", name: "Avery", payType: "Salary", rate: 80000, status: "Active" },
     ],
     timesheets: { "EMP-2": { regular: 80, overtime: 2.5, vacation: 0 } },
+    openingBalances: {},
   };
 }
 
@@ -66,4 +67,24 @@ test("new-hire statutory review evidence is part of the approved payroll fingerp
     },
   };
   assert.notEqual(pilotRunFingerprint(reviewed), pendingFingerprint);
+});
+
+test("opening balance changes invalidate an approval fingerprint", () => {
+  const base = sample();
+  const fingerprint = pilotRunFingerprint(base);
+  const withOpeningBalances = sample();
+  withOpeningBalances.openingBalances = {
+    "EMP-2": {
+      asOfDate: "2026-08-31",
+      pensionableEarningsCents: 4200000,
+      cppCents: 230000,
+      cpp2Cents: 0,
+      eiCents: 68000,
+    },
+  };
+  assert.notEqual(pilotRunFingerprint(withOpeningBalances), fingerprint);
+
+  const changed = structuredClone(withOpeningBalances);
+  changed.openingBalances["EMP-2"].cppCents = 240000;
+  assert.notEqual(pilotRunFingerprint(changed), pilotRunFingerprint(withOpeningBalances));
 });
