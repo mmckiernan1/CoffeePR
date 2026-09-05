@@ -13,7 +13,7 @@ import {
 import { pilotRunFingerprint } from "@/lib/payroll/pilot-run-fingerprint";
 import { pilotEmployeeTaxSetupReady } from "@/lib/payroll/pilot-tax-setup";
 
-type PilotUatState = { employees: PilotApprovalEmployee[]; timesheets: Record<string, unknown> };
+type PilotUatState = { employees: PilotApprovalEmployee[]; timesheets: Record<string, unknown>; openingBalances?: Record<string, unknown> };
 
 type UpdateBody = {
   approved?: boolean;
@@ -59,8 +59,10 @@ async function currentRunInputs(user: { id: string }) {
   if (!profile || !uat?.stateJson) throw new Error("Open your pilot workspace before approving payroll.");
   const state = JSON.parse(uat.stateJson) as PilotUatState;
   if (!Array.isArray(state.employees) || !state.timesheets || typeof state.timesheets !== "object") throw new Error("Pilot payroll inputs are unavailable.");
-  const fingerprint = pilotRunFingerprint({ ...run, province: profile.province, frequency: profile.frequency, employees: state.employees, timesheets: state.timesheets });
-  return { state, profile, fingerprint };
+  if (state.openingBalances !== undefined && (!state.openingBalances || typeof state.openingBalances !== "object" || Array.isArray(state.openingBalances))) throw new Error("Pilot opening balances are invalid.");
+  const openingBalances = state.openingBalances ?? {};
+  const fingerprint = pilotRunFingerprint({ ...run, province: profile.province, frequency: profile.frequency, employees: state.employees, timesheets: state.timesheets, openingBalances });
+  return { state, profile, fingerprint, openingBalances };
 }
 
 async function currentFingerprint(user: { id: string }) {
@@ -109,7 +111,7 @@ export async function PUT(request: Request) {
     const db = database();
     const scope = pilotWorkspaceScope(user.id);
     const { state: existing } = await storedState(user);
-    const { state: uatState, profile, fingerprint } = await currentRunInputs(user);
+    const { state: uatState, profile, fingerprint, openingBalances } = await currentRunInputs(user);
     const existingApprovalValid = existing.approved && existing.approvedFingerprint === fingerprint;
     const now = new Date().toISOString();
 
@@ -139,6 +141,7 @@ export async function PUT(request: Request) {
           profile: { province: profile.province, frequency: profile.frequency },
           employees: structuredClone(uatState.employees),
           timesheets: structuredClone(uatState.timesheets),
+          openingBalances: structuredClone(openingBalances),
         });
       next = {
         approved: true,
