@@ -17,8 +17,8 @@ after(async () => {
 });
 
 async function getRoute(path) {
-  const module = await vite.ssrLoadModule(path);
-  return module.GET();
+  const routeModule = await vite.ssrLoadModule(path);
+  return routeModule.GET();
 }
 
 test("health endpoint identifies the fictional foundation", async () => {
