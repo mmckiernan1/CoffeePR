@@ -7,6 +7,7 @@ export type PilotRunFingerprintInput = {
   frequency: string;
   employees: Array<Record<string, unknown> & { id: string }>;
   timesheets: Record<string, unknown>;
+  openingBalances?: Record<string, unknown>;
 };
 
 function canonicalize(value: unknown): unknown {
@@ -36,6 +37,7 @@ export function canonicalPilotRun(input: PilotRunFingerprintInput) {
     frequency: input.frequency,
     employees,
     timesheets: input.timesheets,
+    openingBalances: input.openingBalances ?? {},
   }));
 }
 
