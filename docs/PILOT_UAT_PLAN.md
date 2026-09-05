@@ -16,49 +16,72 @@ Validate the small-business owner journey before real payroll data is used. UAT 
 - Add a fictional salaried employee.
 - Add a fictional hourly employee.
 - Confirm the hourly employee is clearly identified as needing hours.
-- Confirm the employee appears in the pay population before payroll review.
+- Confirm the employee persists after navigation/refresh and appears in the guided pay population.
 
 ### 3. Employee changes
 - Change an hourly rate.
 - Change a salary.
-- Confirm the new rate is visible in the pay population.
-- Confirm the change is understandable in plain language before payroll is approved.
+- Confirm the new rate persists and is visible in the guided payroll population.
+- Confirm the changed amount feeds payroll calculation and detailed Review.
 
 ### 4. Timesheets
 - Enter regular, overtime and vacation hours for each hourly employee.
 - Confirm salaried employees do not require timesheet entry.
 - Confirm time can be marked ready only after all hourly employees have a valid row.
 - Confirm changing time clears the ready state until it is reviewed again.
+- Confirm the saved hours feed the payroll calculation.
 
 ### 5. Guided payroll
 - Changes → Employees → Hours & pay → Review → Approve & pay → Done.
 - Confirm Back returns to the prior logical step.
 - Confirm progress is retained when opening Employees, Time Entry, detailed Review, Payments or Reports.
 - Confirm payroll approval remains the deliberate lock point.
+- Confirm Gross pay, Employee deposits and CRA obligation are calculated from the current UAT hires, rates and timesheets.
 
-### 6. Employee payment pilot
+### 6. Detailed calculation review
+- From guided Review, choose **See payroll details**.
+- Confirm `/uat/review` displays every UAT employee with the current salary/rate and entered hours.
+- Confirm employee-level Gross, Income tax, CPP, EI and Net pay are visible.
+- Return to `/uat`, change one rate or timesheet value, then return to Review and confirm both the employee result and run totals change.
+- Confirm a newly added fictional employee is included in the calculation.
+
+### 7. Employee payment pilot
 - Business e-transfer is the visible pilot payment method.
 - EFT/bank-file upload controls are hidden during the pilot.
 - Confirm the user can see each employee's net pay and record the payment handoff.
 
-### 7. Reports and remittances
+### 8. Reports and remittances
 - Open payroll register.
 - Open employee pay statement.
 - Open CRA remittance summary.
 - Confirm the owner can get back into the guided flow without losing progress.
 
+## Current calculation scope
+
+The integrated UAT flow uses the repository's validated **Alberta regular-periodic** statutory calculation engine. Salary is converted using the pilot pay frequency. Hourly gross pay uses regular hours at straight time, overtime at 1.5×, and vacation hours at the regular hourly rate for this UAT scenario.
+
+Existing fictional employees retain fictional year-to-date balances so CPP, EI and income tax can be exercised realistically. Newly added fictional employees begin with zero year-to-date balances.
+
+The pilot therefore demonstrates a real end-to-end dependency:
+
+**Hire / change / timesheet → guided payroll population → statutory calculation → employee-level Review → run totals.**
+
+This is still UAT state, not production payroll history.
+
 ## Existing foundation already present
 
-- The main application already keeps editable hourly time-entry state for Noah Williams and Liam Martin and provides an update function for regular, overtime and vacation hours.
+- The main application already has editable time-entry handling and approval readiness controls.
 - The payroll core blocks approval if hourly time is not marked ready.
 - The configuration API includes effective-dated pay-change handling.
-- The database schema contains employee hire dates and audit-style previous/new value fields.
+- The durable schema contains employee, pay-run, calculation, audit and workspace structures that can replace the pilot snapshot layer before live payroll.
 
 ## Pilot UAT workspace
 
-Use `/uat` for a focused interactive walkthrough of new hires, rate changes and timesheets. The UAT page is intentionally local preview state and does not claim production persistence.
+Use `/uat` for new hires, rate changes and timesheets.
 
-Use `/guided-payroll` to test the owner-facing six-step payroll experience.
+Use `/guided-payroll` to test the owner-facing six-step payroll experience using the saved UAT population.
+
+Use `/uat/review` for employee-level calculation verification.
 
 Use `/onboarding` to test the new-customer setup journey.
 
@@ -66,8 +89,11 @@ Use `/onboarding` to test the new-customer setup journey.
 
 - Configure Supabase project and production OAuth credentials.
 - Turn on the application authentication gate after credentials are verified.
-- Persist business workspaces, membership, hires, employee changes and timesheets to the production datastore.
-- Confirm authorization so one business cannot access another business's payroll data.
+- Apply the pilot D1 migration in the hosted environment.
+- Verify authorization with at least two separate business test accounts so one business cannot access another business's payroll data.
+- Replace pilot snapshot persistence with durable transactional employee, effective-dated compensation, time-entry and pay-run records.
+- Ensure production changes write auditable events and approved payroll snapshots are immutable.
+- Validate statutory rule packs for every province offered to customers.
 - Run automated build/test/lint and complete desktop/mobile visual walkthrough.
-- Add privacy, terms, consent and retention controls appropriate for Canadian payroll data.
+- Add privacy, terms, consent, backup/recovery and retention controls appropriate for Canadian payroll data.
 - Do not use real SIN, bank, tax or employee information in UAT until those gates are complete.
