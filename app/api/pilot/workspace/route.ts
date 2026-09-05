@@ -11,6 +11,8 @@ type UatEmployee = {
   hireDate?: string;
   rateEffectiveDate?: string;
   terminationDate?: string;
+  extraTaxablePay?: number;
+  changeNote?: string;
   finalPay?: {
     vacationPay: number;
     overtimePay: number;
@@ -113,6 +115,8 @@ function validState(input: unknown): input is PilotUatState {
     if (employee.terminationDate !== undefined && !validIsoDate(employee.terminationDate)) return false;
     if ((employee.status === "Terminating" || employee.status === "Terminated") && !employee.terminationDate) return false;
     if (employee.hireDate && employee.terminationDate && employee.terminationDate < employee.hireDate) return false;
+    if (employee.extraTaxablePay !== undefined && !validMoney(employee.extraTaxablePay)) return false;
+    if (employee.changeNote !== undefined && (typeof employee.changeNote !== "string" || employee.changeNote.length > 500)) return false;
 
     if (employee.finalPay) {
       if (!validMoney(employee.finalPay.vacationPay) || !validMoney(employee.finalPay.overtimePay) ||
