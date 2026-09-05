@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   PILOT_STARTER_STATE,
@@ -15,6 +15,7 @@ type PaymentState = { approved: boolean; approvedFingerprint?: string | null; pa
 
 const paymentKey = "coffee-payroll:pilot-payments";
 const emptyPayments: PaymentState = { approved: false, approvedFingerprint: null, paidEmployeeIds: [], references: {}, completedAt: null };
+const referenceSaveDelayMs = 650;
 
 export default function PilotPaymentsPage() {
   const router = useRouter();
@@ -23,6 +24,19 @@ export default function PilotPaymentsPage() {
   const [payments, setPayments] = useState<PaymentState>(emptyPayments);
   const [approvalStale, setApprovalStale] = useState(false);
   const [sync, setSync] = useState<"loading" | "workspace" | "device" | "saving">("loading");
+  const paymentsRef = useRef<PaymentState>(emptyPayments);
+  const referenceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  useEffect(() => {
+    paymentsRef.current = payments;
+  }, [payments]);
+
+  useEffect(() => {
+    const timers = referenceTimers.current;
+    return () => {
+      Object.values(timers).forEach((timer) => clearTimeout(timer));
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,7 +54,12 @@ export default function PilotPaymentsPage() {
         const paymentResponse = await fetch("/api/pilot/payments", { cache: "no-store" });
         if (paymentResponse.ok) {
           const data = await paymentResponse.json();
-          if (!cancelled) { setPayments(data.state); setApprovalStale(Boolean(data.approvalStale)); setSync("workspace"); }
+          if (!cancelled) {
+            paymentsRef.current = data.state;
+            setPayments(data.state);
+            setApprovalStale(Boolean(data.approvalStale));
+            setSync("workspace");
+          }
           return;
         }
       } catch {
@@ -48,7 +67,11 @@ export default function PilotPaymentsPage() {
       }
       try {
         const raw = window.localStorage.getItem(paymentKey);
-        if (raw && !cancelled) setPayments(JSON.parse(raw));
+        if (raw && !cancelled) {
+          const parsed = JSON.parse(raw) as PaymentState;
+          paymentsRef.current = parsed;
+          setPayments(parsed);
+        }
       } catch {
         // Keep empty fictional payment state.
       }
@@ -66,16 +89,26 @@ export default function PilotPaymentsPage() {
   const allPaid = rows.length > 0 && rows.every(({ employee }) => payments.paidEmployeeIds.includes(employee.id));
   const totalNet = rows.reduce((sum, row) => sum + row.net, 0);
 
-  async function save(next: PaymentState) {
+  function storeLocal(next: PaymentState) {
+    paymentsRef.current = next;
     setPayments(next);
     window.localStorage.setItem(paymentKey, JSON.stringify(next));
+  }
+
+  function clearReferenceTimers() {
+    Object.values(referenceTimers.current).forEach((timer) => clearTimeout(timer));
+    referenceTimers.current = {};
+  }
+
+  async function save(next: PaymentState) {
+    storeLocal(next);
     if (sync === "device") return;
     setSync("saving");
     try {
       const response = await fetch("/api/pilot/payments", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) });
       if (!response.ok) throw new Error("save failed");
       const payload = await response.json();
-      setPayments(payload.state);
+      storeLocal(payload.state);
       setApprovalStale(Boolean(payload.approvalStale));
       setSync("workspace");
     } catch {
@@ -84,17 +117,47 @@ export default function PilotPaymentsPage() {
   }
 
   function togglePaid(id: string) {
-    const paid = payments.paidEmployeeIds.includes(id);
-    void save({ ...payments, paidEmployeeIds: paid ? payments.paidEmployeeIds.filter((item) => item !== id) : [...payments.paidEmployeeIds, id], completedAt: null });
+    const current = paymentsRef.current;
+    const paid = current.paidEmployeeIds.includes(id);
+    void save({ ...current, paidEmployeeIds: paid ? current.paidEmployeeIds.filter((item) => item !== id) : [...current.paidEmployeeIds, id], completedAt: null });
   }
 
   function updateReference(id: string, value: string) {
-    void save({ ...payments, references: { ...payments.references, [id]: value.slice(0, 120) }, completedAt: null });
+    const current = paymentsRef.current;
+    const next = { ...current, references: { ...current.references, [id]: value.slice(0, 120) }, completedAt: null };
+    storeLocal(next);
+    if (sync === "device") return;
+
+    const existingTimer = referenceTimers.current[id];
+    if (existingTimer) clearTimeout(existingTimer);
+    setSync("saving");
+
+    referenceTimers.current[id] = setTimeout(async () => {
+      try {
+        const latest = paymentsRef.current;
+        const response = await fetch("/api/pilot/payments", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ references: latest.references, completedAt: null }),
+        });
+        if (!response.ok) throw new Error("save failed");
+        const payload = await response.json();
+        const merged = { ...payload.state, references: paymentsRef.current.references } as PaymentState;
+        storeLocal(merged);
+        setApprovalStale(Boolean(payload.approvalStale));
+        setSync("workspace");
+      } catch {
+        setSync("device");
+      } finally {
+        delete referenceTimers.current[id];
+      }
+    }, referenceSaveDelayMs);
   }
 
   async function finishPayroll() {
     if (!payments.approved || approvalStale || !allPaid) return;
-    const next = { ...payments, completedAt: new Date().toISOString() };
+    clearReferenceTimers();
+    const next = { ...paymentsRef.current, completedAt: new Date().toISOString() };
     await save(next);
     router.push("/uat/complete");
   }
