@@ -1,4 +1,4 @@
-import { dollarsToCents } from "@/lib/payroll/money";
+import { dollarsToCents } from "./money.ts";
 
 export const OPENING_BALANCE_CSV_HEADERS = [
   "employee_id",
