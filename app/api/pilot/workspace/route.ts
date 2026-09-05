@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getCoffeePayrollUser } from "@/lib/auth/current-user";
 import { pilotWorkspaceScope } from "@/lib/pilot/workspace-scope";
 import { dollarsToCents } from "@/lib/payroll/money";
+import { normalizePilotOpeningBalances } from "@/lib/payroll/pilot-opening-balances";
 import { normalizePilotTaxSetupReview } from "@/lib/payroll/pilot-tax-setup";
 import { PILOT_STARTER_STATE, type PilotFinalPay as FinalPay, type PilotProfile, type PilotRateHistoryEntry as RateHistoryEntry, type PilotTimesheet as Timesheet, type PilotUatEmployee as UatEmployee, type PilotUatState } from "@/lib/payroll/pilot-uat";
 
@@ -95,7 +96,7 @@ function normalizeRateHistory(employee: Record<string, unknown>): RateHistoryEnt
 
 function normalizeState(input: unknown): PilotUatState | null {
   if (!input || typeof input !== "object") return null;
-  const state = input as { employees?: unknown; timesheets?: unknown; ready?: unknown };
+  const state = input as { employees?: unknown; timesheets?: unknown; openingBalances?: unknown; ready?: unknown };
   if (!Array.isArray(state.employees) || !state.timesheets || typeof state.timesheets !== "object" || typeof state.ready !== "boolean") return null;
   if (state.employees.length > 250) return null;
 
@@ -146,7 +147,11 @@ function normalizeState(input: unknown): PilotUatState | null {
     if (![time.regular, time.overtime, time.vacation].every((value) => typeof value === "number" && Number.isFinite(value) && value >= 0 && value < 10_000)) return null;
   }
 
-  return { employees, timesheets: state.timesheets as Record<string, Timesheet>, ready: state.ready };
+  const employeeIds = new Set(employees.map((employee) => employee.id));
+  const openingBalances = normalizePilotOpeningBalances(state.openingBalances, employeeIds);
+  if (!openingBalances) return null;
+
+  return { employees, timesheets: state.timesheets as Record<string, Timesheet>, openingBalances, ready: state.ready };
 }
 
 async function ensureWorkspace(user: { id: string; email: string }) {
