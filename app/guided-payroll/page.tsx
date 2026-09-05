@@ -9,6 +9,7 @@ import {
   pilotCalculateEmployee,
   pilotChangeSummary,
   pilotEmployeeIsInRun,
+  pilotFinalPayDollars,
   pilotTaxSetupReady,
   type PilotProfile,
   type PilotUatState,
@@ -102,7 +103,8 @@ export default function GuidedPayrollPreviewPage() {
   const employees: GuidedPayrollEmployee[] = calculated.map((employee) => {
     const row = state.timesheets[employee.id];
     const lifecycle = pilotChangeSummary(employee);
-    const finalPayTotal = (employee.finalPay?.vacationPay ?? 0) + (employee.finalPay?.overtimePay ?? 0) + (employee.finalPay?.otherTaxablePay ?? 0) + (employee.finalPay?.reimbursement ?? 0);
+    const finalPay = pilotFinalPayDollars(employee.finalPay);
+    const finalPayTotal = finalPay.vacationPay + finalPay.overtimePay + finalPay.otherTaxablePay + finalPay.reimbursement;
     const ordinary = employee.payType === "Hourly"
       ? `${row?.regular ?? 0} regular · ${row?.overtime ?? 0} OT · $${employee.rate.toFixed(2)}/hr`
       : `$${employee.rate.toLocaleString("en-CA")}/yr · regular salary carries forward`;
