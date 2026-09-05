@@ -16,6 +16,10 @@ type LegacyPilotFinalPay = {
   reimbursement?: number;
 };
 
+type LegacyPilotExtraPay = {
+  extraTaxablePay?: number;
+};
+
 export type PilotUatEmployee = {
   id: string;
   name: string;
@@ -25,7 +29,7 @@ export type PilotUatEmployee = {
   hireDate?: string;
   rateEffectiveDate?: string;
   terminationDate?: string;
-  extraTaxablePay?: number;
+  extraTaxablePayCents?: number;
   changeNote?: string;
   taxSetupComplete?: boolean;
   finalPay?: PilotFinalPay;
@@ -148,6 +152,18 @@ export function pilotFinalPayDollars(finalPay: PilotFinalPay | undefined) {
   };
 }
 
+export function pilotExtraTaxablePayCents(employee: PilotUatEmployee): number {
+  if (Number.isSafeInteger(employee.extraTaxablePayCents) && (employee.extraTaxablePayCents ?? 0) >= 0) {
+    return employee.extraTaxablePayCents ?? 0;
+  }
+  const legacy = employee as PilotUatEmployee & LegacyPilotExtraPay;
+  return dollarsToCents(String(legacy.extraTaxablePay ?? 0));
+}
+
+export function pilotExtraTaxablePayDollars(employee: PilotUatEmployee): number {
+  return pilotExtraTaxablePayCents(employee) / 100;
+}
+
 export function pilotRegularGross(
   employee: PilotUatEmployee,
   timesheets: Record<string, PilotTimesheet>,
@@ -166,7 +182,7 @@ export function pilotCalculateEmployee(
   const ordinaryGross = pilotRegularGross(employee, timesheets, frequency);
   const finalPay = pilotFinalPayCents(employee.finalPay);
   const final = buildFinalPay(finalPay);
-  const gross = ordinaryGross + (employee.extraTaxablePay ?? 0) + final.taxableGrossCents / 100;
+  const gross = ordinaryGross + pilotExtraTaxablePayDollars(employee) + final.taxableGrossCents / 100;
   const reimbursement = final.reimbursementCents / 100;
   const ppy = pilotPeriodsPerYear(frequency);
   const result = calculateAlbertaPayroll({
@@ -208,7 +224,8 @@ export function pilotChangeSummary(employee: PilotUatEmployee, currency = false)
   if (employee.status === "New hire") changes.push(`New hire${employee.hireDate ? ` · hired ${employee.hireDate}` : ""}`);
   if (employee.status === "New hire" && !pilotTaxSetupReady(employee)) changes.push("Tax setup needed");
   if (employee.rateEffectiveDate) changes.push(`Pay changed ${employee.rateEffectiveDate}`);
-  if ((employee.extraTaxablePay ?? 0) > 0) changes.push(`Extra pay ${money(employee.extraTaxablePay ?? 0)}`);
+  const extraPay = pilotExtraTaxablePayDollars(employee);
+  if (extraPay > 0) changes.push(`Extra pay ${money(extraPay)}`);
   if (employee.status === "Terminating" || employee.status === "Terminated") changes.push(`Final pay · last day ${employee.terminationDate ?? "date needed"}`);
   if (employee.changeNote) changes.push(`Review note: ${employee.changeNote}`);
   return changes.join(" · ");
