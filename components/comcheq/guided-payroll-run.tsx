@@ -50,7 +50,7 @@ function employeeCue(employee: GuidedPayrollEmployee) {
   return { isNew, isLeaving, needsAttention, changeLabel };
 }
 
-export function GuidedPayrollRun({ approved, timeReady, employees, gross, net, remittance, fee, onHome, onOpenEmployees, onOpenTime, onOpenReview, onApprove, onOpenPayments, onOpenReports, runKey = "run-17" }: Props) {
+export function GuidedPayrollRun({ approved, timeReady, employees, gross, net, remittance, fee, onHome, onOpenEmployees, onOpenTime: _onOpenTime, onOpenReview, onApprove, onOpenPayments, onOpenReports, runKey = "run-17" }: Props) {
   const [step, setStep] = useState(0);
   const [changesConfirmed, setChangesConfirmed] = useState(false);
   const [employeesConfirmed, setEmployeesConfirmed] = useState(false);
@@ -89,7 +89,7 @@ export function GuidedPayrollRun({ approved, timeReady, employees, gross, net, r
   function go(next: number) { setStep(Math.min(Math.max(next, 0), 5)); }
   function openEmployeeChanges() { const progress = { step: 0, changesConfirmed: true, employeesConfirmed }; setChangesConfirmed(true); saveProgress(progress); onOpenEmployees(); }
   function openEmployeesFromRoster() { saveProgress({ step: 1, changesConfirmed, employeesConfirmed }); onOpenEmployees(); }
-  function openTimeEntry() { saveProgress({ step: 2, changesConfirmed, employeesConfirmed }); onOpenTime(); }
+  function openTimeEntry() { saveProgress({ step: 2, changesConfirmed, employeesConfirmed }); window.location.assign("/uat/time"); }
   function openReview() { saveProgress({ step: 3, changesConfirmed, employeesConfirmed }); onOpenReview(); }
   function openPayments() { saveProgress({ step: 4, changesConfirmed, employeesConfirmed }); onOpenPayments(); }
 
