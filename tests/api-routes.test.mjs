@@ -1,18 +1,28 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { after } from "node:test";
+import { fileURLToPath } from "node:url";
+import { createServer } from "vite";
 
-const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-workerUrl.searchParams.set("api-test", `${process.pid}-${Date.now()}`);
-const { default: worker } = await import(workerUrl.href);
-const env = { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } };
-const context = { waitUntil() {}, passThroughOnException() {} };
+const root = fileURLToPath(new URL("..", import.meta.url));
+const vite = await createServer({
+  appType: "custom",
+  configFile: false,
+  root,
+  resolve: { alias: { "@": root } },
+  server: { middlewareMode: true },
+});
 
-async function get(path) {
-  return worker.fetch(new Request(`http://localhost${path}`), env, context);
+after(async () => {
+  await vite.close();
+});
+
+async function getRoute(path) {
+  const module = await vite.ssrLoadModule(path);
+  return module.GET();
 }
 
 test("health endpoint identifies the fictional foundation", async () => {
-  const response = await get("/api/v1/health");
+  const response = await getRoute("/app/api/v1/health/route.ts");
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.environment, "public-fictional-prototype");
@@ -20,7 +30,7 @@ test("health endpoint identifies the fictional foundation", async () => {
 });
 
 test("OpenAPI endpoint distinguishes implemented demos from planned contracts", async () => {
-  const response = await get("/api/v1/openapi");
+  const response = await getRoute("/app/api/v1/openapi/route.ts");
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.openapi, "3.1.0");
@@ -28,7 +38,7 @@ test("OpenAPI endpoint distinguishes implemented demos from planned contracts", 
 });
 
 test("demo endpoint returns a balanced RBC CPA005 TEST download", async () => {
-  const response = await get("/api/v1/demo/rbc-cpa005");
+  const response = await getRoute("/app/api/v1/demo/rbc-cpa005/route.ts");
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("x-comcheq-file-mode"), "TEST");
   assert.equal(response.headers.get("x-comcheq-payment-count"), "4");
@@ -39,7 +49,7 @@ test("demo endpoint returns a balanced RBC CPA005 TEST download", async () => {
 });
 
 test("Alberta calculation demo returns pinned rules and CRA-reconciled values", async () => {
-  const response = await get("/api/v1/demo/alberta-calculation");
+  const response = await getRoute("/app/api/v1/demo/alberta-calculation/route.ts");
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.environment, "public-fictional-prototype");
