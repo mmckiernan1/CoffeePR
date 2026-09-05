@@ -22,6 +22,7 @@ function snapshot(overrides = {}) {
     profile: { province: "Alberta", frequency: "Biweekly" },
     employees: [{ id: "EMP-0001", name: "Avery Chen", rate: 80000 }],
     timesheets: {},
+    openingBalances: {},
     ...overrides,
   };
 }
@@ -44,12 +45,21 @@ test("approval snapshot validation rejects impossible run dates and malformed ti
 });
 
 test("first approval appends one immutable input snapshot", () => {
-  const source = snapshot();
+  const source = snapshot({ openingBalances: { "EMP-0001": { cppCents: 230000 } } });
   const history = appendPilotApprovalSnapshot([], source);
   assert.equal(history.length, 1);
   assert.equal(history[0].fingerprint, source.fingerprint);
   source.employees[0].name = "Changed after approval";
+  source.openingBalances["EMP-0001"].cppCents = 999999;
   assert.equal(history[0].employees[0].name, "Avery Chen");
+  assert.equal(history[0].openingBalances["EMP-0001"].cppCents, 230000);
+});
+
+test("legacy approval snapshot without opening balances normalizes to an empty balance set", () => {
+  const value = snapshot();
+  delete value.openingBalances;
+  const normalized = normalizePilotApprovalSnapshot(value);
+  assert.deepEqual(normalized?.openingBalances, {});
 });
 
 test("repeated approval of the same fingerprint is idempotent", () => {
