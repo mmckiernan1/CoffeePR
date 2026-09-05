@@ -15,6 +15,19 @@ type WorkspaceState = { employees: Employee[]; timesheets: Record<string, Timesh
 type SaveMode = "loading" | "workspace" | "saving" | "device" | "error";
 
 const storageKey = "coffee-payroll:pilot-uat";
+const fallbackState: WorkspaceState = {
+  employees: [
+    { id: "EMP-0001", name: "Avery Chen", payType: "Salary", rate: 80000, status: "Active" },
+    { id: "EMP-0002", name: "Noah Williams", payType: "Hourly", rate: 30, status: "Active" },
+    { id: "EMP-0003", name: "Priya Singh", payType: "Salary", rate: 111000, status: "Active" },
+    { id: "EMP-0004", name: "Liam Martin", payType: "Hourly", rate: 29.5, status: "Active" },
+  ],
+  timesheets: {
+    "EMP-0002": { regular: 80, overtime: 2.5, vacation: 0 },
+    "EMP-0004": { regular: 72, overtime: 0, vacation: 0 },
+  },
+  ready: false,
+};
 
 export default function GuidedTimeEntryPage() {
   const router = useRouter();
@@ -23,6 +36,7 @@ export default function GuidedTimeEntryPage() {
   const [mode, setMode] = useState<SaveMode>("loading");
   const [notice, setNotice] = useState("Loading this payroll’s hours…");
   const hydrated = useRef(false);
+  const cloudSave = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hourly = useMemo(() => state?.employees.filter((employee) => employee.payType === "Hourly" && employee.status !== "Terminated") ?? [], [state]);
@@ -42,14 +56,18 @@ export default function GuidedTimeEntryPage() {
         if (cancelled) return;
         setState(payload.state);
         setBusinessName(payload.profile?.businessName ?? "My business");
+        cloudSave.current = true;
         setMode("workspace");
         setNotice("Only the people who need hours are shown here.");
       } catch {
+        let next = fallbackState;
         try {
           const raw = window.localStorage.getItem(storageKey);
-          if (raw && !cancelled) setState(JSON.parse(raw));
-        } catch { /* starter state is supplied by the workspace elsewhere */ }
+          if (raw) next = JSON.parse(raw) as WorkspaceState;
+        } catch { /* use fictional fallback */ }
         if (!cancelled) {
+          setState(next);
+          cloudSave.current = false;
           setMode("device");
           setNotice("Hours are being saved on this device for now.");
         }
@@ -64,7 +82,7 @@ export default function GuidedTimeEntryPage() {
   useEffect(() => {
     if (!hydrated.current || !state) return;
     window.localStorage.setItem(storageKey, JSON.stringify(state));
-    if (mode === "device" || mode === "error" || mode === "loading") return;
+    if (!cloudSave.current) return;
     if (timer.current) clearTimeout(timer.current);
     setMode("saving");
     timer.current = setTimeout(async () => {
@@ -77,11 +95,12 @@ export default function GuidedTimeEntryPage() {
         if (!response.ok) throw new Error("save failed");
         setMode("workspace");
       } catch {
+        cloudSave.current = false;
         setMode("error");
         setNotice("The workspace save needs attention. Your latest hours remain saved on this device.");
       }
     }, 500);
-  }, [state, mode]);
+  }, [state]);
 
   function updateTime(id: string, field: keyof Timesheet, value: string) {
     const number = Number(value);
