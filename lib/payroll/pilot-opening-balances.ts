@@ -25,7 +25,6 @@ export function normalizePilotOpeningBalances(
     const value = raw as Record<string, unknown>;
     if (!validIsoDate(value.asOfDate)) return null;
     if (![value.taxableEarningsCents, value.pensionableEarningsCents, value.insurableEarningsCents, value.incomeTaxCents, value.cppCents, value.cpp2Cents, value.eiCents].every(validCents)) return null;
-    if ((value.pensionableEarningsCents as number) > (value.taxableEarningsCents as number) * 2 || (value.insurableEarningsCents as number) > (value.taxableEarningsCents as number) * 2) return null;
     result[employeeId] = {
       asOfDate: value.asOfDate as string,
       taxableEarningsCents: value.taxableEarningsCents as number,
