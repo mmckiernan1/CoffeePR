@@ -17,6 +17,7 @@ type UatEmployee = {
 type Timesheet = { regular: number; overtime: number; vacation: number };
 type UatState = { employees: UatEmployee[]; timesheets: Record<string, Timesheet>; ready: boolean };
 type PilotProfile = { businessName: string; province: string; frequency: string; employeeCount: number };
+type PaymentState = { approved: boolean; paidEmployeeIds: string[]; references: Record<string, string>; completedAt: string | null };
 
 type CalculatedEmployee = UatEmployee & {
   gross: number;
@@ -30,6 +31,7 @@ type CalculatedEmployee = UatEmployee & {
 };
 
 const localStorageKey = "coffee-payroll:pilot-uat";
+const paymentStorageKey = "coffee-payroll:pilot-payments";
 
 const starterState: UatState = {
   employees: [
@@ -44,6 +46,8 @@ const starterState: UatState = {
   },
   ready: false,
 };
+
+const emptyPayments: PaymentState = { approved: false, paidEmployeeIds: [], references: {}, completedAt: null };
 
 const baselineYtd: Record<string, { pensionableEarningsCents: number; cppCents: number; cpp2Cents: number; eiCents: number }> = {
   "EMP-0001": { pensionableEarningsCents: 4_923_072, cppCents: 280_000, cpp2Cents: 0, eiCents: 80_000 },
@@ -96,9 +100,9 @@ function calculateEmployee(employee: UatEmployee, timesheets: Record<string, Tim
 
 export default function GuidedPayrollPreviewPage() {
   const router = useRouter();
-  const [approved, setApproved] = useState(false);
   const [state, setState] = useState<UatState>(starterState);
   const [profile, setProfile] = useState<PilotProfile>({ businessName: "My business", province: "Alberta", frequency: "Biweekly", employeeCount: 4 });
+  const [payments, setPayments] = useState<PaymentState>(emptyPayments);
   const [loadedFrom, setLoadedFrom] = useState<"loading" | "workspace" | "device">("loading");
 
   useEffect(() => {
@@ -109,26 +113,44 @@ export default function GuidedPayrollPreviewPage() {
         const response = await fetch("/api/pilot/workspace", { cache: "no-store" });
         if (response.ok) {
           const payload = await response.json();
-          if (cancelled) return;
-          setState(payload.state);
-          setProfile(payload.profile);
-          setLoadedFrom("workspace");
-          return;
+          if (!cancelled) {
+            setState(payload.state);
+            setProfile(payload.profile);
+            setLoadedFrom("workspace");
+          }
+        } else {
+          throw new Error("workspace unavailable");
         }
       } catch {
-        // Fall through to the device copy used by UAT before hosted auth/storage is configured.
+        try {
+          const raw = window.localStorage.getItem(localStorageKey);
+          if (raw) {
+            const parsed = JSON.parse(raw) as UatState;
+            if (Array.isArray(parsed.employees) && parsed.timesheets) setState(parsed);
+          }
+        } catch {
+          // Starter fictional data remains available for preview.
+        }
+        if (!cancelled) setLoadedFrom("device");
       }
 
       try {
-        const raw = window.localStorage.getItem(localStorageKey);
-        if (raw) {
-          const parsed = JSON.parse(raw) as UatState;
-          if (Array.isArray(parsed.employees) && parsed.timesheets) setState(parsed);
+        const paymentResponse = await fetch("/api/pilot/payments", { cache: "no-store" });
+        if (paymentResponse.ok) {
+          const payload = await paymentResponse.json();
+          if (!cancelled) setPayments(payload.state);
+        } else {
+          const raw = window.localStorage.getItem(paymentStorageKey);
+          if (raw && !cancelled) setPayments(JSON.parse(raw));
         }
       } catch {
-        // Starter fictional data remains available for preview.
+        try {
+          const raw = window.localStorage.getItem(paymentStorageKey);
+          if (raw && !cancelled) setPayments(JSON.parse(raw));
+        } catch {
+          // Keep clean payment state.
+        }
       }
-      if (!cancelled) setLoadedFrom("device");
     }
 
     loadPilot();
@@ -159,13 +181,27 @@ export default function GuidedPayrollPreviewPage() {
     return { name: employee.name, payType: employee.payType, detail, netPay: employee.net };
   });
 
-  const openWorkspace = (workspace: "employees" | "time" | "payments" | "reports") => {
-    if (workspace === "employees" || workspace === "time") {
-      router.push("/uat");
-      return;
-    }
+  const openWorkspace = (workspace: "employees" | "time" | "review" | "payments" | "reports") => {
+    if (workspace === "employees" || workspace === "time") return router.push("/uat");
+    if (workspace === "review") return router.push("/uat/review");
+    if (workspace === "payments") return router.push("/uat/payments");
     router.push(`/?workspace=${workspace}`);
   };
+
+  async function approvePayroll() {
+    const next = { ...payments, approved: true, completedAt: null };
+    setPayments(next);
+    window.localStorage.setItem(paymentStorageKey, JSON.stringify(next));
+    try {
+      await fetch("/api/pilot/payments", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approved: true, completedAt: null }),
+      });
+    } catch {
+      // Device copy remains available for offline UAT.
+    }
+  }
 
   const supported = profile.province === "Alberta";
 
@@ -180,7 +216,8 @@ export default function GuidedPayrollPreviewPage() {
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-lg border border-[#d6c6b8] bg-white px-3 py-2 font-semibold text-[#6b4a36]">{loadedFrom === "workspace" ? "UAT workspace synced" : loadedFrom === "device" ? "Using saved UAT on this device" : "Loading UAT…"}</span>
             <span className={`rounded-lg px-3 py-2 font-semibold ${state.ready ? "bg-[#e8efdf] text-[#3d5a2f]" : "bg-[#f3e6da] text-[#7b543d]"}`}>Time: {state.ready ? "Ready" : "Needs work"}</span>
-            {approved && <span className="rounded-lg bg-[#e8efdf] px-3 py-2 font-semibold text-[#3d5a2f]">Approved</span>}
+            {payments.approved && <span className="rounded-lg bg-[#e8efdf] px-3 py-2 font-semibold text-[#3d5a2f]">Approved</span>}
+            {payments.completedAt && <button onClick={() => router.push("/uat/complete")} className="rounded-lg bg-[#5a321f] px-3 py-2 font-semibold text-white">Completed</button>}
           </div>
         </div>
 
@@ -193,7 +230,7 @@ export default function GuidedPayrollPreviewPage() {
         {supported && (
           <GuidedPayrollRun
             runKey="2026-17-pilot"
-            approved={approved}
+            approved={payments.approved}
             timeReady={state.ready}
             employees={employees}
             gross={totals.gross}
@@ -203,8 +240,8 @@ export default function GuidedPayrollPreviewPage() {
             onHome={() => router.push("/")}
             onOpenEmployees={() => openWorkspace("employees")}
             onOpenTime={() => openWorkspace("time")}
-            onOpenReview={() => router.push("/uat/review")}
-            onApprove={() => setApproved(true)}
+            onOpenReview={() => openWorkspace("review")}
+            onApprove={approvePayroll}
             onOpenPayments={() => openWorkspace("payments")}
             onOpenReports={() => openWorkspace("reports")}
           />
