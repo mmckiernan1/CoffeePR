@@ -34,7 +34,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          node --test tests/*.test.mjs 2>&1 | tee test-output.txt
+          node --experimental-strip-types --test tests/*.test.mjs 2>&1 | tee test-output.txt
 
       - name: Upload test output
         if: always()
