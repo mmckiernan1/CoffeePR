@@ -42,3 +42,28 @@ test("rate, time and lifecycle/final-pay changes invalidate an approval fingerpr
   finalPay.employees[0] = { ...finalPay.employees[0], status: "Terminating", terminationDate: "2026-08-31", finalPay: { vacationPay: 250, overtimePay: 0, otherTaxablePay: 0, reimbursement: 40 } };
   assert.notEqual(pilotRunFingerprint(finalPay), fingerprint);
 });
+
+test("new-hire statutory review evidence is part of the approved payroll fingerprint", () => {
+  const pending = sample();
+  pending.employees[0] = {
+    ...pending.employees[0],
+    status: "New hire",
+    taxSetupComplete: false,
+  };
+  const pendingFingerprint = pilotRunFingerprint(pending);
+
+  const reviewed = sample();
+  reviewed.employees[0] = {
+    ...reviewed.employees[0],
+    status: "New hire",
+    taxSetupComplete: true,
+    taxSetupReview: {
+      federalTd1: true,
+      provincialTd1: true,
+      cppEi: true,
+      openingYtd: true,
+      reviewedAt: "2026-09-05T22:00:00.000Z",
+    },
+  };
+  assert.notEqual(pilotRunFingerprint(reviewed), pendingFingerprint);
+});
