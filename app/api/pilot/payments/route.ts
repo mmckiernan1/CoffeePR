@@ -10,6 +10,7 @@ import {
   type PilotApprovalProfile,
   type PilotPaymentState,
 } from "@/lib/payroll/pilot-approval-history";
+import { pilotMidPeriodRateChanges } from "@/lib/payroll/pilot-rate-change-guard";
 import { pilotRunFingerprint } from "@/lib/payroll/pilot-run-fingerprint";
 import { pilotEmployeeTaxSetupReady } from "@/lib/payroll/pilot-tax-setup";
 
@@ -122,6 +123,15 @@ export async function PUT(request: Request) {
           error: "Employee statutory setup must be reviewed before payroll approval.",
           code: "EMPLOYEE_TAX_SETUP_REQUIRED",
           employeeIds: pendingTaxSetup.map((employee) => employee.id),
+        }, { status: 409 });
+      }
+
+      const midPeriodChanges = pilotMidPeriodRateChanges(uatState.employees, run);
+      if (midPeriodChanges.length > 0) {
+        return NextResponse.json({
+          error: "A pay rate changes inside this pay period. Review the effective date before approving payroll.",
+          code: "MID_PERIOD_RATE_CHANGE_REVIEW_REQUIRED",
+          employees: midPeriodChanges,
         }, { status: 409 });
       }
     }
