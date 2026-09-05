@@ -20,9 +20,29 @@ function findButton(labels: string[]) {
   return buttons.find((button) => labels.some((label) => buttonText(button) === label || buttonText(button).startsWith(`${label} `)));
 }
 
+function hidePilotEftControls() {
+  const candidates = Array.from(document.querySelectorAll<HTMLElement>("button, [role='button'], label"));
+  for (const element of candidates) {
+    const text = (element.innerText || element.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+    if (text.includes("eft bank file") || text.includes("bank file upload") || text.includes("upload eft")) {
+      element.style.display = "none";
+      element.setAttribute("aria-hidden", "true");
+    }
+  }
+}
+
 export function PayrollRouteBridge() {
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => {
+    if (pathname !== "/") return;
+
+    hidePilotEftControls();
+    const observer = new MutationObserver(() => hidePilotEftControls());
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [pathname]);
 
   useEffect(() => {
     if (pathname !== "/") return;
