@@ -11,7 +11,7 @@ import {
   type PilotPaymentState,
 } from "@/lib/payroll/pilot-approval-history";
 import { pilotRunFingerprint } from "@/lib/payroll/pilot-run-fingerprint";
-import { pilotTaxSetupReviewComplete } from "@/lib/payroll/pilot-tax-setup";
+import { pilotEmployeeTaxSetupReady } from "@/lib/payroll/pilot-tax-setup";
 
 type PilotUatState = { employees: PilotApprovalEmployee[]; timesheets: Record<string, unknown> };
 
@@ -114,11 +114,11 @@ export async function PUT(request: Request) {
     const now = new Date().toISOString();
 
     if (body.approved === true) {
-      const pendingTaxSetup = uatState.employees.filter((employee) => employee.status === "New hire" && employee.taxSetupComplete !== true && !pilotTaxSetupReviewComplete(employee.taxSetupReview));
+      const pendingTaxSetup = uatState.employees.filter((employee) => !pilotEmployeeTaxSetupReady(employee));
       if (pendingTaxSetup.length > 0) {
         return NextResponse.json({
-          error: "New-hire tax setup must be reviewed before payroll approval.",
-          code: "NEW_HIRE_TAX_SETUP_REQUIRED",
+          error: "Employee statutory setup must be reviewed before payroll approval.",
+          code: "EMPLOYEE_TAX_SETUP_REQUIRED",
           employeeIds: pendingTaxSetup.map((employee) => employee.id),
         }, { status: 409 });
       }
