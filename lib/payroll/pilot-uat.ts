@@ -9,6 +9,13 @@ export type PilotFinalPay = {
   reimbursementCents: number;
 };
 
+type LegacyPilotFinalPay = {
+  vacationPay?: number;
+  overtimePay?: number;
+  otherTaxablePay?: number;
+  reimbursement?: number;
+};
+
 export type PilotUatEmployee = {
   id: string;
   name: string;
@@ -112,12 +119,32 @@ export function pilotTaxSetupReady(employee: PilotUatEmployee): boolean {
   return employee.status !== "New hire" || employee.taxSetupComplete === true;
 }
 
-export function pilotFinalPayDollars(finalPay: PilotFinalPay | undefined) {
+function pilotFinalPayCents(finalPay: PilotFinalPay | undefined): PilotFinalPay {
+  if (!finalPay) return { vacationPayCents: 0, overtimePayCents: 0, otherTaxablePayCents: 0, reimbursementCents: 0 };
+  const candidate = finalPay as PilotFinalPay & LegacyPilotFinalPay;
+  if ([candidate.vacationPayCents, candidate.overtimePayCents, candidate.otherTaxablePayCents, candidate.reimbursementCents].every(Number.isSafeInteger)) {
+    return {
+      vacationPayCents: candidate.vacationPayCents,
+      overtimePayCents: candidate.overtimePayCents,
+      otherTaxablePayCents: candidate.otherTaxablePayCents,
+      reimbursementCents: candidate.reimbursementCents,
+    };
+  }
   return {
-    vacationPay: (finalPay?.vacationPayCents ?? 0) / 100,
-    overtimePay: (finalPay?.overtimePayCents ?? 0) / 100,
-    otherTaxablePay: (finalPay?.otherTaxablePayCents ?? 0) / 100,
-    reimbursement: (finalPay?.reimbursementCents ?? 0) / 100,
+    vacationPayCents: dollarsToCents(String(candidate.vacationPay ?? 0)),
+    overtimePayCents: dollarsToCents(String(candidate.overtimePay ?? 0)),
+    otherTaxablePayCents: dollarsToCents(String(candidate.otherTaxablePay ?? 0)),
+    reimbursementCents: dollarsToCents(String(candidate.reimbursement ?? 0)),
+  };
+}
+
+export function pilotFinalPayDollars(finalPay: PilotFinalPay | undefined) {
+  const cents = pilotFinalPayCents(finalPay);
+  return {
+    vacationPay: cents.vacationPayCents / 100,
+    overtimePay: cents.overtimePayCents / 100,
+    otherTaxablePay: cents.otherTaxablePayCents / 100,
+    reimbursement: cents.reimbursementCents / 100,
   };
 }
 
@@ -137,12 +164,8 @@ export function pilotCalculateEmployee(
   frequency: string,
 ): PilotCalculatedEmployee {
   const ordinaryGross = pilotRegularGross(employee, timesheets, frequency);
-  const final = buildFinalPay({
-    vacationPayCents: employee.finalPay?.vacationPayCents ?? 0,
-    overtimePayCents: employee.finalPay?.overtimePayCents ?? 0,
-    otherTaxablePayCents: employee.finalPay?.otherTaxablePayCents ?? 0,
-    reimbursementCents: employee.finalPay?.reimbursementCents ?? 0,
-  });
+  const finalPay = pilotFinalPayCents(employee.finalPay);
+  const final = buildFinalPay(finalPay);
   const gross = ordinaryGross + (employee.extraTaxablePay ?? 0) + final.taxableGrossCents / 100;
   const reimbursement = final.reimbursementCents / 100;
   const ppy = pilotPeriodsPerYear(frequency);
