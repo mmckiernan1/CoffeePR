@@ -15,7 +15,6 @@ export default function GuidedPayrollPreviewPage() {
   const router = useRouter();
   const [approved, setApproved] = useState(false);
   const [timeReady, setTimeReady] = useState(true);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const totals = useMemo(() => sourceEmployees.reduce((result, employee) => {
     const net = employee.gross - employee.tax - employee.cpp - employee.ei - employee.other;
@@ -36,25 +35,23 @@ export default function GuidedPayrollPreviewPage() {
     netPay: employee.gross - employee.tax - employee.cpp - employee.ei - employee.other,
   }));
 
-  function show(message: string) {
-    setNotice(message);
-    window.setTimeout(() => setNotice(null), 2200);
-  }
+  const openWorkspace = (workspace: "employees" | "time" | "review" | "payments" | "reports") => {
+    router.push(`/?workspace=${workspace}`);
+  };
 
   return (
     <main className="min-h-screen bg-[#f7f9fc] text-[#172033]">
       <div className="mx-auto max-w-[1240px] px-4 py-5 sm:px-7 sm:py-8">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#dce4f0] bg-white px-4 py-3 text-xs text-[#647087]">
-          <div><strong className="text-[#172033]">Guided payroll preview</strong><span className="ml-2">Run 17 · August 16–31 · Pay date September 4, 2026</span></div>
+          <div><strong className="text-[#172033]">Run payroll</strong><span className="ml-2">Run 17 · August 16–31 · Pay date September 4, 2026</span></div>
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" onClick={() => setTimeReady((value) => !value)} className="rounded-lg border border-[#c9d5e6] bg-white px-3 py-2 font-semibold text-[#17428e]">Time: {timeReady ? "Ready" : "Needs work"}</button>
-            <button type="button" onClick={() => setApproved(false)} className="rounded-lg border border-[#c9d5e6] bg-white px-3 py-2 font-semibold text-[#17428e]">Reset approval</button>
+            {approved && <span className="rounded-lg bg-[#eef9e8] px-3 py-2 font-semibold text-[#34701d]">Approved</span>}
           </div>
         </div>
 
-        {notice && <div className="mb-4 rounded-xl border border-[#b9cef2] bg-[#edf3ff] px-4 py-3 text-sm font-medium text-[#17428e]">{notice}</div>}
-
         <GuidedPayrollRun
+          runKey="2026-17"
           approved={approved}
           timeReady={timeReady}
           employees={employees}
@@ -63,12 +60,12 @@ export default function GuidedPayrollPreviewPage() {
           remittance={remittance}
           fee={18}
           onHome={() => router.push("/")}
-          onOpenEmployees={() => show("Employee workspace handoff")}
-          onOpenTime={() => show("Time-entry workspace handoff")}
-          onOpenReview={() => show("Detailed payroll review handoff")}
+          onOpenEmployees={() => openWorkspace("employees")}
+          onOpenTime={() => openWorkspace("time")}
+          onOpenReview={() => openWorkspace("review")}
           onApprove={() => setApproved(true)}
-          onOpenPayments={() => show("Employee-payment workspace handoff")}
-          onOpenReports={() => show("Reports & statements handoff")}
+          onOpenPayments={() => openWorkspace("payments")}
+          onOpenReports={() => openWorkspace("reports")}
         />
       </div>
     </main>
