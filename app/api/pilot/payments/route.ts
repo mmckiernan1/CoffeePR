@@ -3,12 +3,33 @@ import { NextResponse } from "next/server";
 import { getCoffeePayrollUser } from "@/lib/auth/current-user";
 import { pilotRunFingerprint } from "@/lib/payroll/pilot-run-fingerprint";
 
+type PilotProfile = { province: string; frequency: string };
+type PilotEmployee = Record<string, unknown> & { id: string; status?: string; taxSetupComplete?: boolean };
+type PilotUatState = { employees: PilotEmployee[]; timesheets: Record<string, unknown> };
+
+type ApprovalSnapshot = {
+  snapshotId: string;
+  approvedAt: string;
+  approvedBy: string;
+  fingerprint: string;
+  run: {
+    runKey: string;
+    periodStart: string;
+    periodEnd: string;
+    payDate: string;
+  };
+  profile: PilotProfile;
+  employees: PilotEmployee[];
+  timesheets: Record<string, unknown>;
+};
+
 type PaymentState = {
   approved: boolean;
   approvedFingerprint: string | null;
   paidEmployeeIds: string[];
   references: Record<string, string>;
   completedAt: string | null;
+  approvalHistory: ApprovalSnapshot[];
 };
 
 type UpdateBody = {
@@ -20,16 +41,13 @@ type UpdateBody = {
   reset?: boolean;
 };
 
-type PilotProfile = { province: string; frequency: string };
-type PilotEmployee = Record<string, unknown> & { id: string; status?: string; taxSetupComplete?: boolean };
-type PilotUatState = { employees: PilotEmployee[]; timesheets: Record<string, unknown> };
-
 const emptyState: PaymentState = {
   approved: false,
   approvedFingerprint: null,
   paidEmployeeIds: [],
   references: {},
   completedAt: null,
+  approvalHistory: [],
 };
 
 const run = {
@@ -57,6 +75,47 @@ function uatRowId(userId: string) {
   return `UAT-${userId}`;
 }
 
+function validIsoTimestamp(value: unknown) {
+  return typeof value === "string" && value.length <= 40 && !Number.isNaN(Date.parse(value));
+}
+
+function validDateOnly(value: unknown) {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function normalizeApprovalSnapshot(input: unknown): ApprovalSnapshot | null {
+  if (!input || typeof input !== "object") return null;
+  const value = input as Partial<ApprovalSnapshot>;
+  if (
+    typeof value.snapshotId !== "string" || value.snapshotId.length > 160 ||
+    !validIsoTimestamp(value.approvedAt) ||
+    typeof value.approvedBy !== "string" || value.approvedBy.length > 320 ||
+    typeof value.fingerprint !== "string" || value.fingerprint.length > 120 ||
+    !value.run || typeof value.run !== "object" ||
+    typeof value.run.runKey !== "string" || value.run.runKey.length > 120 ||
+    !validDateOnly(value.run.periodStart) || !validDateOnly(value.run.periodEnd) || !validDateOnly(value.run.payDate) ||
+    !value.profile || typeof value.profile.province !== "string" || value.profile.province.length > 80 || typeof value.profile.frequency !== "string" || value.profile.frequency.length > 40 ||
+    !Array.isArray(value.employees) || value.employees.length > 250 ||
+    !value.timesheets || typeof value.timesheets !== "object"
+  ) return null;
+  if (!value.employees.every((employee) => employee && typeof employee === "object" && typeof employee.id === "string" && employee.id.length <= 80)) return null;
+  return {
+    snapshotId: value.snapshotId,
+    approvedAt: value.approvedAt as string,
+    approvedBy: value.approvedBy,
+    fingerprint: value.fingerprint,
+    run: {
+      runKey: value.run.runKey,
+      periodStart: value.run.periodStart,
+      periodEnd: value.run.periodEnd,
+      payDate: value.run.payDate,
+    },
+    profile: { province: value.profile.province, frequency: value.profile.frequency },
+    employees: value.employees,
+    timesheets: value.timesheets,
+  };
+}
+
 function normalizeState(input: unknown): PaymentState | null {
   if (!input || typeof input !== "object") return null;
   const state = input as Partial<PaymentState>;
@@ -65,12 +124,23 @@ function normalizeState(input: unknown): PaymentState | null {
   if (state.completedAt !== null && state.completedAt !== undefined && typeof state.completedAt !== "string") return null;
   if (state.approvedFingerprint !== null && state.approvedFingerprint !== undefined && (typeof state.approvedFingerprint !== "string" || state.approvedFingerprint.length > 120)) return null;
   if (!Object.entries(state.references).every(([id, value]) => id.length <= 80 && typeof value === "string" && value.length <= 120)) return null;
+
+  const rawHistory = state.approvalHistory ?? [];
+  if (!Array.isArray(rawHistory) || rawHistory.length > 25) return null;
+  const approvalHistory: ApprovalSnapshot[] = [];
+  for (const item of rawHistory) {
+    const snapshot = normalizeApprovalSnapshot(item);
+    if (!snapshot) return null;
+    approvalHistory.push(snapshot);
+  }
+
   return {
     approved: state.approved,
     approvedFingerprint: state.approvedFingerprint ?? null,
     paidEmployeeIds: state.paidEmployeeIds,
     references: state.references,
     completedAt: state.completedAt ?? null,
+    approvalHistory,
   };
 }
 
@@ -96,7 +166,7 @@ async function currentRunInputs(user: { id: string }) {
   const state = JSON.parse(uat.stateJson) as PilotUatState;
   if (!Array.isArray(state.employees) || !state.timesheets) throw new Error("Pilot payroll inputs are unavailable.");
   const fingerprint = pilotRunFingerprint({ ...run, province: profile.province, frequency: profile.frequency, employees: state.employees, timesheets: state.timesheets });
-  return { state, fingerprint };
+  return { state, profile, fingerprint };
 }
 
 async function currentFingerprint(user: { id: string }) {
@@ -144,7 +214,7 @@ export async function PUT(request: Request) {
     const body = (await request.json().catch(() => ({}))) as UpdateBody;
     const db = database();
     const { state: existing } = await storedState(user);
-    const { state: uatState, fingerprint } = await currentRunInputs(user);
+    const { state: uatState, profile, fingerprint } = await currentRunInputs(user);
     const existingApprovalValid = existing.approved && existing.approvedFingerprint === fingerprint;
     const now = new Date().toISOString();
 
@@ -163,12 +233,25 @@ export async function PUT(request: Request) {
     if (body.reset) {
       next = emptyState;
     } else if (body.approved === true) {
+      const approvalHistory = existingApprovalValid
+        ? existing.approvalHistory
+        : [...existing.approvalHistory, {
+          snapshotId: `${run.runKey}:${fingerprint}:${now}`,
+          approvedAt: now,
+          approvedBy: user.email,
+          fingerprint,
+          run: { ...run },
+          profile: { province: profile.province, frequency: profile.frequency },
+          employees: structuredClone(uatState.employees),
+          timesheets: structuredClone(uatState.timesheets),
+        }].slice(-25);
       next = {
         approved: true,
         approvedFingerprint: fingerprint,
         paidEmployeeIds: existingApprovalValid ? (body.paidEmployeeIds ?? existing.paidEmployeeIds) : [],
         references: existingApprovalValid ? (body.references ?? existing.references) : {},
         completedAt: null,
+        approvalHistory,
       };
     } else {
       if (!existingApprovalValid && (body.paidEmployeeIds || body.references || body.completedAt)) {
@@ -180,6 +263,7 @@ export async function PUT(request: Request) {
         paidEmployeeIds: body.paidEmployeeIds ?? existing.paidEmployeeIds,
         references: body.references ?? existing.references,
         completedAt: body.completedAt === undefined ? existing.completedAt : body.completedAt,
+        approvalHistory: existing.approvalHistory,
       });
       if (!normalized) return NextResponse.json({ error: "Payment UAT state is invalid." }, { status: 400 });
       next = normalized;
