@@ -17,6 +17,8 @@ type UatEmployee = {
   hireDate?: string;
   rateEffectiveDate?: string;
   terminationDate?: string;
+  extraTaxablePay?: number;
+  changeNote?: string;
   finalPay?: FinalPay;
 };
 
@@ -97,7 +99,7 @@ function calculateEmployee(employee: UatEmployee, timesheets: Record<string, Tim
     otherTaxablePayCents: dollarsToCents(String(employee.finalPay?.otherTaxablePay ?? 0)),
     reimbursementCents: dollarsToCents(String(employee.finalPay?.reimbursement ?? 0)),
   });
-  const gross = ordinaryGross + final.taxableGrossCents / 100;
+  const gross = ordinaryGross + (employee.extraTaxablePay ?? 0) + final.taxableGrossCents / 100;
   const reimbursement = final.reimbursementCents / 100;
   const ytd = baselineYtd[employee.id] ?? { pensionableEarningsCents: 0, cppCents: 0, cpp2Cents: 0, eiCents: 0 };
   const ppy = periodsPerYear(frequency);
@@ -131,7 +133,9 @@ function changeSummary(employee: UatEmployee) {
   const changes: string[] = [];
   if (employee.status === "New hire") changes.push(`New hire${employee.hireDate ? ` · hired ${employee.hireDate}` : ""}`);
   if (employee.rateEffectiveDate) changes.push(`Pay changed ${employee.rateEffectiveDate}`);
+  if ((employee.extraTaxablePay ?? 0) > 0) changes.push(`Extra pay $${employee.extraTaxablePay?.toFixed(2)}`);
   if (employee.status === "Terminating" || employee.status === "Terminated") changes.push(`Final pay · last day ${employee.terminationDate ?? "date needed"}`);
+  if (employee.changeNote) changes.push(`Review note: ${employee.changeNote}`);
   return changes.join(" · ");
 }
 
