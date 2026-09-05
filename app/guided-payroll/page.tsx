@@ -159,7 +159,7 @@ export default function GuidedPayrollPreviewPage() {
     return { name: employee.name, payType: employee.payType, detail, netPay: employee.net };
   });
 
-  const openWorkspace = (workspace: "employees" | "time" | "review" | "payments" | "reports") => {
+  const openWorkspace = (workspace: "employees" | "time" | "payments" | "reports") => {
     if (workspace === "employees" || workspace === "time") {
       router.push("/uat");
       return;
@@ -203,7 +203,7 @@ export default function GuidedPayrollPreviewPage() {
             onHome={() => router.push("/")}
             onOpenEmployees={() => openWorkspace("employees")}
             onOpenTime={() => openWorkspace("time")}
-            onOpenReview={() => openWorkspace("review")}
+            onOpenReview={() => router.push("/uat/review")}
             onApprove={() => setApproved(true)}
             onOpenPayments={() => openWorkspace("payments")}
             onOpenReports={() => openWorkspace("reports")}
