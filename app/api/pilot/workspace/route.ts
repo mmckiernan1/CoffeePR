@@ -26,7 +26,7 @@ type UatEmployee = {
   hireDate?: string;
   rateEffectiveDate?: string;
   terminationDate?: string;
-  extraTaxablePay?: number;
+  extraTaxablePayCents?: number;
   changeNote?: string;
   taxSetupComplete?: boolean;
   finalPay?: FinalPay;
@@ -149,6 +149,16 @@ function normalizeFinalPay(input: unknown): FinalPay | undefined | null {
   return null;
 }
 
+function normalizeExtraPay(employee: Record<string, unknown>): number | undefined | null {
+  if (employee.extraTaxablePayCents !== undefined) {
+    return validCents(employee.extraTaxablePayCents) ? employee.extraTaxablePayCents as number : null;
+  }
+  if (employee.extraTaxablePay !== undefined) {
+    return validMoney(employee.extraTaxablePay) ? dollarsToCents(String(employee.extraTaxablePay)) : null;
+  }
+  return undefined;
+}
+
 function normalizeState(input: unknown): PilotUatState | null {
   if (!input || typeof input !== "object") return null;
   const state = input as { employees?: unknown; timesheets?: unknown; ready?: unknown };
@@ -170,10 +180,11 @@ function normalizeState(input: unknown): PilotUatState | null {
     if (employee.terminationDate !== undefined && !validIsoDate(employee.terminationDate)) return null;
     if ((employee.status === "Terminating" || employee.status === "Terminated") && !employee.terminationDate) return null;
     if (typeof employee.hireDate === "string" && typeof employee.terminationDate === "string" && employee.terminationDate < employee.hireDate) return null;
-    if (employee.extraTaxablePay !== undefined && !validMoney(employee.extraTaxablePay)) return null;
     if (employee.changeNote !== undefined && (typeof employee.changeNote !== "string" || employee.changeNote.length > 500)) return null;
     if (employee.taxSetupComplete !== undefined && typeof employee.taxSetupComplete !== "boolean") return null;
 
+    const extraTaxablePayCents = normalizeExtraPay(employee);
+    if (extraTaxablePayCents === null) return null;
     const finalPay = normalizeFinalPay(employee.finalPay);
     if (finalPay === null) return null;
 
@@ -186,7 +197,7 @@ function normalizeState(input: unknown): PilotUatState | null {
       ...(typeof employee.hireDate === "string" ? { hireDate: employee.hireDate } : {}),
       ...(typeof employee.rateEffectiveDate === "string" ? { rateEffectiveDate: employee.rateEffectiveDate } : {}),
       ...(typeof employee.terminationDate === "string" ? { terminationDate: employee.terminationDate } : {}),
-      ...(typeof employee.extraTaxablePay === "number" ? { extraTaxablePay: employee.extraTaxablePay } : {}),
+      ...(extraTaxablePayCents !== undefined ? { extraTaxablePayCents } : {}),
       ...(typeof employee.changeNote === "string" ? { changeNote: employee.changeNote } : {}),
       ...(typeof employee.taxSetupComplete === "boolean" ? { taxSetupComplete: employee.taxSetupComplete } : {}),
       ...(finalPay ? { finalPay } : {}),
