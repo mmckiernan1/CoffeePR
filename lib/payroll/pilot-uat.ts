@@ -3,10 +3,10 @@ import { dollarsToCents } from "@/lib/payroll/money";
 import { calculateAlbertaPayroll } from "@/lib/payroll/statutory/calculate";
 
 export type PilotFinalPay = {
-  vacationPay: number;
-  overtimePay: number;
-  otherTaxablePay: number;
-  reimbursement: number;
+  vacationPayCents: number;
+  overtimePayCents: number;
+  otherTaxablePayCents: number;
+  reimbursementCents: number;
 };
 
 export type PilotUatEmployee = {
@@ -112,6 +112,15 @@ export function pilotTaxSetupReady(employee: PilotUatEmployee): boolean {
   return employee.status !== "New hire" || employee.taxSetupComplete === true;
 }
 
+export function pilotFinalPayDollars(finalPay: PilotFinalPay | undefined) {
+  return {
+    vacationPay: (finalPay?.vacationPayCents ?? 0) / 100,
+    overtimePay: (finalPay?.overtimePayCents ?? 0) / 100,
+    otherTaxablePay: (finalPay?.otherTaxablePayCents ?? 0) / 100,
+    reimbursement: (finalPay?.reimbursementCents ?? 0) / 100,
+  };
+}
+
 export function pilotRegularGross(
   employee: PilotUatEmployee,
   timesheets: Record<string, PilotTimesheet>,
@@ -129,10 +138,10 @@ export function pilotCalculateEmployee(
 ): PilotCalculatedEmployee {
   const ordinaryGross = pilotRegularGross(employee, timesheets, frequency);
   const final = buildFinalPay({
-    vacationPayCents: dollarsToCents(String(employee.finalPay?.vacationPay ?? 0)),
-    overtimePayCents: dollarsToCents(String(employee.finalPay?.overtimePay ?? 0)),
-    otherTaxablePayCents: dollarsToCents(String(employee.finalPay?.otherTaxablePay ?? 0)),
-    reimbursementCents: dollarsToCents(String(employee.finalPay?.reimbursement ?? 0)),
+    vacationPayCents: employee.finalPay?.vacationPayCents ?? 0,
+    overtimePayCents: employee.finalPay?.overtimePayCents ?? 0,
+    otherTaxablePayCents: employee.finalPay?.otherTaxablePayCents ?? 0,
+    reimbursementCents: employee.finalPay?.reimbursementCents ?? 0,
   });
   const gross = ordinaryGross + (employee.extraTaxablePay ?? 0) + final.taxableGrossCents / 100;
   const reimbursement = final.reimbursementCents / 100;
