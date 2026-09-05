@@ -2,13 +2,15 @@ import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 import { getCoffeePayrollUser } from "@/lib/auth/current-user";
 import { dollarsToCents } from "@/lib/payroll/money";
-
-type FinalPay = {
-  vacationPayCents: number;
-  overtimePayCents: number;
-  otherTaxablePayCents: number;
-  reimbursementCents: number;
-};
+import {
+  PILOT_STARTER_STATE,
+  type PilotFinalPay,
+  type PilotProfile,
+  type PilotRateHistoryEntry,
+  type PilotTimesheet,
+  type PilotUatEmployee,
+  type PilotUatState,
+} from "@/lib/payroll/pilot-uat";
 
 type LegacyFinalPay = {
   vacationPay: number;
@@ -17,42 +19,7 @@ type LegacyFinalPay = {
   reimbursement: number;
 };
 
-type RateHistoryEntry = { effectiveDate: string; rate: number };
-
-type UatEmployee = {
-  id: string;
-  name: string;
-  payType: "Salary" | "Hourly";
-  rate: number;
-  rateHistory?: RateHistoryEntry[];
-  status: "Active" | "New hire" | "Terminating" | "Terminated";
-  hireDate?: string;
-  rateEffectiveDate?: string;
-  terminationDate?: string;
-  extraTaxablePayCents?: number;
-  changeNote?: string;
-  taxSetupComplete?: boolean;
-  finalPay?: FinalPay;
-};
-
-type Timesheet = { regular: number; overtime: number; vacation: number };
-type PilotUatState = { employees: UatEmployee[]; timesheets: Record<string, Timesheet>; ready: boolean };
-type PilotProfile = { businessName: string; province: string; frequency: string; employeeCount: number };
 type UpdateBody = { profile?: Partial<PilotProfile>; state?: unknown; resetState?: boolean };
-
-const starterState: PilotUatState = {
-  employees: [
-    { id: "EMP-0001", name: "Avery Chen", payType: "Salary", rate: 80000, rateHistory: [{ effectiveDate: "2024-01-08", rate: 80000 }], status: "Active", hireDate: "2024-01-08", taxSetupComplete: true },
-    { id: "EMP-0002", name: "Noah Williams", payType: "Hourly", rate: 30, rateHistory: [{ effectiveDate: "2024-05-13", rate: 30 }], status: "Active", hireDate: "2024-05-13", taxSetupComplete: true },
-    { id: "EMP-0003", name: "Priya Singh", payType: "Salary", rate: 111000, rateHistory: [{ effectiveDate: "2023-09-05", rate: 111000 }], status: "Active", hireDate: "2023-09-05", taxSetupComplete: true },
-    { id: "EMP-0004", name: "Liam Martin", payType: "Hourly", rate: 29.5, rateHistory: [{ effectiveDate: "2025-02-03", rate: 29.5 }], status: "Active", hireDate: "2025-02-03", taxSetupComplete: true },
-  ],
-  timesheets: {
-    "EMP-0002": { regular: 80, overtime: 2.5, vacation: 0 },
-    "EMP-0004": { regular: 72, overtime: 0, vacation: 0 },
-  },
-  ready: false,
-};
 
 function database() {
   const db = (env as unknown as { DB?: D1Database }).DB;
@@ -85,10 +52,10 @@ function validMoney(value: unknown) { return typeof value === "number" && Number
 function validRate(value: unknown) { return typeof value === "number" && Number.isFinite(value) && value > 0 && value < 10_000_000; }
 function validCents(value: unknown) { return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value < 1_000_000_000; }
 
-function normalizeFinalPay(input: unknown): FinalPay | undefined | null {
+function normalizeFinalPay(input: unknown): PilotFinalPay | undefined | null {
   if (input === undefined) return undefined;
   if (!input || typeof input !== "object") return null;
-  const value = input as Partial<FinalPay & LegacyFinalPay>;
+  const value = input as Partial<PilotFinalPay & LegacyFinalPay>;
   if (validCents(value.vacationPayCents) && validCents(value.overtimePayCents) && validCents(value.otherTaxablePayCents) && validCents(value.reimbursementCents)) {
     return {
       vacationPayCents: value.vacationPayCents as number,
@@ -114,7 +81,7 @@ function normalizeExtraPay(employee: Record<string, unknown>): number | undefine
   return undefined;
 }
 
-function normalizeRateHistory(employee: Record<string, unknown>): RateHistoryEntry[] | undefined | null {
+function normalizeRateHistory(employee: Record<string, unknown>): PilotRateHistoryEntry[] | undefined | null {
   if (employee.rateHistory === undefined) {
     if (typeof employee.rateEffectiveDate === "string" && validIsoDate(employee.rateEffectiveDate) && validRate(employee.rate)) {
       return [{ effectiveDate: employee.rateEffectiveDate, rate: employee.rate as number }];
@@ -141,11 +108,11 @@ function normalizeState(input: unknown): PilotUatState | null {
   if (!Array.isArray(state.employees) || !state.timesheets || typeof state.timesheets !== "object" || typeof state.ready !== "boolean") return null;
   if (state.employees.length > 250) return null;
 
-  const employees: UatEmployee[] = [];
+  const employees: PilotUatEmployee[] = [];
   for (const rawEmployee of state.employees) {
     if (!rawEmployee || typeof rawEmployee !== "object") return null;
     const employee = rawEmployee as Record<string, unknown>;
-    if (!(typeof employee.id === "string" && employee.id.length <= 80 && typeof employee.name === "string" && employee.name.length > 0 && employee.name.length <= 160 && (employee.payType === "Salary" || employee.payType === "Hourly") && validRate(employee.rate) && (["Active", "New hire", "Terminating", "Terminated"] as const).includes(employee.status as UatEmployee["status"]))) return null;
+    if (!(typeof employee.id === "string" && employee.id.length <= 80 && typeof employee.name === "string" && employee.name.length > 0 && employee.name.length <= 160 && (employee.payType === "Salary" || employee.payType === "Hourly") && validRate(employee.rate) && (["Active", "New hire", "Terminating", "Terminated"] as const).includes(employee.status as PilotUatEmployee["status"]))) return null;
     if (employee.hireDate !== undefined && !validIsoDate(employee.hireDate)) return null;
     if (employee.rateEffectiveDate !== undefined && !validIsoDate(employee.rateEffectiveDate)) return null;
     if (employee.terminationDate !== undefined && !validIsoDate(employee.terminationDate)) return null;
@@ -167,7 +134,7 @@ function normalizeState(input: unknown): PilotUatState | null {
       payType: employee.payType,
       rate: employee.rate as number,
       ...(rateHistory?.length ? { rateHistory } : {}),
-      status: employee.status as UatEmployee["status"],
+      status: employee.status as PilotUatEmployee["status"],
       ...(typeof employee.hireDate === "string" ? { hireDate: employee.hireDate } : {}),
       ...(typeof employee.rateEffectiveDate === "string" ? { rateEffectiveDate: employee.rateEffectiveDate } : {}),
       ...(typeof employee.terminationDate === "string" ? { terminationDate: employee.terminationDate } : {}),
@@ -185,7 +152,7 @@ function normalizeState(input: unknown): PilotUatState | null {
     if (![time.regular, time.overtime, time.vacation].every((value) => typeof value === "number" && Number.isFinite(value) && value >= 0 && value < 10_000)) return null;
   }
 
-  return { employees, timesheets: state.timesheets as Record<string, Timesheet>, ready: state.ready };
+  return { employees, timesheets: state.timesheets as Record<string, PilotTimesheet>, ready: state.ready };
 }
 
 async function ensureWorkspace(user: { id: string; email: string }) {
@@ -196,7 +163,7 @@ async function ensureWorkspace(user: { id: string; email: string }) {
     db.prepare("INSERT OR IGNORE INTO employer_workspaces (id, legal_name, province, created_at, created_by) VALUES (?, ?, ?, ?, ?)").bind(wsId, "My business", "Alberta", now, user.email),
     db.prepare("INSERT OR IGNORE INTO employer_memberships (id, workspace_id, email, display_name, role, status, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(membershipId(user.id), wsId, user.email, user.email, "Administrator", "Active", now, user.email),
     db.prepare("INSERT OR IGNORE INTO pilot_workspace_profiles (id, workspace_id, auth_user_id, owner_email, business_name, province, pay_frequency, expected_employee_count, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(profileId(user.id), wsId, user.id, user.email, "My business", "Alberta", "Biweekly", 4, now),
-    db.prepare("INSERT OR IGNORE INTO pilot_uat_states (id, workspace_id, state_json, updated_at, updated_by) VALUES (?, ?, ?, ?, ?)").bind(stateId(user.id), wsId, JSON.stringify(starterState), now, user.email),
+    db.prepare("INSERT OR IGNORE INTO pilot_uat_states (id, workspace_id, state_json, updated_at, updated_by) VALUES (?, ?, ?, ?, ?)").bind(stateId(user.id), wsId, JSON.stringify(PILOT_STARTER_STATE), now, user.email),
   ]);
   return wsId;
 }
@@ -206,13 +173,13 @@ async function currentSnapshot(user: { id: string; email: string }) {
   const wsId = await ensureWorkspace(user);
   const profile = await db.prepare("SELECT business_name AS businessName, province, pay_frequency AS frequency, expected_employee_count AS employeeCount FROM pilot_workspace_profiles WHERE workspace_id = ? LIMIT 1").bind(wsId).first<PilotProfile>();
   const stateRow = await db.prepare("SELECT state_json AS stateJson, updated_at AS updatedAt FROM pilot_uat_states WHERE workspace_id = ? LIMIT 1").bind(wsId).first<{ stateJson: string; updatedAt: string }>();
-  let state = starterState;
+  let state = PILOT_STARTER_STATE;
   if (stateRow?.stateJson) {
     try {
       const parsed = normalizeState(JSON.parse(stateRow.stateJson));
       if (parsed) state = parsed;
     } catch {
-      state = starterState;
+      state = PILOT_STARTER_STATE;
     }
   }
   return { workspaceId: wsId, profile: profile ?? safeProfile(undefined), state, updatedAt: stateRow?.updatedAt ?? null };
@@ -247,7 +214,7 @@ export async function PUT(request: Request) {
     }
 
     if (body.resetState) {
-      await db.prepare("UPDATE pilot_uat_states SET state_json = ?, updated_at = ?, updated_by = ? WHERE workspace_id = ?").bind(JSON.stringify(starterState), now, user.email, wsId).run();
+      await db.prepare("UPDATE pilot_uat_states SET state_json = ?, updated_at = ?, updated_by = ? WHERE workspace_id = ?").bind(JSON.stringify(PILOT_STARTER_STATE), now, user.email, wsId).run();
     } else if (body.state !== undefined) {
       const normalized = normalizeState(body.state);
       if (!normalized) return NextResponse.json({ error: "UAT state is invalid." }, { status: 400 });
