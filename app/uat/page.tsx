@@ -116,7 +116,6 @@ export default function PilotUatPage() {
 
     if (saveMode === "local" || saveMode === "error") return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    setSaveMode("saving");
     saveTimer.current = setTimeout(async () => {
       try {
         const response = await fetch("/api/pilot/workspace", {
@@ -135,7 +134,7 @@ export default function PilotUatPage() {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [employees, timesheets, ready, hydrated]);
+  }, [employees, timesheets, ready, hydrated, saveMode]);
 
   function addHire(event: FormEvent) {
     event.preventDefault();
