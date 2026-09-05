@@ -3,145 +3,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GuidedPayrollRun, type GuidedPayrollEmployee } from "@/components/comcheq";
-import { calculateAlbertaPayroll } from "@/lib/payroll/statutory/calculate";
-import { dollarsToCents } from "@/lib/payroll/money";
-import { buildFinalPay, isEmployeeInPayPeriod } from "@/lib/payroll/employee-lifecycle";
+import {
+  PILOT_STARTER_STATE,
+  PILOT_UAT_STORAGE_KEY,
+  pilotCalculateEmployee,
+  pilotChangeSummary,
+  pilotEmployeeIsInRun,
+  type PilotProfile,
+  type PilotUatState,
+} from "@/lib/payroll/pilot-uat";
 
-type FinalPay = { vacationPay: number; overtimePay: number; otherTaxablePay: number; reimbursement: number };
-type UatEmployee = {
-  id: string;
-  name: string;
-  payType: "Salary" | "Hourly";
-  rate: number;
-  status: "Active" | "New hire" | "Terminating" | "Terminated";
-  hireDate?: string;
-  rateEffectiveDate?: string;
-  terminationDate?: string;
-  extraTaxablePay?: number;
-  changeNote?: string;
-  finalPay?: FinalPay;
-};
-
-type Timesheet = { regular: number; overtime: number; vacation: number };
-type UatState = { employees: UatEmployee[]; timesheets: Record<string, Timesheet>; ready: boolean };
-type PilotProfile = { businessName: string; province: string; frequency: string; employeeCount: number };
 type PaymentState = { approved: boolean; paidEmployeeIds: string[]; references: Record<string, string>; completedAt: string | null };
 
-type CalculatedEmployee = UatEmployee & {
-  gross: number;
-  reimbursement: number;
-  tax: number;
-  cpp: number;
-  cpp2: number;
-  ei: number;
-  net: number;
-  employerCpp: number;
-  employerEi: number;
-};
-
-const localStorageKey = "coffee-payroll:pilot-uat";
 const paymentStorageKey = "coffee-payroll:pilot-payments";
-const runPeriod = { periodStart: "2026-08-16", periodEnd: "2026-08-31", payDate: "2026-09-04" } as const;
-
-const starterState: UatState = {
-  employees: [
-    { id: "EMP-0001", name: "Avery Chen", payType: "Salary", rate: 80000, status: "Active", hireDate: "2024-01-08" },
-    { id: "EMP-0002", name: "Noah Williams", payType: "Hourly", rate: 30, status: "Active", hireDate: "2024-05-13" },
-    { id: "EMP-0003", name: "Priya Singh", payType: "Salary", rate: 111000, status: "Active", hireDate: "2023-09-05" },
-    { id: "EMP-0004", name: "Liam Martin", payType: "Hourly", rate: 29.5, status: "Active", hireDate: "2025-02-03" },
-  ],
-  timesheets: {
-    "EMP-0002": { regular: 80, overtime: 2.5, vacation: 0 },
-    "EMP-0004": { regular: 72, overtime: 0, vacation: 0 },
-  },
-  ready: false,
-};
-
 const emptyPayments: PaymentState = { approved: false, paidEmployeeIds: [], references: {}, completedAt: null };
-
-const baselineYtd: Record<string, { pensionableEarningsCents: number; cppCents: number; cpp2Cents: number; eiCents: number }> = {
-  "EMP-0001": { pensionableEarningsCents: 4_923_072, cppCents: 280_000, cpp2Cents: 0, eiCents: 80_000 },
-  "EMP-0002": { pensionableEarningsCents: 3_600_000, cppCents: 210_000, cpp2Cents: 0, eiCents: 58_000 },
-  "EMP-0003": { pensionableEarningsCents: 6_826_923, cppCents: 390_000, cpp2Cents: 0, eiCents: 111_000 },
-  "EMP-0004": { pensionableEarningsCents: 2_900_000, cppCents: 165_000, cpp2Cents: 0, eiCents: 47_000 },
-};
-
-function periodsPerYear(frequency: string): 12 | 24 | 26 | 52 {
-  if (frequency === "Weekly") return 52;
-  if (frequency === "Semi-monthly") return 24;
-  if (frequency === "Monthly") return 12;
-  return 26;
-}
-
-function employeeIsInRun(employee: UatEmployee) {
-  try {
-    return isEmployeeInPayPeriod({
-      hireDate: employee.hireDate ?? "2020-01-01",
-      terminationDate: employee.terminationDate ?? null,
-      status: employee.status,
-    }, runPeriod);
-  } catch {
-    return true;
-  }
-}
-
-function regularGross(employee: UatEmployee, timesheets: Record<string, Timesheet>, frequency: string) {
-  if (employee.payType === "Salary") return employee.rate / periodsPerYear(frequency);
-  const row = timesheets[employee.id] ?? { regular: 0, overtime: 0, vacation: 0 };
-  return row.regular * employee.rate + row.overtime * employee.rate * 1.5 + row.vacation * employee.rate;
-}
-
-function calculateEmployee(employee: UatEmployee, timesheets: Record<string, Timesheet>, frequency: string): CalculatedEmployee {
-  const ordinaryGross = regularGross(employee, timesheets, frequency);
-  const final = buildFinalPay({
-    vacationPayCents: dollarsToCents(String(employee.finalPay?.vacationPay ?? 0)),
-    overtimePayCents: dollarsToCents(String(employee.finalPay?.overtimePay ?? 0)),
-    otherTaxablePayCents: dollarsToCents(String(employee.finalPay?.otherTaxablePay ?? 0)),
-    reimbursementCents: dollarsToCents(String(employee.finalPay?.reimbursement ?? 0)),
-  });
-  const gross = ordinaryGross + (employee.extraTaxablePay ?? 0) + final.taxableGrossCents / 100;
-  const reimbursement = final.reimbursementCents / 100;
-  const ytd = baselineYtd[employee.id] ?? { pensionableEarningsCents: 0, cppCents: 0, cpp2Cents: 0, eiCents: 0 };
-  const ppy = periodsPerYear(frequency);
-  const result = calculateAlbertaPayroll({
-    payDate: runPeriod.payDate,
-    province: "AB",
-    incomePath: "regular-periodic",
-    payPeriodsPerYear: ppy,
-    periodsRemainingIncludingCurrent: Math.max(1, Math.round(ppy * 0.33)),
-    cashEarningsCents: dollarsToCents(gross.toFixed(2)),
-    federalClaimCents: 1_645_200,
-    albertaClaimCents: 2_276_900,
-    yearToDate: ytd,
-  });
-
-  return {
-    ...employee,
-    gross,
-    reimbursement,
-    tax: result.deductions.incomeTaxCents / 100,
-    cpp: result.deductions.cppCents / 100,
-    cpp2: result.deductions.cpp2Cents / 100,
-    ei: result.deductions.eiCents / 100,
-    net: result.netPayCents / 100 + reimbursement,
-    employerCpp: result.employerContributions.cppCents / 100,
-    employerEi: result.employerContributions.eiCents / 100,
-  };
-}
-
-function changeSummary(employee: UatEmployee) {
-  const changes: string[] = [];
-  if (employee.status === "New hire") changes.push(`New hire${employee.hireDate ? ` · hired ${employee.hireDate}` : ""}`);
-  if (employee.rateEffectiveDate) changes.push(`Pay changed ${employee.rateEffectiveDate}`);
-  if ((employee.extraTaxablePay ?? 0) > 0) changes.push(`Extra pay $${employee.extraTaxablePay?.toFixed(2)}`);
-  if (employee.status === "Terminating" || employee.status === "Terminated") changes.push(`Final pay · last day ${employee.terminationDate ?? "date needed"}`);
-  if (employee.changeNote) changes.push(`Review note: ${employee.changeNote}`);
-  return changes.join(" · ");
-}
 
 export default function GuidedPayrollPreviewPage() {
   const router = useRouter();
-  const [state, setState] = useState<UatState>(starterState);
+  const [state, setState] = useState<PilotUatState>(PILOT_STARTER_STATE);
   const [profile, setProfile] = useState<PilotProfile>({ businessName: "My business", province: "Alberta", frequency: "Biweekly", employeeCount: 4 });
   const [payments, setPayments] = useState<PaymentState>(emptyPayments);
   const [loadedFrom, setLoadedFrom] = useState<"loading" | "workspace" | "device">("loading");
@@ -164,9 +43,9 @@ export default function GuidedPayrollPreviewPage() {
         }
       } catch {
         try {
-          const raw = window.localStorage.getItem(localStorageKey);
+          const raw = window.localStorage.getItem(PILOT_UAT_STORAGE_KEY);
           if (raw) {
-            const parsed = JSON.parse(raw) as UatState;
+            const parsed = JSON.parse(raw) as PilotUatState;
             if (Array.isArray(parsed.employees) && parsed.timesheets) setState(parsed);
           }
         } catch {
@@ -198,17 +77,17 @@ export default function GuidedPayrollPreviewPage() {
     return () => { cancelled = true; };
   }, []);
 
-  const includedEmployees = useMemo(() => state.employees.filter(employeeIsInRun), [state.employees]);
-  const lifecycleChanges = useMemo(() => state.employees.filter((employee) => changeSummary(employee)), [state.employees]);
+  const includedEmployees = useMemo(() => state.employees.filter(pilotEmployeeIsInRun), [state.employees]);
+  const lifecycleChanges = useMemo(() => state.employees.filter((employee) => pilotChangeSummary(employee)), [state.employees]);
 
   const calculated = useMemo(() => {
-    if (profile.province !== "Alberta") return [] as CalculatedEmployee[];
-    return includedEmployees.map((employee) => calculateEmployee(employee, state.timesheets, profile.frequency));
+    if (profile.province !== "Alberta") return [];
+    return includedEmployees.map((employee) => pilotCalculateEmployee(employee, state.timesheets, profile.frequency));
   }, [includedEmployees, state.timesheets, profile]);
 
   const totals = useMemo(() => calculated.reduce((result, employee) => ({
     gross: result.gross + employee.gross,
-    tax: result.tax + employee.tax,
+    tax: result.tax + employee.incomeTax,
     cpp: result.cpp + employee.cpp + employee.cpp2,
     ei: result.ei + employee.ei,
     net: result.net + employee.net,
@@ -219,7 +98,7 @@ export default function GuidedPayrollPreviewPage() {
   const remittance = totals.tax + totals.cpp + totals.employerCpp + totals.ei + totals.employerEi;
   const employees: GuidedPayrollEmployee[] = calculated.map((employee) => {
     const row = state.timesheets[employee.id];
-    const lifecycle = changeSummary(employee);
+    const lifecycle = pilotChangeSummary(employee);
     const finalPayTotal = (employee.finalPay?.vacationPay ?? 0) + (employee.finalPay?.overtimePay ?? 0) + (employee.finalPay?.otherTaxablePay ?? 0) + (employee.finalPay?.reimbursement ?? 0);
     const ordinary = employee.payType === "Hourly"
       ? `${row?.regular ?? 0} regular · ${row?.overtime ?? 0} OT · $${employee.rate.toFixed(2)}/hr`
