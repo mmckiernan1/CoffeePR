@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GuidedPayrollRun, type GuidedPayrollEmployee } from "@/components/comcheq";
+import { pilotMidPeriodRateChanges } from "@/lib/payroll/pilot-rate-change-guard";
 import {
+  PILOT_RUN_PERIOD,
   PILOT_STARTER_STATE,
   PILOT_UAT_STORAGE_KEY,
   pilotCalculateEmployee,
@@ -83,6 +85,7 @@ export default function GuidedPayrollPreviewPage() {
   const includedEmployees = useMemo(() => state.employees.filter(pilotEmployeeIsInRun), [state.employees]);
   const lifecycleChanges = useMemo(() => state.employees.filter((employee) => pilotChangeSummary(employee)), [state.employees]);
   const pendingTaxSetup = useMemo(() => includedEmployees.filter((employee) => !pilotTaxSetupReady(employee)), [includedEmployees]);
+  const midPeriodRateChanges = useMemo(() => pilotMidPeriodRateChanges(includedEmployees, PILOT_RUN_PERIOD), [includedEmployees]);
 
   const calculated = useMemo(() => {
     if (profile.province !== "Alberta") return [];
@@ -136,6 +139,11 @@ export default function GuidedPayrollPreviewPage() {
       router.push("/uat/tax-setup");
       return;
     }
+    if (midPeriodRateChanges.length > 0) {
+      setApprovalError("A pay rate changes partway through this pay period. Review the effective date before approving so Coffee Payroll does not silently use one rate for the whole period.");
+      router.push("/uat/lifecycle");
+      return;
+    }
     try {
       const response = await fetch("/api/pilot/payments", {
         method: "PUT",
@@ -147,6 +155,7 @@ export default function GuidedPayrollPreviewPage() {
         setPayments((current) => ({ ...current, approved: false, completedAt: null }));
         setApprovalError(payload.error ?? "Payroll could not be approved yet.");
         if (payload.code === "EMPLOYEE_TAX_SETUP_REQUIRED" || payload.code === "NEW_HIRE_TAX_SETUP_REQUIRED") router.push("/uat/tax-setup");
+        if (payload.code === "MID_PERIOD_RATE_CHANGE_REVIEW_REQUIRED") router.push("/uat/lifecycle");
         return;
       }
       setPayments(payload.state);
@@ -181,6 +190,13 @@ export default function GuidedPayrollPreviewPage() {
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e2b999] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">
             <div><strong>{pendingTaxSetup.length} employee{pendingTaxSetup.length === 1 ? " needs" : "s need"} statutory setup review before approval.</strong><div className="mt-1 text-xs">Coffee Payroll will keep approval locked until the required checkpoint is complete.</div></div>
             <button onClick={() => router.push("/uat/tax-setup")} className="rounded-lg bg-[#5a321f] px-4 py-2 text-xs font-semibold text-white">Review tax setup</button>
+          </div>
+        )}
+
+        {midPeriodRateChanges.length > 0 && (
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e2b999] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">
+            <div><strong>{midPeriodRateChanges.length} employee{midPeriodRateChanges.length === 1 ? " has" : "s have"} a pay rate change inside this pay period.</strong><div className="mt-1 text-xs">Approval is paused until the effective date is reviewed. Coffee Payroll will not silently apply the period-end rate to the entire period.</div></div>
+            <button onClick={() => router.push("/uat/lifecycle")} className="rounded-lg bg-[#5a321f] px-4 py-2 text-xs font-semibold text-white">Review pay change</button>
           </div>
         )}
 
