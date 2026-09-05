@@ -38,11 +38,12 @@ export default function UatReviewPage() {
   const includedEmployees = useMemo(() => state.employees.filter(pilotEmployeeIsInRun), [state.employees]);
   const unusualEmployees = useMemo(() => includedEmployees.filter((employee) => pilotChangeSummary(employee, true)), [includedEmployees]);
   const excludedEmployees = useMemo(() => state.employees.filter((employee) => !pilotEmployeeIsInRun(employee)), [state.employees]);
-  const rows = useMemo(() => profile.province === "Alberta" ? includedEmployees.map((employee) => pilotCalculateEmployee(employee, state.timesheets, profile.frequency)) : [], [includedEmployees, state.timesheets, profile]);
+  const rows = useMemo(() => profile.province === "Alberta" ? includedEmployees.map((employee) => pilotCalculateEmployee(employee, state.timesheets, profile.frequency, state.openingBalances ?? {})) : [], [includedEmployees, state.timesheets, state.openingBalances, profile]);
   const totals = useMemo(() => rows.reduce((t, row) => ({ gross: t.gross + row.gross, tax: t.tax + row.incomeTax, cpp: t.cpp + row.cpp + row.cpp2, ei: t.ei + row.ei, net: t.net + row.net, employerCpp: t.employerCpp + row.employerCpp, employerEi: t.employerEi + row.employerEi }), { gross: 0, tax: 0, cpp: 0, ei: 0, net: 0, employerCpp: 0, employerEi: 0 }), [rows]);
   const cra = totals.tax + totals.cpp + totals.ei + totals.employerCpp + totals.employerEi;
   const payrollFee = 18;
   const totalFunding = totals.net + cra + payrollFee;
+  const openingBalanceCount = Object.keys(state.openingBalances ?? {}).length;
 
   return (
     <main className="min-h-screen bg-[#f4eadf] px-4 py-7 text-[#332118] sm:px-6">
@@ -54,7 +55,7 @@ export default function UatReviewPage() {
 
         <section className="mt-6 rounded-[28px] border border-[#decdbd] bg-[#fffaf5] p-6 shadow-sm sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#967663]">Step 4 · Review</p><h1 className="mt-2 text-3xl font-semibold">Here&apos;s your payroll</h1><p className="mt-2 text-sm text-[#795f4f]">{profile.businessName} · Run 17 · August 16–31 · Pay September 4, 2026 · {source}</p></div>
+            <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#967663]">Step 4 · Review</p><h1 className="mt-2 text-3xl font-semibold">Here&apos;s your payroll</h1><p className="mt-2 text-sm text-[#795f4f]">{profile.businessName} · Run 17 · August 16–31 · Pay September 4, 2026 · {source}</p>{openingBalanceCount > 0 && <p className="mt-1 text-xs font-semibold text-[#55769e]">Using saved opening balances for {openingBalanceCount} employee{openingBalanceCount === 1 ? "" : "s"}.</p>}</div>
             <span className={`rounded-full px-4 py-2 text-sm font-semibold ${state.ready ? "bg-[#e8efdf] text-[#3d5a2f]" : "bg-[#f3e6da] text-[#7b543d]"}`}>{state.ready ? "✓ Hours ready" : "Hours need review"}</span>
           </div>
 
