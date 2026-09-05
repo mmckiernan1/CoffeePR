@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const workspaceLabels: Record<string, string[]> = {
   employees: ["Employees"],
@@ -23,11 +23,12 @@ function findButton(labels: string[]) {
 export function PayrollRouteBridge() {
   const pathname = usePathname();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const workspace = searchParams.get("workspace");
 
   useEffect(() => {
-    if (pathname !== "/" || !workspace || !workspaceLabels[workspace]) return;
+    if (pathname !== "/") return;
+
+    const workspace = new URLSearchParams(window.location.search).get("workspace");
+    if (!workspace || !workspaceLabels[workspace]) return;
 
     let tries = 0;
     const timer = window.setInterval(() => {
@@ -43,12 +44,14 @@ export function PayrollRouteBridge() {
     }, 50);
 
     return () => window.clearInterval(timer);
-  }, [pathname, router, workspace]);
+  }, [pathname, router]);
 
   useEffect(() => {
-    if (pathname !== "/" || workspace) return;
+    if (pathname !== "/") return;
 
     function intercept(event: MouseEvent) {
+      if (new URLSearchParams(window.location.search).has("workspace")) return;
+
       const target = event.target as HTMLElement | null;
       const button = target?.closest("button") as HTMLButtonElement | null;
       if (!button) return;
@@ -68,7 +71,7 @@ export function PayrollRouteBridge() {
 
     document.addEventListener("click", intercept, true);
     return () => document.removeEventListener("click", intercept, true);
-  }, [pathname, router, workspace]);
+  }, [pathname, router]);
 
   return null;
 }
