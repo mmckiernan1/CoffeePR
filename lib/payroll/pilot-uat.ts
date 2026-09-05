@@ -20,6 +20,7 @@ export type PilotUatEmployee = {
   terminationDate?: string;
   extraTaxablePay?: number;
   changeNote?: string;
+  taxSetupComplete?: boolean;
   finalPay?: PilotFinalPay;
 };
 
@@ -64,10 +65,10 @@ export const PILOT_RUN_PERIOD = {
 
 export const PILOT_STARTER_STATE: PilotUatState = {
   employees: [
-    { id: "EMP-0001", name: "Avery Chen", payType: "Salary", rate: 80000, status: "Active", hireDate: "2024-01-08" },
-    { id: "EMP-0002", name: "Noah Williams", payType: "Hourly", rate: 30, status: "Active", hireDate: "2024-05-13" },
-    { id: "EMP-0003", name: "Priya Singh", payType: "Salary", rate: 111000, status: "Active", hireDate: "2023-09-05" },
-    { id: "EMP-0004", name: "Liam Martin", payType: "Hourly", rate: 29.5, status: "Active", hireDate: "2025-02-03" },
+    { id: "EMP-0001", name: "Avery Chen", payType: "Salary", rate: 80000, status: "Active", hireDate: "2024-01-08", taxSetupComplete: true },
+    { id: "EMP-0002", name: "Noah Williams", payType: "Hourly", rate: 30, status: "Active", hireDate: "2024-05-13", taxSetupComplete: true },
+    { id: "EMP-0003", name: "Priya Singh", payType: "Salary", rate: 111000, status: "Active", hireDate: "2023-09-05", taxSetupComplete: true },
+    { id: "EMP-0004", name: "Liam Martin", payType: "Hourly", rate: 29.5, status: "Active", hireDate: "2025-02-03", taxSetupComplete: true },
   ],
   timesheets: {
     "EMP-0002": { regular: 80, overtime: 2.5, vacation: 0 },
@@ -105,6 +106,10 @@ export function pilotEmployeeIsInRun(employee: PilotUatEmployee): boolean {
   } catch {
     return true;
   }
+}
+
+export function pilotTaxSetupReady(employee: PilotUatEmployee): boolean {
+  return employee.status !== "New hire" || employee.taxSetupComplete === true;
 }
 
 export function pilotRegularGross(
@@ -169,6 +174,7 @@ export function pilotChangeSummary(employee: PilotUatEmployee, currency = false)
     ? value.toLocaleString("en-CA", { style: "currency", currency: "CAD" })
     : `$${value.toFixed(2)}`;
   if (employee.status === "New hire") changes.push(`New hire${employee.hireDate ? ` · hired ${employee.hireDate}` : ""}`);
+  if (employee.status === "New hire" && !pilotTaxSetupReady(employee)) changes.push("Tax setup needed");
   if (employee.rateEffectiveDate) changes.push(`Pay changed ${employee.rateEffectiveDate}`);
   if ((employee.extraTaxablePay ?? 0) > 0) changes.push(`Extra pay ${money(employee.extraTaxablePay ?? 0)}`);
   if (employee.status === "Terminating" || employee.status === "Terminated") changes.push(`Final pay · last day ${employee.terminationDate ?? "date needed"}`);
