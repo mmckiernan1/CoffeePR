@@ -14,7 +14,7 @@ export const RUN_PAYROLL_STEPS: readonly RunPayrollStep[] = [
   { id: "employees", label: "Employees", helper: "Who are you paying?" },
   { id: "hours-pay", label: "Hours & pay", helper: "Enter this pay" },
   { id: "review", label: "Review", helper: "Check the results" },
-  { id: "approve-pay", label: "Approve & pay", helper: "Confirm and release" },
+  { id: "approve-pay", label: "Approve & pay", helper: "Approve, then pay" },
   { id: "done", label: "Done", helper: "Payroll complete" },
 ] as const;
 
@@ -77,8 +77,8 @@ export function RunPayrollShell({
           </div>
         </div>
 
-        <nav className="border-y border-[#e5ebf4] bg-[#fafbfd] px-3 py-3 sm:px-5" aria-label="Payroll steps">
-          <div className="flex items-center overflow-x-auto pb-1 sm:pb-0">
+        <nav className="border-y border-[#e5ebf4] bg-[#fafbfd] px-2 py-2.5 sm:px-5 sm:py-3" aria-label="Payroll steps">
+          <div className="flex items-center gap-0.5 overflow-x-auto pb-1 sm:gap-0 sm:pb-0">
             {RUN_PAYROLL_STEPS.map((step, index) => {
               const complete = index <= completedThrough && index !== safeCurrentStep;
               const active = index === safeCurrentStep;
@@ -91,7 +91,7 @@ export function RunPayrollShell({
                     disabled={!reachable || active}
                     onClick={() => onStepChange?.(index)}
                     aria-current={active ? "step" : undefined}
-                    className={`group flex min-w-[92px] flex-col items-center gap-1.5 rounded-xl px-2 py-2 text-center transition sm:min-w-0 sm:flex-1 ${
+                    className={`group flex min-w-[82px] flex-col items-center gap-1 rounded-lg px-1.5 py-1.5 text-center transition sm:min-w-0 sm:flex-1 sm:gap-1.5 sm:rounded-xl sm:px-2 sm:py-2 ${
                       active
                         ? "bg-[#edf3ff]"
                         : reachable
@@ -110,12 +110,12 @@ export function RunPayrollShell({
                     >
                       {complete ? <Check className="size-4" /> : index + 1}
                     </span>
-                    <span className={`whitespace-nowrap text-[11px] font-semibold sm:text-xs ${active ? "text-[#17428e]" : complete ? "text-[#47623b]" : "text-[#647087]"}`}>
+                    <span className={`whitespace-nowrap text-[10px] font-semibold sm:text-xs ${active ? "text-[#17428e]" : complete ? "text-[#47623b]" : "text-[#647087]"}`}>
                       {step.label}
                     </span>
                   </button>
                   {index < RUN_PAYROLL_STEPS.length - 1 && (
-                    <div className={`h-px w-3 shrink-0 sm:w-auto sm:flex-1 ${index < safeCurrentStep || index <= completedThrough ? "bg-[#a9c89a]" : "bg-[#dce4ee]"}`} />
+                    <div className={`h-px w-2 shrink-0 sm:w-auto sm:flex-1 ${index < safeCurrentStep || index <= completedThrough ? "bg-[#a9c89a]" : "bg-[#dce4ee]"}`} />
                   )}
                 </div>
               );
