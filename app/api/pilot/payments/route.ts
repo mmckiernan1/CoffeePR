@@ -10,7 +10,7 @@ import {
   type PilotApprovalProfile,
   type PilotPaymentState,
 } from "@/lib/payroll/pilot-approval-history";
-import { pilotMidPeriodRateChanges } from "@/lib/payroll/pilot-rate-change-guard";
+import { pilotUnresolvedHourlyRateChanges } from "@/lib/payroll/pilot-rate-change-guard";
 import { pilotRunFingerprint } from "@/lib/payroll/pilot-run-fingerprint";
 import { pilotEmployeeTaxSetupReady } from "@/lib/payroll/pilot-tax-setup";
 
@@ -126,12 +126,12 @@ export async function PUT(request: Request) {
         }, { status: 409 });
       }
 
-      const midPeriodChanges = pilotMidPeriodRateChanges(uatState.employees, run);
-      if (midPeriodChanges.length > 0) {
+      const unresolvedRateChanges = pilotUnresolvedHourlyRateChanges(uatState.employees, uatState.timesheets, run);
+      if (unresolvedRateChanges.length > 0) {
         return NextResponse.json({
-          error: "A pay rate changes inside this pay period. Review the effective date before approving payroll.",
+          error: "Hourly pay changes inside this pay period still need hours allocated to each rate.",
           code: "MID_PERIOD_RATE_CHANGE_REVIEW_REQUIRED",
-          employees: midPeriodChanges,
+          employees: unresolvedRateChanges,
         }, { status: 409 });
       }
     }
