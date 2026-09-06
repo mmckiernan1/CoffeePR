@@ -93,10 +93,11 @@ export default function PilotCompletePage() {
   const employeeCount = includedEmployees.length;
   const paidCount = useMemo(() => includedEmployees.filter((employee) => payments.paidEmployeeIds.includes(employee.id)).length, [includedEmployees, payments]);
   const referenceCount = useMemo(() => includedEmployees.filter((employee) => Boolean(payments.references[employee.id]?.trim())).length, [includedEmployees, payments.references]);
-  const complete = Boolean(!approvalStale && payments.approved && payments.completedAt && employeeCount > 0 && paidCount === employeeCount);
+  const complete = Boolean(!approvalStale && payments.approved && payments.completedAt && employeeCount > 0 && paidCount === employeeCount && referenceCount === employeeCount);
   const nextDate = nextPayDate(profile.frequency);
   const latestApproval = payments.approvalHistory?.at(-1) ?? null;
   const approvalTime = latestApproval ? new Date(latestApproval.approvedAt).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" }) : null;
+  const completionTime = payments.completedAt ? new Date(payments.completedAt).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" }) : null;
 
   return (
     <main className="min-h-screen bg-[#f4eadf] px-4 py-10 text-[#332118] sm:px-6">
@@ -109,13 +110,14 @@ export default function PilotCompletePage() {
               <div className="text-center">
                 <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#e8efdf] text-4xl text-[#3d5a2f]">✓</div>
                 <h1 className="mt-6 text-4xl font-semibold tracking-tight">You did your payroll.</h1>
-                <p className="mx-auto mt-3 max-w-xl text-base leading-7 text-[#745948]">{profile.businessName}’s Run 17 is approved and every employee payment in this pay period has been confirmed.</p>
+                <p className="mx-auto mt-3 max-w-xl text-base leading-7 text-[#745948]">{profile.businessName}’s Run 17 is approved, every employee payment is confirmed, and each payment has a bank reference.</p>
+                {completionTime && <p className="mt-2 text-xs font-semibold text-[#6f7f66]">Completed {completionTime}</p>}
               </div>
 
               <div className="mx-auto mt-7 grid max-w-2xl gap-3 sm:grid-cols-4">
                 <div className="rounded-2xl border border-[#e2d5c9] bg-white p-4 text-center"><div className="text-xs text-[#856f60]">Employees</div><div className="mt-1 text-2xl font-bold">{employeeCount}</div></div>
                 <div className="rounded-2xl border border-[#cfe0c2] bg-[#f6fbf2] p-4 text-center"><div className="text-xs text-[#5e7651]">Paid</div><div className="mt-1 text-2xl font-bold text-[#3d5a2f]">{paidCount}</div></div>
-                <div className="rounded-2xl border border-[#e2d5c9] bg-white p-4 text-center"><div className="text-xs text-[#856f60]">Bank refs</div><div className="mt-1 text-2xl font-bold">{referenceCount}</div></div>
+                <div className="rounded-2xl border border-[#cfe0c2] bg-[#f6fbf2] p-4 text-center"><div className="text-xs text-[#5e7651]">Bank refs</div><div className="mt-1 text-2xl font-bold text-[#3d5a2f]">{referenceCount}</div></div>
                 <div className="rounded-2xl border border-[#e2d5c9] bg-white p-4 text-center"><div className="text-xs text-[#856f60]">Status</div><div className="mt-1 text-lg font-bold">Complete</div></div>
               </div>
 
@@ -137,7 +139,7 @@ export default function PilotCompletePage() {
                 </div>
               </div>
 
-              <div className="mt-8 rounded-2xl border border-[#d7e5ce] bg-[#f7fbf4] px-5 py-4 text-sm leading-6 text-[#4f6944]">Coffee Payroll recorded the pilot payment checklist and any bank references you entered. The business owner remains in control of the actual e-transfers and CRA remittance through their bank.</div>
+              <div className="mt-8 rounded-2xl border border-[#d7e5ce] bg-[#f7fbf4] px-5 py-4 text-sm leading-6 text-[#4f6944]">Coffee Payroll recorded the pilot payment checklist and bank references you entered. The business owner remains in control of the actual e-transfers and CRA remittance through their bank.</div>
 
               <div className="mt-7 flex flex-wrap justify-center gap-3"><button onClick={() => router.push("/?workspace=reports")} className="rounded-xl border border-[#d6c6b8] bg-white px-5 py-3 font-semibold">Reports & statements</button><button onClick={() => router.push("/")} className="rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white">Back to main menu</button></div>
             </>
@@ -145,7 +147,7 @@ export default function PilotCompletePage() {
             <div className="text-center">
               <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#f3e6da] text-3xl">…</div>
               <h1 className="mt-6 text-3xl font-semibold">{approvalStale ? "Payroll changed after approval" : "Payroll is not finished yet"}</h1>
-              <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#745948]">{approvalStale ? "An employee, rate, time or final-pay input changed. Review the updated payroll and approve it again before Coffee Payroll can mark this run complete." : "Approval and every employee payment in this pay period must be confirmed before Coffee Payroll marks the run complete."}</p>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#745948]">{approvalStale ? "An employee, rate, time or final-pay input changed. Review the updated payroll and approve it again before Coffee Payroll can mark this run complete." : "Approval, every employee payment, and a bank confirmation/reference for each payment must all be present before Coffee Payroll marks the run complete."}</p>
               <div className="mt-7 flex justify-center"><button onClick={() => router.push(approvalStale ? "/guided-payroll" : "/uat/payments")} className="rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white">{approvalStale ? "Review payroll again" : "Return to employee payments"}</button></div>
             </div>
           )}
