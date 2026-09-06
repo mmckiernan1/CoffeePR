@@ -5,6 +5,7 @@ import { pilotWorkspaceScope } from "@/lib/pilot/workspace-scope";
 import { isEmployeeInPayPeriod } from "@/lib/payroll/employee-lifecycle";
 import {
   appendPilotApprovalSnapshot,
+  appendPilotReopenEvent,
   EMPTY_PILOT_PAYMENT_STATE,
   normalizePilotPaymentState,
   type PilotApprovalEmployee,
@@ -25,6 +26,7 @@ type UpdateBody = {
   references?: Record<string, string>;
   completedAt?: string | null;
   reset?: boolean;
+  reopenReason?: string;
 };
 
 const run = {
@@ -133,6 +135,44 @@ export async function PUT(request: Request) {
     const existingApprovalValid = existing.approved && existing.approvedFingerprint === fingerprint;
     const now = new Date().toISOString();
 
+    if (body.reopenReason !== undefined) {
+      const reason = body.reopenReason.trim();
+      if (!existing.completedAt || !existing.approvedFingerprint) {
+        return NextResponse.json({ error: "Only a completed payroll can be reopened.", code: "PAYROLL_NOT_COMPLETED" }, { status: 409 });
+      }
+      if (reason.length < 10 || reason.length > 500) {
+        return NextResponse.json({ error: "Enter a short reason for reopening this payroll (10 to 500 characters).", code: "REOPEN_REASON_REQUIRED" }, { status: 400 });
+      }
+      const reopenHistory = appendPilotReopenEvent(existing.reopenHistory, {
+        reopenedAt: now,
+        reopenedBy: user.email,
+        reason,
+        priorCompletedAt: existing.completedAt,
+        priorApprovedFingerprint: existing.approvedFingerprint,
+        paidEmployeeIds: structuredClone(existing.paidEmployeeIds),
+        references: structuredClone(existing.references),
+      });
+      const reopened: PilotPaymentState = {
+        approved: false,
+        approvedFingerprint: null,
+        paidEmployeeIds: [],
+        references: {},
+        completedAt: null,
+        approvalHistory: existing.approvalHistory,
+        reopenHistory,
+      };
+      await db.prepare("UPDATE pilot_uat_states SET state_json = ?, updated_at = ?, updated_by = ? WHERE id = ? AND workspace_id = ?")
+        .bind(JSON.stringify(reopened), now, user.email, scope.paymentStateId, scope.workspaceId).run();
+      return NextResponse.json({ state: reopened, currentFingerprint: fingerprint, approvalStale: false, reopened: true, updatedAt: now });
+    }
+
+    if (existing.completedAt) {
+      return NextResponse.json({
+        error: "This payroll is complete and locked. Reopen it with a reason before making corrections.",
+        code: "PAYROLL_COMPLETED_LOCKED",
+      }, { status: 409 });
+    }
+
     if (body.approved === true) {
       const pendingTaxSetup = uatState.employees.filter((employee) => !pilotEmployeeTaxSetupReady(employee));
       if (pendingTaxSetup.length > 0) {
@@ -155,7 +195,7 @@ export async function PUT(request: Request) {
 
     let next: PilotPaymentState;
     if (body.reset) {
-      next = structuredClone(EMPTY_PILOT_PAYMENT_STATE);
+      next = { ...structuredClone(EMPTY_PILOT_PAYMENT_STATE), approvalHistory: existing.approvalHistory, reopenHistory: existing.reopenHistory };
     } else if (body.approved === true) {
       const approvalHistory = existingApprovalValid
         ? existing.approvalHistory
@@ -177,6 +217,7 @@ export async function PUT(request: Request) {
         references: existingApprovalValid ? (body.references ?? existing.references) : {},
         completedAt: null,
         approvalHistory,
+        reopenHistory: existing.reopenHistory,
       };
     } else {
       if (!existingApprovalValid && (body.paidEmployeeIds || body.references || body.completedAt)) {
@@ -189,6 +230,7 @@ export async function PUT(request: Request) {
         references: body.references ?? existing.references,
         completedAt: body.completedAt === undefined ? existing.completedAt : body.completedAt,
         approvalHistory: existing.approvalHistory,
+        reopenHistory: existing.reopenHistory,
       });
       if (!normalized) return NextResponse.json({ error: "Payment UAT state is invalid." }, { status: 400 });
       next = normalized;
