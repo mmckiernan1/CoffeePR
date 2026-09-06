@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   appendPilotApprovalSnapshot,
+  appendPilotReopenEvent,
   EMPTY_PILOT_PAYMENT_STATE,
   normalizePilotApprovalSnapshot,
   normalizePilotPaymentState,
+  normalizePilotReopenEvent,
 } from "../lib/payroll/pilot-approval-history.ts";
 
 function snapshot(overrides = {}) {
@@ -27,7 +29,20 @@ function snapshot(overrides = {}) {
   };
 }
 
-test("legacy payment state without approvalHistory normalizes to an empty history", () => {
+function reopenEvent(overrides = {}) {
+  return {
+    reopenedAt: "2026-09-05T22:15:00.000Z",
+    reopenedBy: "owner@example.com",
+    reason: "Employee reported four missing regular hours.",
+    priorCompletedAt: "2026-09-05T22:00:00.000Z",
+    priorApprovedFingerprint: "uat-v1-12345678",
+    paidEmployeeIds: ["EMP-0001"],
+    references: { "EMP-0001": "etransfer-123" },
+    ...overrides,
+  };
+}
+
+test("legacy payment state without histories normalizes to empty histories", () => {
   const normalized = normalizePilotPaymentState({
     approved: false,
     approvedFingerprint: null,
@@ -82,7 +97,17 @@ test("changed payroll fingerprint preserves the prior approval and appends a new
   assert.deepEqual(changed.map((item) => item.fingerprint), ["uat-v1-12345678", "uat-v1-87654321"]);
 });
 
-test("payment-state normalization preserves approval history and rejects duplicate paid employee ids", () => {
+test("reopen history preserves completed payment evidence and requires a useful reason", () => {
+  const source = reopenEvent();
+  const history = appendPilotReopenEvent([], source);
+  assert.equal(history.length, 1);
+  assert.equal(history[0].reason, source.reason);
+  source.references["EMP-0001"] = "changed-later";
+  assert.equal(history[0].references["EMP-0001"], "etransfer-123");
+  assert.equal(normalizePilotReopenEvent(reopenEvent({ reason: "too short" })), null);
+});
+
+test("payment-state normalization preserves approval and reopen histories and rejects duplicate paid employee ids", () => {
   const state = normalizePilotPaymentState({
     approved: true,
     approvedFingerprint: "uat-v1-12345678",
@@ -90,8 +115,10 @@ test("payment-state normalization preserves approval history and rejects duplica
     references: { "EMP-0001": "etransfer-123" },
     completedAt: null,
     approvalHistory: [snapshot()],
+    reopenHistory: [reopenEvent()],
   });
   assert.equal(state?.approvalHistory.length, 1);
+  assert.equal(state?.reopenHistory.length, 1);
   assert.equal(state?.references["EMP-0001"], "etransfer-123");
 
   const duplicate = normalizePilotPaymentState({
@@ -101,6 +128,7 @@ test("payment-state normalization preserves approval history and rejects duplica
     references: {},
     completedAt: null,
     approvalHistory: [snapshot()],
+    reopenHistory: [],
   });
   assert.equal(duplicate, null);
 });
