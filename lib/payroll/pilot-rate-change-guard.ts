@@ -1,7 +1,10 @@
+import { pilotHourlyRateSplitsComplete } from "./pilot-hourly-rate-split";
+
 export type PilotRateChangeEmployee = {
   id: string;
   name?: string;
   payType?: "Salary" | "Hourly";
+  rate: number;
   rateEffectiveDate?: string;
   rateHistory?: Array<{ effectiveDate: string; rate: number }>;
 };
@@ -34,6 +37,19 @@ export function pilotMidPeriodRateChanges(
     return effectiveDates.length > 0
       ? [{ employeeId: employee.id, employeeName: employee.name, effectiveDates }]
       : [];
+  });
+}
+
+export function pilotUnresolvedHourlyRateChanges(
+  employees: PilotRateChangeEmployee[],
+  timesheets: Record<string, unknown>,
+  run: PilotRunWindow,
+): PilotMidPeriodRateChange[] {
+  return pilotMidPeriodRateChanges(employees, run).filter((change) => {
+    const employee = employees.find((item) => item.id === change.employeeId);
+    if (!employee) return true;
+    const row = timesheets[change.employeeId] as { rateSplits?: unknown } | undefined;
+    return !pilotHourlyRateSplitsComplete(employee, run, row?.rateSplits);
   });
 }
 
