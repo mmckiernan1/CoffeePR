@@ -1,4 +1,4 @@
-import { pilotHourlyRateSplitsComplete } from "./pilot-hourly-rate-split";
+import { pilotHourlyRateSplitsComplete } from "./pilot-hourly-rate-split.ts";
 
 export type PilotRateChangeEmployee = {
   id: string;
