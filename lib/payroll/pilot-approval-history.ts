@@ -23,7 +23,7 @@ export type PilotApprovalSnapshot = {
   profile: PilotApprovalProfile;
   employees: PilotApprovalEmployee[];
   timesheets: Record<string, unknown>;
-  openingBalances?: Record<string, unknown>;
+  openingBalances: Record<string, unknown>;
 };
 
 export type PilotPaymentState = {
@@ -87,7 +87,7 @@ export function normalizePilotApprovalSnapshot(input: unknown): PilotApprovalSna
     profile: { province: value.profile.province, frequency: value.profile.frequency },
     employees: value.employees,
     timesheets: value.timesheets,
-    ...(value.openingBalances ? { openingBalances: value.openingBalances } : {}),
+    openingBalances: value.openingBalances ?? {},
   };
 }
 
