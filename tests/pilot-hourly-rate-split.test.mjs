@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   pilotHourlyGrossFromSplits,
   pilotHourlyRateSegmentDates,
+  pilotHourlyRateSplitDetails,
   pilotHourlyRateSplitsComplete,
 } from "../lib/payroll/pilot-hourly-rate-split.ts";
 
@@ -33,6 +34,16 @@ test("hourly gross applies the correct rate to each segment including overtime",
     { effectiveFrom: "2026-08-24", regular: 48, overtime: 2, vacation: 0 },
   ]);
   assert.equal(gross, 32 * 30 + 48 * 32 + 2 * 32 * 1.5);
+});
+
+test("review detail exposes the rate and gross for each hourly segment", () => {
+  assert.deepEqual(pilotHourlyRateSplitDetails(employee, [
+    { effectiveFrom: "2026-08-16", regular: 32, overtime: 0, vacation: 0 },
+    { effectiveFrom: "2026-08-24", regular: 48, overtime: 2, vacation: 0 },
+  ]), [
+    { effectiveFrom: "2026-08-16", regular: 32, overtime: 0, vacation: 0, rate: 30, gross: 960 },
+    { effectiveFrom: "2026-08-24", regular: 48, overtime: 2, vacation: 0, rate: 32, gross: 1632 },
+  ]);
 });
 
 test("ordinary single-rate hourly payroll does not require split rows", () => {
