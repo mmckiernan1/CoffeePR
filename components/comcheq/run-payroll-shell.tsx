@@ -41,93 +41,105 @@ export function RunPayrollShell({
 }: RunPayrollShellProps) {
   const safeCurrentStep = Math.min(Math.max(currentStep, 0), RUN_PAYROLL_STEPS.length - 1);
   const activeStep = RUN_PAYROLL_STEPS[safeCurrentStep];
+  const nextStep = RUN_PAYROLL_STEPS[safeCurrentStep + 1];
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button
+    <div>
+      <div className="mb-3 flex items-center justify-between gap-3 px-1">
+        <button
           type="button"
-          variant="ghost"
-          size="sm"
           onClick={onHome}
-          className="h-9 px-2 text-[#647087] hover:bg-[#edf3ff] hover:text-[#17428e]"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#7d8797] transition hover:text-[#17428e]"
         >
-          <Home className="size-4" />
-          Back to main menu
-        </Button>
-        <p className="text-xs font-medium text-[#647087]">
+          <Home className="size-3.5" />
+          Main menu
+        </button>
+        <span className="text-xs font-semibold text-[#7d8797]">
           Step {safeCurrentStep + 1} of {RUN_PAYROLL_STEPS.length}
-        </p>
+        </span>
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-[#dce4f0] bg-white" aria-label="Run payroll progress">
-        <div className="border-b border-[#e5ebf4] px-4 py-4 sm:px-5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#1557d8]">Run payroll</p>
-          <div className="mt-1 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-[-0.025em] text-[#172033]">{title ?? activeStep.label}</h1>
-              <p className="mt-1 text-sm text-[#647087]">{detail ?? activeStep.helper}</p>
+      <section className="overflow-hidden rounded-2xl border border-[#d7e0ec] bg-white shadow-[0_8px_24px_rgba(42,57,82,0.05)]" aria-label="Run payroll progress">
+        <div className="px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6">
+          <div className="flex items-start gap-3">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#1557d8] text-sm font-bold text-white shadow-sm">
+              {safeCurrentStep + 1}
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#647087]">
+                {activeStep.label}
+              </p>
+              <h1 className="mt-0.5 text-2xl font-semibold tracking-[-0.025em] text-[#172033] sm:text-[28px]">
+                {title ?? activeStep.helper}
+              </h1>
+              {detail && <p className="mt-1.5 max-w-3xl text-sm leading-6 text-[#647087]">{detail}</p>}
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-px bg-[#e5ebf4] sm:grid-cols-3 xl:grid-cols-6">
-          {RUN_PAYROLL_STEPS.map((step, index) => {
-            const complete = index <= completedThrough && index !== safeCurrentStep;
-            const active = index === safeCurrentStep;
-            const reachable = Boolean(onStepChange) && (index <= safeCurrentStep || index <= completedThrough + 1);
+        <nav className="border-y border-[#e5ebf4] bg-[#fafbfd] px-3 py-3 sm:px-5" aria-label="Payroll steps">
+          <div className="flex items-center overflow-x-auto pb-1 sm:pb-0">
+            {RUN_PAYROLL_STEPS.map((step, index) => {
+              const complete = index <= completedThrough && index !== safeCurrentStep;
+              const active = index === safeCurrentStep;
+              const reachable = Boolean(onStepChange) && (index <= safeCurrentStep || index <= completedThrough + 1);
 
-            return (
-              <button
-                key={step.id}
-                type="button"
-                disabled={!reachable || active}
-                onClick={() => onStepChange?.(index)}
-                aria-current={active ? "step" : undefined}
-                className={`min-w-0 bg-white px-3 py-3 text-left transition sm:px-4 ${
-                  active
-                    ? "bg-[#edf3ff] shadow-[inset_0_-3px_0_#1557d8]"
-                    : reachable
-                      ? "hover:bg-[#f7f9fd]"
-                      : "cursor-default"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold ${
-                      complete
-                        ? "bg-[#eef9e8] text-[#34701d]"
-                        : active
-                          ? "bg-[#1557d8] text-white"
-                          : "bg-[#f1f4f9] text-[#647087]"
+              return (
+                <div key={step.id} className="flex min-w-0 shrink-0 items-center sm:flex-1">
+                  <button
+                    type="button"
+                    disabled={!reachable || active}
+                    onClick={() => onStepChange?.(index)}
+                    aria-current={active ? "step" : undefined}
+                    className={`group flex min-w-[92px] flex-col items-center gap-1.5 rounded-xl px-2 py-2 text-center transition sm:min-w-0 sm:flex-1 ${
+                      active
+                        ? "bg-[#edf3ff]"
+                        : reachable
+                          ? "hover:bg-white hover:shadow-sm"
+                          : "cursor-default"
                     }`}
                   >
-                    {complete ? <Check className="size-4" /> : index + 1}
-                  </span>
-                  <span className={`truncate text-sm font-semibold ${active ? "text-[#17428e]" : "text-[#172033]"}`}>{step.label}</span>
+                    <span
+                      className={`grid size-7 place-items-center rounded-full border text-xs font-bold transition ${
+                        complete
+                          ? "border-[#b8d5aa] bg-[#eef9e8] text-[#34701d]"
+                          : active
+                            ? "border-[#1557d8] bg-[#1557d8] text-white"
+                            : "border-[#d8e0ea] bg-white text-[#7d8797]"
+                      }`}
+                    >
+                      {complete ? <Check className="size-4" /> : index + 1}
+                    </span>
+                    <span className={`whitespace-nowrap text-[11px] font-semibold sm:text-xs ${active ? "text-[#17428e]" : complete ? "text-[#47623b]" : "text-[#647087]"}`}>
+                      {step.label}
+                    </span>
+                  </button>
+                  {index < RUN_PAYROLL_STEPS.length - 1 && (
+                    <div className={`h-px w-3 shrink-0 sm:w-auto sm:flex-1 ${index < safeCurrentStep || index <= completedThrough ? "bg-[#a9c89a]" : "bg-[#dce4ee]"}`} />
+                  )}
                 </div>
-                <p className="mt-1.5 truncate pl-9 text-[11px] text-[#647087]">{step.helper}</p>
-              </button>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </nav>
 
-        <div className="p-4 sm:p-5">{children}</div>
+        <div className="p-4 sm:p-6">{children}</div>
+
+        {safeCurrentStep > 0 && safeCurrentStep < RUN_PAYROLL_STEPS.length - 1 && onBack && (
+          <div className="flex items-center justify-between gap-3 border-t border-[#e6ebf2] bg-[#fcfdff] px-4 py-3 sm:px-6">
+            <Button type="button" variant="ghost" onClick={onBack} className="h-9 px-2 text-sm font-semibold text-[#17428e] hover:bg-[#edf3ff]">
+              <ArrowLeft className="size-4" />
+              Back
+            </Button>
+            {nextStep && (
+              <span className="inline-flex items-center gap-1 text-xs text-[#7d8797]">
+                Next: {nextStep.label}
+                <ChevronRight className="size-3.5" />
+              </span>
+            )}
+          </div>
+        )}
       </section>
-
-      {safeCurrentStep > 0 && safeCurrentStep < RUN_PAYROLL_STEPS.length - 1 && onBack && (
-        <div className="flex items-center justify-between gap-3">
-          <Button type="button" variant="outline" onClick={onBack} className="border-[#c9d5e6] bg-white text-[#17428e]">
-            <ArrowLeft className="size-4" />
-            Back
-          </Button>
-          <span className="inline-flex items-center gap-1 text-xs text-[#647087]">
-            {activeStep.label}
-            <ChevronRight className="size-3.5" />
-            {RUN_PAYROLL_STEPS[safeCurrentStep + 1]?.label}
-          </span>
-        </div>
-      )}
     </div>
   );
 }
