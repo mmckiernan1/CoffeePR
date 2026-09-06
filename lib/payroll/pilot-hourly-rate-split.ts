@@ -2,6 +2,7 @@ export type HourlyRateHistoryEntry = { effectiveDate: string; rate: number };
 export type HourlyRateSplitEmployee = { rate: number; rateHistory?: HourlyRateHistoryEntry[] };
 export type HourlyRateSplitRow = { effectiveFrom: string; regular: number; overtime: number; vacation: number };
 export type HourlyRateSplitPeriod = { periodStart: string; periodEnd: string };
+export type HourlyRateSplitDetail = HourlyRateSplitRow & { rate: number; gross: number };
 
 function validHours(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value < 10_000;
@@ -34,11 +35,18 @@ export function pilotHourlyRateSplitsComplete(
   return ordered.every((row, index) => row && typeof row === "object" && row.effectiveFrom === expectedDates[index] && validHours(row.regular) && validHours(row.overtime) && validHours(row.vacation));
 }
 
+export function pilotHourlyRateSplitDetails(employee: HourlyRateSplitEmployee, splits: HourlyRateSplitRow[]): HourlyRateSplitDetail[] {
+  return [...splits]
+    .sort((left, right) => left.effectiveFrom.localeCompare(right.effectiveFrom))
+    .map((split) => {
+      const rate = pilotHourlyRateForSegment(employee, split.effectiveFrom);
+      const gross = split.regular * rate + split.overtime * rate * 1.5 + split.vacation * rate;
+      return { ...split, rate, gross };
+    });
+}
+
 export function pilotHourlyGrossFromSplits(employee: HourlyRateSplitEmployee, splits: HourlyRateSplitRow[]): number {
-  return splits.reduce((total, split) => {
-    const rate = pilotHourlyRateForSegment(employee, split.effectiveFrom);
-    return total + split.regular * rate + split.overtime * rate * 1.5 + split.vacation * rate;
-  }, 0);
+  return pilotHourlyRateSplitDetails(employee, splits).reduce((total, split) => total + split.gross, 0);
 }
 
 export function normalizeHourlyRateSplits(input: unknown): HourlyRateSplitRow[] | null | undefined {
