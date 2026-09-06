@@ -26,6 +26,16 @@ export type PilotApprovalSnapshot = {
   openingBalances: Record<string, unknown>;
 };
 
+export type PilotReopenEvent = {
+  reopenedAt: string;
+  reopenedBy: string;
+  reason: string;
+  priorCompletedAt: string;
+  priorApprovedFingerprint: string;
+  paidEmployeeIds: string[];
+  references: Record<string, string>;
+};
+
 export type PilotPaymentState = {
   approved: boolean;
   approvedFingerprint: string | null;
@@ -33,6 +43,7 @@ export type PilotPaymentState = {
   references: Record<string, string>;
   completedAt: string | null;
   approvalHistory: PilotApprovalSnapshot[];
+  reopenHistory: PilotReopenEvent[];
 };
 
 export const EMPTY_PILOT_PAYMENT_STATE: PilotPaymentState = {
@@ -42,6 +53,7 @@ export const EMPTY_PILOT_PAYMENT_STATE: PilotPaymentState = {
   references: {},
   completedAt: null,
   approvalHistory: [],
+  reopenHistory: [],
 };
 
 function validIsoTimestamp(value: unknown) {
@@ -52,6 +64,10 @@ function validDateOnly(value: unknown) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function validReferences(input: unknown): input is Record<string, string> {
+  return Boolean(input) && typeof input === "object" && !Array.isArray(input) && Object.entries(input as Record<string, unknown>).every(([id, value]) => id.length > 0 && id.length <= 80 && typeof value === "string" && value.length <= 120);
 }
 
 export function normalizePilotApprovalSnapshot(input: unknown): PilotApprovalSnapshot | null {
@@ -91,15 +107,39 @@ export function normalizePilotApprovalSnapshot(input: unknown): PilotApprovalSna
   };
 }
 
+export function normalizePilotReopenEvent(input: unknown): PilotReopenEvent | null {
+  if (!input || typeof input !== "object") return null;
+  const value = input as Partial<PilotReopenEvent>;
+  if (
+    !validIsoTimestamp(value.reopenedAt) ||
+    typeof value.reopenedBy !== "string" || value.reopenedBy.length === 0 || value.reopenedBy.length > 320 ||
+    typeof value.reason !== "string" || value.reason.trim().length < 10 || value.reason.trim().length > 500 ||
+    !validIsoTimestamp(value.priorCompletedAt) ||
+    typeof value.priorApprovedFingerprint !== "string" || value.priorApprovedFingerprint.length === 0 || value.priorApprovedFingerprint.length > 120 ||
+    !Array.isArray(value.paidEmployeeIds) || value.paidEmployeeIds.length > 250 ||
+    !value.paidEmployeeIds.every((id) => typeof id === "string" && id.length > 0 && id.length <= 80) ||
+    new Set(value.paidEmployeeIds).size !== value.paidEmployeeIds.length ||
+    !validReferences(value.references)
+  ) return null;
+  return {
+    reopenedAt: value.reopenedAt as string,
+    reopenedBy: value.reopenedBy,
+    reason: value.reason.trim(),
+    priorCompletedAt: value.priorCompletedAt as string,
+    priorApprovedFingerprint: value.priorApprovedFingerprint,
+    paidEmployeeIds: [...value.paidEmployeeIds],
+    references: { ...value.references },
+  };
+}
+
 export function normalizePilotPaymentState(input: unknown): PilotPaymentState | null {
   if (!input || typeof input !== "object") return null;
   const state = input as Partial<PilotPaymentState>;
-  if (typeof state.approved !== "boolean" || !Array.isArray(state.paidEmployeeIds) || !state.references || typeof state.references !== "object" || Array.isArray(state.references)) return null;
+  if (typeof state.approved !== "boolean" || !Array.isArray(state.paidEmployeeIds) || !validReferences(state.references)) return null;
   if (state.paidEmployeeIds.length > 250 || !state.paidEmployeeIds.every((id) => typeof id === "string" && id.length > 0 && id.length <= 80)) return null;
   if (new Set(state.paidEmployeeIds).size !== state.paidEmployeeIds.length) return null;
   if (state.completedAt !== null && state.completedAt !== undefined && !validIsoTimestamp(state.completedAt)) return null;
   if (state.approvedFingerprint !== null && state.approvedFingerprint !== undefined && (typeof state.approvedFingerprint !== "string" || state.approvedFingerprint.length === 0 || state.approvedFingerprint.length > 120)) return null;
-  if (!Object.entries(state.references).every(([id, value]) => id.length > 0 && id.length <= 80 && typeof value === "string" && value.length <= 120)) return null;
 
   const rawHistory = state.approvalHistory ?? [];
   if (!Array.isArray(rawHistory) || rawHistory.length > 25) return null;
@@ -110,6 +150,15 @@ export function normalizePilotPaymentState(input: unknown): PilotPaymentState | 
     approvalHistory.push(snapshot);
   }
 
+  const rawReopenHistory = state.reopenHistory ?? [];
+  if (!Array.isArray(rawReopenHistory) || rawReopenHistory.length > 25) return null;
+  const reopenHistory: PilotReopenEvent[] = [];
+  for (const item of rawReopenHistory) {
+    const event = normalizePilotReopenEvent(item);
+    if (!event) return null;
+    reopenHistory.push(event);
+  }
+
   return {
     approved: state.approved,
     approvedFingerprint: state.approvedFingerprint ?? null,
@@ -117,6 +166,7 @@ export function normalizePilotPaymentState(input: unknown): PilotPaymentState | 
     references: { ...state.references },
     completedAt: state.completedAt ?? null,
     approvalHistory,
+    reopenHistory,
   };
 }
 
@@ -129,5 +179,16 @@ export function appendPilotApprovalSnapshot(
   if (!normalized) throw new TypeError("Approval snapshot is invalid.");
   const safeLimit = Math.max(1, Math.min(Math.trunc(maxHistory), 100));
   if (history.some((item) => item.fingerprint === normalized.fingerprint)) return [...history];
+  return [...history, structuredClone(normalized)].slice(-safeLimit);
+}
+
+export function appendPilotReopenEvent(
+  history: PilotReopenEvent[],
+  event: PilotReopenEvent,
+  maxHistory = 25,
+): PilotReopenEvent[] {
+  const normalized = normalizePilotReopenEvent(event);
+  if (!normalized) throw new TypeError("Payroll reopen event is invalid.");
+  const safeLimit = Math.max(1, Math.min(Math.trunc(maxHistory), 100));
   return [...history, structuredClone(normalized)].slice(-safeLimit);
 }
