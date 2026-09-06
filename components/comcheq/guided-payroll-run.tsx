@@ -147,7 +147,7 @@ export function GuidedPayrollRun({ approved, paymentsComplete, timeReady, employ
           <section className="rounded-2xl border border-[#dce4f0] bg-white p-5 sm:p-6">
             {!approved ? <>
               <p className="text-sm font-semibold text-[#172033]">You are approving:</p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3"><ReviewAmount label="Employees" value={employees.length} /><ReviewAmount label="Employee deposits" value={net} /><ReviewAmount label="Total cash required" value={totalCash} /></div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3"><ReviewAmount label="Employees" textValue={String(employees.length)} /><ReviewAmount label="Employee deposits" value={net} /><ReviewAmount label="Total cash required" value={totalCash} /></div>
               <p className="mt-4 text-xs leading-5 text-[#647087]">If you go back and change payroll inputs later, review the updated payroll again before approving it.</p>
               <Button type="button" onClick={onApprove} className="mt-5 bg-[#1557d8] text-white hover:bg-[#0f47b5]"><LockKeyhole className="size-4" />Approve this payroll</Button>
             </> : <>
@@ -165,6 +165,6 @@ export function GuidedPayrollRun({ approved, paymentsComplete, timeReady, employ
   );
 }
 
-function ReviewAmount({ label, value }: { label: string; value: number }) { return <div className="rounded-xl border border-[#d9e3f2] bg-white/80 px-3 py-3"><p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#647087]">{label}</p><p className="mt-1.5 font-mono text-sm font-bold text-[#172033]">{cad.format(value)}</p></div>; }
+function ReviewAmount({ label, value, textValue }: { label: string; value?: number; textValue?: string }) { return <div className="rounded-xl border border-[#d9e3f2] bg-white/80 px-3 py-3"><p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#647087]">{label}</p><p className="mt-1.5 font-mono text-sm font-bold text-[#172033]">{textValue ?? cad.format(value ?? 0)}</p></div>; }
 function Summary({ label, value, textValue, accent = false }: { label: string; value?: number; textValue?: string; accent?: boolean }) { return <div className={`rounded-xl border p-4 ${accent ? "border-[#b9cef2] bg-[#edf3ff]" : "border-[#dce4f0] bg-white"}`}><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#647087]">{label}</p><p className={`mt-2 font-mono text-xl font-bold ${accent ? "text-[#1557d8]" : "text-[#172033]"}`}>{textValue ?? cad.format(value ?? 0)}</p></div>; }
 function Line({ label, value }: { label: string; value: number }) { return <div className="flex items-center justify-between gap-3"><span>{label}</span><strong className="font-mono text-[#172033]">{cad.format(value)}</strong></div>; }
