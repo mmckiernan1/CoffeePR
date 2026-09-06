@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 import { getCoffeePayrollUser } from "@/lib/auth/current-user";
 import { pilotWorkspaceScope } from "@/lib/pilot/workspace-scope";
+import { isEmployeeInPayPeriod } from "@/lib/payroll/employee-lifecycle";
 import {
   appendPilotApprovalSnapshot,
   EMPTY_PILOT_PAYMENT_STATE,
@@ -10,6 +11,7 @@ import {
   type PilotApprovalProfile,
   type PilotPaymentState,
 } from "@/lib/payroll/pilot-approval-history";
+import { pilotPaymentCompletionCheck } from "@/lib/payroll/pilot-payment-completion";
 import { pilotUnresolvedHourlyRateChanges } from "@/lib/payroll/pilot-rate-change-guard";
 import { pilotRunFingerprint } from "@/lib/payroll/pilot-run-fingerprint";
 import { pilotEmployeeTaxSetupReady } from "@/lib/payroll/pilot-tax-setup";
@@ -36,6 +38,21 @@ function database() {
   const db = (env as unknown as { DB?: D1Database }).DB;
   if (!db) throw new Error("Coffee Payroll durable storage is unavailable.");
   return db;
+}
+
+function employeeIdsInRun(employees: PilotApprovalEmployee[]) {
+  return employees.filter((employee) => {
+    const lifecycle = employee as PilotApprovalEmployee & { hireDate?: string; terminationDate?: string };
+    try {
+      return isEmployeeInPayPeriod({
+        hireDate: lifecycle.hireDate ?? "2020-01-01",
+        terminationDate: lifecycle.terminationDate ?? null,
+        status: employee.status ?? "Active",
+      }, run);
+    } catch {
+      return true;
+    }
+  }).map((employee) => employee.id);
 }
 
 async function ensureState(user: { id: string; email: string }) {
@@ -179,6 +196,19 @@ export async function PUT(request: Request) {
 
     const valid = normalizePilotPaymentState(next);
     if (!valid) return NextResponse.json({ error: "Payment UAT state is invalid." }, { status: 400 });
+
+    if (body.completedAt) {
+      const completion = pilotPaymentCompletionCheck(employeeIdsInRun(uatState.employees), valid);
+      if (!existingApprovalValid || !completion.ready) {
+        return NextResponse.json({
+          error: "Payroll cannot be completed until the current approval, employee payment confirmations and bank references all agree.",
+          code: "PAYROLL_COMPLETION_NOT_READY",
+          completion,
+        }, { status: 409 });
+      }
+      valid.completedAt = now;
+    }
+
     await db.prepare("UPDATE pilot_uat_states SET state_json = ?, updated_at = ?, updated_by = ? WHERE id = ? AND workspace_id = ?")
       .bind(JSON.stringify(valid), now, user.email, scope.paymentStateId, scope.workspaceId).run();
     return NextResponse.json({ state: valid, currentFingerprint: fingerprint, approvalStale: false, updatedAt: now });
