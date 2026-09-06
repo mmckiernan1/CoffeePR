@@ -1,5 +1,6 @@
 import { buildFinalPay, isEmployeeInPayPeriod } from "@/lib/payroll/employee-lifecycle";
 import { dollarsToCents } from "@/lib/payroll/money";
+import { pilotHourlyGrossFromSplits, pilotHourlyRateSegmentDates, pilotHourlyRateSplitsComplete, type HourlyRateSplitRow } from "@/lib/payroll/pilot-hourly-rate-split";
 import { proratePilotSalaryRateChange } from "@/lib/payroll/pilot-salary-rate-proration";
 import { pilotEmployeeTaxSetupReady, type PilotTaxSetupReview } from "@/lib/payroll/pilot-tax-setup";
 import { calculateAlbertaPayroll } from "@/lib/payroll/statutory/calculate";
@@ -59,6 +60,7 @@ export type PilotTimesheet = {
   regular: number;
   overtime: number;
   vacation: number;
+  rateSplits?: HourlyRateSplitRow[];
 };
 
 export type PilotUatState = {
@@ -173,6 +175,15 @@ export function pilotSalaryProration(employee: PilotUatEmployee, frequency: stri
   });
 }
 
+export function pilotHourlyRateSplitNeeded(employee: PilotUatEmployee): boolean {
+  return employee.payType === "Hourly" && pilotHourlyRateSegmentDates(employee, PILOT_RUN_PERIOD).length > 1;
+}
+
+export function pilotHourlyRateSplitReady(employee: PilotUatEmployee, timesheet: PilotTimesheet | undefined): boolean {
+  if (!pilotHourlyRateSplitNeeded(employee)) return true;
+  return pilotHourlyRateSplitsComplete(employee, PILOT_RUN_PERIOD, timesheet?.rateSplits);
+}
+
 function pilotFinalPayCents(finalPay: PilotFinalPay | undefined): PilotFinalPay {
   if (!finalPay) return { vacationPayCents: 0, overtimePayCents: 0, otherTaxablePayCents: 0, reimbursementCents: 0 };
   const candidate = finalPay as PilotFinalPay & LegacyPilotFinalPay;
@@ -220,8 +231,11 @@ export function pilotRegularGross(
   frequency: string,
 ): number {
   if (employee.payType === "Salary") return pilotSalaryProration(employee, frequency)?.gross ?? pilotRateForDate(employee) / pilotPeriodsPerYear(frequency);
-  const rate = pilotRateForDate(employee);
   const row = timesheets[employee.id] ?? { regular: 0, overtime: 0, vacation: 0 };
+  if (pilotHourlyRateSplitNeeded(employee) && pilotHourlyRateSplitsComplete(employee, PILOT_RUN_PERIOD, row.rateSplits)) {
+    return pilotHourlyGrossFromSplits(employee, row.rateSplits ?? []);
+  }
+  const rate = pilotRateForDate(employee);
   return row.regular * rate + row.overtime * rate * 1.5 + row.vacation * rate;
 }
 
