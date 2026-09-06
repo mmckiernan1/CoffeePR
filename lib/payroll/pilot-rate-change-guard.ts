@@ -1,6 +1,7 @@
 export type PilotRateChangeEmployee = {
   id: string;
   name?: string;
+  payType?: "Salary" | "Hourly";
   rateEffectiveDate?: string;
   rateHistory?: Array<{ effectiveDate: string; rate: number }>;
 };
@@ -21,6 +22,7 @@ export function pilotMidPeriodRateChanges(
   run: PilotRunWindow,
 ): PilotMidPeriodRateChange[] {
   return employees.flatMap((employee) => {
+    if (employee.payType === "Salary") return [];
     const dates = new Set<string>();
     for (const entry of employee.rateHistory ?? []) {
       if (entry.effectiveDate > run.periodStart && entry.effectiveDate <= run.periodEnd) dates.add(entry.effectiveDate);
