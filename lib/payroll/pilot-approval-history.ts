@@ -1,5 +1,13 @@
 export type PilotApprovalProfile = { province: string; frequency: string };
-export type PilotApprovalEmployee = Record<string, unknown> & { id: string; status?: string; taxSetupComplete?: boolean };
+export type PilotApprovalEmployee = Record<string, unknown> & {
+  id: string;
+  rate: number;
+  payType?: "Salary" | "Hourly";
+  rateEffectiveDate?: string;
+  rateHistory?: Array<{ effectiveDate: string; rate: number }>;
+  status?: string;
+  taxSetupComplete?: boolean;
+};
 
 export type PilotApprovalSnapshot = {
   snapshotId: string;
@@ -15,7 +23,7 @@ export type PilotApprovalSnapshot = {
   profile: PilotApprovalProfile;
   employees: PilotApprovalEmployee[];
   timesheets: Record<string, unknown>;
-  openingBalances: Record<string, unknown>;
+  openingBalances?: Record<string, unknown>;
 };
 
 export type PilotPaymentState = {
@@ -61,11 +69,10 @@ export function normalizePilotApprovalSnapshot(input: unknown): PilotApprovalSna
     !value.profile || typeof value.profile.province !== "string" || value.profile.province.length === 0 || value.profile.province.length > 80 ||
     typeof value.profile.frequency !== "string" || value.profile.frequency.length === 0 || value.profile.frequency.length > 40 ||
     !Array.isArray(value.employees) || value.employees.length > 250 ||
-    !value.timesheets || typeof value.timesheets !== "object" || Array.isArray(value.timesheets)
+    !value.timesheets || typeof value.timesheets !== "object" || Array.isArray(value.timesheets) ||
+    (value.openingBalances !== undefined && (!value.openingBalances || typeof value.openingBalances !== "object" || Array.isArray(value.openingBalances)))
   ) return null;
-  const openingBalances = value.openingBalances ?? {};
-  if (!openingBalances || typeof openingBalances !== "object" || Array.isArray(openingBalances)) return null;
-  if (!value.employees.every((employee) => employee && typeof employee === "object" && typeof employee.id === "string" && employee.id.length > 0 && employee.id.length <= 80)) return null;
+  if (!value.employees.every((employee) => employee && typeof employee === "object" && typeof employee.id === "string" && employee.id.length > 0 && employee.id.length <= 80 && typeof employee.rate === "number" && Number.isFinite(employee.rate) && employee.rate > 0)) return null;
   return {
     snapshotId: value.snapshotId,
     approvedAt: value.approvedAt as string,
@@ -80,7 +87,7 @@ export function normalizePilotApprovalSnapshot(input: unknown): PilotApprovalSna
     profile: { province: value.profile.province, frequency: value.profile.frequency },
     employees: value.employees,
     timesheets: value.timesheets,
-    openingBalances: openingBalances as Record<string, unknown>,
+    ...(value.openingBalances ? { openingBalances: value.openingBalances } : {}),
   };
 }
 
