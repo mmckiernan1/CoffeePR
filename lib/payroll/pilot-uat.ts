@@ -1,5 +1,6 @@
 import { buildFinalPay, isEmployeeInPayPeriod } from "@/lib/payroll/employee-lifecycle";
 import { dollarsToCents } from "@/lib/payroll/money";
+import { proratePilotSalaryRateChange } from "@/lib/payroll/pilot-salary-rate-proration";
 import { pilotEmployeeTaxSetupReady, type PilotTaxSetupReview } from "@/lib/payroll/pilot-tax-setup";
 import { calculateAlbertaPayroll } from "@/lib/payroll/statutory/calculate";
 
@@ -161,6 +162,17 @@ export function pilotRateHistoryWithChange(employee: PilotUatEmployee, effective
   return [...withoutSameDate, { effectiveDate, rate }].sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate));
 }
 
+export function pilotSalaryProration(employee: PilotUatEmployee, frequency: string) {
+  if (employee.payType !== "Salary") return null;
+  return proratePilotSalaryRateChange({
+    periodStart: PILOT_RUN_PERIOD.periodStart,
+    periodEnd: PILOT_RUN_PERIOD.periodEnd,
+    periodsPerYear: pilotPeriodsPerYear(frequency),
+    fallbackAnnualRate: employee.rate,
+    rateHistory: employee.rateHistory,
+  });
+}
+
 function pilotFinalPayCents(finalPay: PilotFinalPay | undefined): PilotFinalPay {
   if (!finalPay) return { vacationPayCents: 0, overtimePayCents: 0, otherTaxablePayCents: 0, reimbursementCents: 0 };
   const candidate = finalPay as PilotFinalPay & LegacyPilotFinalPay;
@@ -207,8 +219,8 @@ export function pilotRegularGross(
   timesheets: Record<string, PilotTimesheet>,
   frequency: string,
 ): number {
+  if (employee.payType === "Salary") return pilotSalaryProration(employee, frequency)?.gross ?? pilotRateForDate(employee) / pilotPeriodsPerYear(frequency);
   const rate = pilotRateForDate(employee);
-  if (employee.payType === "Salary") return rate / pilotPeriodsPerYear(frequency);
   const row = timesheets[employee.id] ?? { regular: 0, overtime: 0, vacation: 0 };
   return row.regular * rate + row.overtime * rate * 1.5 + row.vacation * rate;
 }
