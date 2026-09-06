@@ -24,6 +24,7 @@ export default function PilotPaymentsPage() {
   const [payments, setPayments] = useState<PaymentState>(emptyPayments);
   const [approvalStale, setApprovalStale] = useState(false);
   const [sync, setSync] = useState<"loading" | "workspace" | "device" | "saving">("loading");
+  const [completionError, setCompletionError] = useState("");
   const paymentsRef = useRef<PaymentState>(emptyPayments);
   const referenceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -87,6 +88,8 @@ export default function PilotPaymentsPage() {
       .map((employee) => ({ employee, net: pilotCalculateEmployee(employee, uat.timesheets, profile.frequency, uat.openingBalances ?? {}).net }))
     : [], [uat.employees, uat.timesheets, uat.openingBalances, profile]);
   const allPaid = rows.length > 0 && rows.every(({ employee }) => payments.paidEmployeeIds.includes(employee.id));
+  const allReferences = rows.length > 0 && rows.every(({ employee }) => Boolean(payments.references[employee.id]?.trim()));
+  const confirmedCount = rows.filter(({ employee }) => payments.paidEmployeeIds.includes(employee.id) && Boolean(payments.references[employee.id]?.trim())).length;
   const totalNet = rows.reduce((sum, row) => sum + row.net, 0);
 
   function storeLocal(next: PaymentState) {
@@ -102,27 +105,34 @@ export default function PilotPaymentsPage() {
 
   async function save(next: PaymentState) {
     storeLocal(next);
-    if (sync === "device") return;
+    if (sync === "device") return true;
     setSync("saving");
     try {
       const response = await fetch("/api/pilot/payments", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) });
-      if (!response.ok) throw new Error("save failed");
-      const payload = await response.json();
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setCompletionError(payload.error ?? "The payment checklist could not be saved.");
+        return false;
+      }
       storeLocal(payload.state);
       setApprovalStale(Boolean(payload.approvalStale));
       setSync("workspace");
+      return true;
     } catch {
       setSync("device");
+      return false;
     }
   }
 
   function togglePaid(id: string) {
+    setCompletionError("");
     const current = paymentsRef.current;
     const paid = current.paidEmployeeIds.includes(id);
     void save({ ...current, paidEmployeeIds: paid ? current.paidEmployeeIds.filter((item) => item !== id) : [...current.paidEmployeeIds, id], completedAt: null });
   }
 
   function updateReference(id: string, value: string) {
+    setCompletionError("");
     const current = paymentsRef.current;
     const next = { ...current, references: { ...current.references, [id]: value.slice(0, 120) }, completedAt: null };
     storeLocal(next);
@@ -155,11 +165,12 @@ export default function PilotPaymentsPage() {
   }
 
   async function finishPayroll() {
-    if (!payments.approved || approvalStale || !allPaid) return;
+    setCompletionError("");
+    if (!payments.approved || approvalStale || !allPaid || !allReferences) return;
     clearReferenceTimers();
     const next = { ...paymentsRef.current, completedAt: new Date().toISOString() };
-    await save(next);
-    router.push("/uat/complete");
+    const saved = await save(next);
+    if (saved) router.push("/uat/complete");
   }
 
   return (
@@ -178,11 +189,13 @@ export default function PilotPaymentsPage() {
 
           {approvalStale && <div className="mt-6 rounded-xl border border-[#d89b6c] bg-[#fff0dc] px-4 py-3 text-sm font-semibold text-[#75451f]">Payroll changed since approval. Review the updated payroll and approve it again before sending or confirming employee payments.</div>}
           {!approvalStale && !payments.approved && <div className="mt-6 rounded-xl border border-[#e2b999] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">Payroll still needs approval. Return to the guided payroll and approve the run before confirming payments.</div>}
+          {completionError && <div className="mt-6 rounded-xl border border-[#d89b6c] bg-[#fff0dc] px-4 py-3 text-sm font-semibold text-[#75451f]">{completionError}</div>}
 
           <div className="mt-6 space-y-3">
             {rows.map(({ employee, net }) => {
               const paid = payments.paidEmployeeIds.includes(employee.id);
-              return <div key={employee.id} className={`rounded-2xl border p-4 sm:p-5 ${paid ? "border-[#cfe0c2] bg-[#f6fbf2]" : "border-[#e2d4c8] bg-white"}`}>
+              const hasReference = Boolean(payments.references[employee.id]?.trim());
+              return <div key={employee.id} className={`rounded-2xl border p-4 sm:p-5 ${paid && hasReference ? "border-[#cfe0c2] bg-[#f6fbf2]" : "border-[#e2d4c8] bg-white"}`}>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div><div className="font-semibold">{employee.name}</div><div className="mt-1 text-xs text-[#826b5a]">Business e-transfer · {employee.id}{employee.status === "Terminating" || employee.status === "Terminated" ? ` · final pay${employee.terminationDate ? ` · last day ${employee.terminationDate}` : ""}` : ""}</div></div>
                   <div className="text-left sm:text-right"><div className="text-xs text-[#826b5a]">Send</div><div className="font-mono text-xl font-bold">{net.toLocaleString("en-CA", { style: "currency", currency: "CAD" })}</div></div>
@@ -191,13 +204,14 @@ export default function PilotPaymentsPage() {
                   <label className="text-xs font-semibold text-[#745948]">Bank confirmation / reference<input disabled={!payments.approved || approvalStale} value={payments.references[employee.id] ?? ""} onChange={(e) => updateReference(employee.id, e.target.value)} placeholder="e.g. Interac confirmation 123456" className="mt-1.5 w-full rounded-xl border border-[#d8c8ba] bg-white px-3 py-2.5 text-sm font-normal disabled:bg-[#f3eee9]" /></label>
                   <button disabled={!payments.approved || approvalStale} onClick={() => togglePaid(employee.id)} className={`self-end rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-40 ${paid ? "border border-[#b9d2a9] bg-white text-[#3f6330]" : "bg-[#5a321f] text-white"}`}>{paid ? "✓ Paid" : "Mark paid"}</button>
                 </div>
+                {paid && !hasReference && <p className="mt-2 text-xs font-semibold text-[#8a5c36]">Add the bank confirmation/reference so this payment has evidence before payroll is finished.</p>}
               </div>;
             })}
           </div>
 
           <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-[#eadfd4] pt-6">
             <span className="text-xs text-[#846f60]">{sync === "workspace" ? "Payment checklist saved to your pilot workspace" : sync === "saving" ? "Saving payment checklist…" : "Payment checklist saved on this device"}</span>
-            <button disabled={!payments.approved || approvalStale || !allPaid} onClick={finishPayroll} className="rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white disabled:opacity-35">{allPaid ? "Finish payroll" : `Paid ${payments.paidEmployeeIds.length} of ${rows.length}`}</button>
+            <div className="text-right"><div className="mb-2 text-xs text-[#846f60]">{confirmedCount} of {rows.length} payments have both paid status and a bank reference</div><button disabled={!payments.approved || approvalStale || !allPaid || !allReferences || sync === "saving"} onClick={finishPayroll} className="rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white disabled:opacity-35">{allPaid && allReferences ? "Finish payroll" : `Confirmed ${confirmedCount} of ${rows.length}`}</button></div>
           </div>
         </section>
       </div>
