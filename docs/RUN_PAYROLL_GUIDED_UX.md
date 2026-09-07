@@ -1,6 +1,6 @@
 # Run Payroll guided experience
 
-The regular payroll path is intentionally separate from the broader Comcheq administration menu.
+The regular payroll path is intentionally separate from the broader Coffee Payroll administration menu.
 
 ## Product promise
 
@@ -30,4 +30,4 @@ A small-business owner should be able to complete payroll by answering ordinary 
 
 ## Architecture
 
-`RunPayrollShell` owns navigation and progress presentation only. `GuidedPayrollRun` orchestrates the six client-facing steps. Existing Comcheq payroll views, calculations, approval, payment handoff, reporting, remittance and billing remain the source of truth and are reached through callbacks; the guided layer must not create a second payroll engine.
+`RunPayrollShell` owns navigation and progress presentation only. `GuidedPayrollRun` orchestrates the six client-facing steps. Existing Coffee Payroll views, calculations, approval, payment handoff, reporting, remittance and billing remain the source of truth and are reached through callbacks; the guided layer must not create a second payroll engine.
