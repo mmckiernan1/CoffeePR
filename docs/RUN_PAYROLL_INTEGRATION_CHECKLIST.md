@@ -16,7 +16,7 @@
 - [x] Connect guided Employees, Time Entry, Review, Payments, and Reports actions back to the existing workspaces
 - [x] Preserve the existing detailed payroll screen as the Review workspace
 - [x] Preserve direct deep-navigation for experienced users outside the normal current-run entry points
-- [ ] Run full build/test in an environment with repository dependencies available
+- [x] Run full build/test in an environment with repository dependencies available
 - [ ] Visual review at desktop and mobile widths
 - [ ] Merge only after review
 
