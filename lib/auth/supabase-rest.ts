@@ -27,6 +27,23 @@ export async function supabaseAuthRequest(path: string, init: RequestInit = {}) 
   });
 }
 
+export async function refreshSupabaseSession(refreshToken: string) {
+  const response = await supabaseAuthRequest("/token?grant_type=refresh_token", {
+    method: "POST",
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+
+  if (!response.ok) return null;
+  const session = await response.json() as {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+  };
+
+  if (!session.access_token) return null;
+  return session;
+}
+
 export async function verifyAccessToken(accessToken: string) {
   const { url, anonKey } = getSupabaseConfig();
   const response = await fetch(`${url}/auth/v1/user`, {
