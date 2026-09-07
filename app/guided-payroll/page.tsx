@@ -27,7 +27,6 @@ export default function GuidedPayrollPreviewPage() {
   const [state, setState] = useState<PilotUatState>(PILOT_STARTER_STATE);
   const [profile, setProfile] = useState<PilotProfile>({ businessName: "My business", province: "Alberta", frequency: "Biweekly", employeeCount: 4 });
   const [payments, setPayments] = useState<PaymentState>(emptyPayments);
-  const [loadedFrom, setLoadedFrom] = useState<"loading" | "workspace" | "device">("loading");
   const [approvalError, setApprovalError] = useState("");
 
   useEffect(() => {
@@ -41,7 +40,6 @@ export default function GuidedPayrollPreviewPage() {
           if (!cancelled) {
             setState(payload.state);
             setProfile(payload.profile);
-            setLoadedFrom("workspace");
           }
         } else {
           throw new Error("workspace unavailable");
@@ -56,7 +54,6 @@ export default function GuidedPayrollPreviewPage() {
         } catch {
           // Starter fictional data remains available for preview.
         }
-        if (!cancelled) setLoadedFrom("device");
       }
 
       try {
@@ -172,18 +169,12 @@ export default function GuidedPayrollPreviewPage() {
   return (
     <main className="min-h-screen bg-[#f4eadf] text-[#332118]">
       <div className="mx-auto max-w-[1240px] px-4 py-5 sm:px-7 sm:py-8">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#decdbd] bg-[#fffaf5] px-4 py-3 text-xs text-[#795f4f]">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-1 text-xs text-[#795f4f]">
           <div>
             <strong className="text-[#332118]">{profile.businessName} · Run payroll</strong>
             <span className="ml-2">Run 17 · August 16–31 · Pay date September 4, 2026</span>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-lg border border-[#d6c6b8] bg-white px-3 py-2 font-semibold text-[#6b4a36]">{loadedFrom === "workspace" ? "Workspace synced" : loadedFrom === "device" ? "Saved on this device" : "Loading payroll…"}</span>
-            {lifecycleChanges.length > 0 && <button onClick={() => router.push("/uat/lifecycle")} className="rounded-lg bg-[#fff0dc] px-3 py-2 font-semibold text-[#7b4b23]">{lifecycleChanges.length} employee change{lifecycleChanges.length === 1 ? "" : "s"}</button>}
-            <span className={`rounded-lg px-3 py-2 font-semibold ${state.ready ? "bg-[#e8efdf] text-[#3d5a2f]" : "bg-[#f3e6da] text-[#7b543d]"}`}>Hours: {state.ready ? "Ready" : "Needs work"}</span>
-            {payments.approved && <span className="rounded-lg bg-[#e8efdf] px-3 py-2 font-semibold text-[#3d5a2f]">Approved</span>}
-            {paymentsComplete && <button onClick={() => router.push("/uat/complete")} className="rounded-lg bg-[#5a321f] px-3 py-2 font-semibold text-white">Completed</button>}
-          </div>
+          {lifecycleChanges.length > 0 && <button onClick={() => router.push("/uat/lifecycle")} className="rounded-lg px-2 py-1.5 font-semibold text-[#7b4b23] transition hover:bg-[#fff0dc]">{lifecycleChanges.length} employee change{lifecycleChanges.length === 1 ? "" : "s"}</button>}
         </div>
 
         {pendingTaxSetup.length > 0 && (
