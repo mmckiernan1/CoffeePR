@@ -22,7 +22,7 @@ export const pilotUatStates = sqliteTable("pilot_uat_states", {
   stateJson: text("state_json").notNull(),
   updatedAt: text("updated_at").notNull(),
   updatedBy: text("updated_by").notNull(),
-}, (table) => [uniqueIndex("pilot_uat_states_workspace_uq").on(table.workspaceId)]);
+}, (table) => [index("pilot_uat_states_workspace_idx").on(table.workspaceId)]);
 
 export const pilotApprovalSnapshots = sqliteTable("pilot_approval_snapshots", {
   id: text("id").primaryKey(),
