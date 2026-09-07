@@ -24,4 +24,4 @@ CREATE TABLE IF NOT EXISTS `pilot_uat_states` (
   FOREIGN KEY (`workspace_id`) REFERENCES `employer_workspaces`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX IF NOT EXISTS `pilot_uat_states_workspace_uq` ON `pilot_uat_states` (`workspace_id`);
+CREATE INDEX IF NOT EXISTS `pilot_uat_states_workspace_idx` ON `pilot_uat_states` (`workspace_id`);
