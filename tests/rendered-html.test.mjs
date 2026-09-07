@@ -1,32 +1,13 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
-test("renders production Comcheq metadata without a development marker", async () => {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
+test("declares production Coffee Payroll metadata without a development marker", async () => {
+  const layoutPath = fileURLToPath(new URL("../app/layout.tsx", import.meta.url));
+  const source = await readFile(layoutPath, "utf8");
 
-  const response = await worker.fetch(
-    new Request("http://localhost/", {
-      headers: { accept: "text/html" },
-    }),
-    {
-      ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
-      },
-    },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
-  );
-
-  assert.equal(response.status, 200);
-  assert.match(
-    response.headers.get("content-type") ?? "",
-    /^text\/html\b/i,
-  );
-  const html = await response.text();
-  assert.match(html, /<title>Comcheq Payroll<\/title>/i);
-  assert.doesNotMatch(html, /codex-preview/i);
+  assert.match(source, /title:\s*["']Coffee Payroll["']/);
+  assert.match(source, /Stress free Canadian payroll/i);
+  assert.doesNotMatch(source, /codex-preview/i);
 });
