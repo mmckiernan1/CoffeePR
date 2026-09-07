@@ -17,6 +17,7 @@
 - [x] Preserve the existing detailed payroll screen as the Review workspace
 - [x] Preserve direct deep-navigation for experienced users outside the normal current-run entry points
 - [x] Run full build/test in an environment with repository dependencies available
+- [x] Add migration-level regression coverage for separate UAT/payment state rows and approval snapshots
 - [ ] Visual review at desktop and mobile widths
 - [ ] Merge only after review
 
