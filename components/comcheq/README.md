@@ -1,4 +1,4 @@
-# Comcheq guided payroll components
+# Coffee Payroll guided payroll components
 
 These components are presentation/orchestration only.
 
