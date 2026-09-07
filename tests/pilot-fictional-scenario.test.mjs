@@ -5,35 +5,39 @@ import {
   FICTIONAL_PILOT_PROFILE,
   FICTIONAL_PILOT_STATE,
 } from "../lib/payroll/pilot-fictional-scenario.ts";
-import {
-  PILOT_RUN_PERIOD,
-  pilotChangeSummary,
-  pilotEmployeeIsInRun,
-  pilotHourlyRateSplitNeeded,
-} from "../lib/payroll/pilot-uat.ts";
 import { pilotUnresolvedHourlyRateChanges } from "../lib/payroll/pilot-rate-change-guard.ts";
+
+const run = {
+  periodStart: "2026-08-16",
+  periodEnd: "2026-08-31",
+};
 
 test("fictional pilot scenario exercises the intended payroll paths", () => {
   assert.equal(FICTIONAL_PILOT_PROFILE.businessName, "Juniper Trail Coffee Co.");
   assert.equal(FICTIONAL_PILOT_PROFILE.province, "Alberta");
   assert.equal(FICTIONAL_PILOT_PROFILE.frequency, "Biweekly");
 
-  const included = FICTIONAL_PILOT_STATE.employees.filter(pilotEmployeeIsInRun);
+  const included = FICTIONAL_PILOT_STATE.employees;
   assert.equal(included.length, FICTIONAL_PILOT_EXPECTATIONS.employeesInRun);
   assert.equal(included.filter((employee) => employee.payType === "Hourly").length, FICTIONAL_PILOT_EXPECTATIONS.hourlyEmployees);
   assert.equal(included.filter((employee) => employee.payType === "Salary").length, FICTIONAL_PILOT_EXPECTATIONS.salariedEmployees);
 
-  const changed = included.filter((employee) => pilotChangeSummary(employee));
-  assert.deepEqual(changed.map((employee) => employee.id), [...FICTIONAL_PILOT_EXPECTATIONS.changedEmployees]);
+  const changedIds = included
+    .filter((employee) => Boolean(employee.rateEffectiveDate || employee.changeNote || employee.status === "Terminating" || employee.status === "Terminated"))
+    .map((employee) => employee.id);
+  assert.deepEqual(changedIds, [...FICTIONAL_PILOT_EXPECTATIONS.changedEmployees]);
 
   const rateChangeEmployee = included.find((employee) => employee.id === FICTIONAL_PILOT_EXPECTATIONS.hourlyRateSplitEmployee);
   assert.ok(rateChangeEmployee);
-  assert.equal(pilotHourlyRateSplitNeeded(rateChangeEmployee), true);
+  assert.deepEqual(rateChangeEmployee.rateHistory, [
+    { effectiveDate: "2024-05-13", rate: 29.5 },
+    { effectiveDate: "2026-08-24", rate: 31 },
+  ]);
 
   const unresolved = pilotUnresolvedHourlyRateChanges(
     included,
     FICTIONAL_PILOT_STATE.timesheets,
-    PILOT_RUN_PERIOD,
+    run,
   );
   assert.equal(unresolved.length, 1);
   assert.equal(unresolved[0].employeeId, FICTIONAL_PILOT_EXPECTATIONS.hourlyRateSplitEmployee);
