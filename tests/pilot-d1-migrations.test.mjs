@@ -89,17 +89,16 @@ test("pilot D1 migrations allow payroll and payment states in one workspace and 
     WHERE id = ?
   `).get(approvalSnapshot.snapshotId);
 
-  assert.deepEqual(storedSnapshot, {
-    id: approvalSnapshot.snapshotId,
-    workspace_id: workspaceId,
-    run_key: approvalSnapshot.run.runKey,
-    fingerprint: approvalSnapshot.fingerprint,
-    province: approvalSnapshot.profile.province,
-    frequency: approvalSnapshot.profile.frequency,
-    employee_count: 1,
-    approved_at: approvalSnapshot.approvedAt,
-    approved_by: approvalSnapshot.approvedBy,
-  });
+  assert.ok(storedSnapshot);
+  assert.equal(storedSnapshot.id, approvalSnapshot.snapshotId);
+  assert.equal(storedSnapshot.workspace_id, workspaceId);
+  assert.equal(storedSnapshot.run_key, approvalSnapshot.run.runKey);
+  assert.equal(storedSnapshot.fingerprint, approvalSnapshot.fingerprint);
+  assert.equal(storedSnapshot.province, approvalSnapshot.profile.province);
+  assert.equal(storedSnapshot.frequency, approvalSnapshot.profile.frequency);
+  assert.equal(storedSnapshot.employee_count, 1);
+  assert.equal(storedSnapshot.approved_at, approvalSnapshot.approvedAt);
+  assert.equal(storedSnapshot.approved_by, approvalSnapshot.approvedBy);
 
   db.close();
 });
