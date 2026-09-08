@@ -10,8 +10,7 @@
     {
       "binding": "DB",
       "database_name": "coffee-payroll-db",
-      // PLACEHOLDER ONLY: replace with the real D1 UUID before remote migration or deployment.
-      "database_id": "00000000-0000-4000-8000-000000000000",
+      "database_id": "3d24666c-0f95-429e-bfd7-7100eed7c649",
       "migrations_dir": "./drizzle"
     }
   ]
