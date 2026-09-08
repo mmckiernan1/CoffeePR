@@ -9,6 +9,7 @@ const OPTION_1 = "Option 1 — Periodic";
 const OPTION_2 = "Option 2 — Cumulative averaging";
 
 type AdminAction =
+  | { action: "initialize_demo_workspace" }
   | { action: "update_onboarding_service_path"; servicePath: "Self-service" | "Shoebox setup" }
   | { action: "create_account"; legalEntity: string; rpSuffix: string; remitterType: string }
   | { action: "save_offboarding"; employeeId: string; employeeName: string; reasonCode: string; lastDay: string; finalPayMethod: string }
@@ -134,12 +135,9 @@ async function ensureInitialDraft(actorEmail: string) {
 }
 
 async function state(actor: { email: string; role: ComcheqRole }) {
-  if (actor.role === "Administrator") {
-    await ensureFictionalWorkspace(actor.email);
-    await ensureInitialDraft(actor.email);
-  }
   const db = database();
-  const [accounts, employees, offboarding, memberships, payrollSettings, onboardingProfiles, schedules, payrollProfiles, payrollCodes, recurringPayItems, payRuns, outputs, billing, activeDrafts, draftLines, draftComponents, complianceChecks, payments, paymentComponents, overtimeAgreements, overtimeBankEntries, overtimeBalances, remittances, bankLinks, audit] = await Promise.all([
+  const [organization, accounts, employees, offboarding, memberships, payrollSettings, onboardingProfiles, schedules, payrollProfiles, payrollCodes, recurringPayItems, payRuns, outputs, billing, activeDrafts, draftLines, draftComponents, complianceChecks, payments, paymentComponents, overtimeAgreements, overtimeBankEntries, overtimeBalances, remittances, bankLinks, audit] = await Promise.all([
+    db.prepare("SELECT id, legal_name AS legalName FROM employer_workspaces WHERE id = ? LIMIT 1").bind(WORKSPACE_ID).first<{ id: string; legalName: string }>(),
     db.prepare("SELECT id, program_account_masked AS programAccount, remitter_type AS remitterType, status, employee_count AS employeeCount, next_run AS nextRun, created_at AS createdAt FROM payroll_accounts WHERE workspace_id = ? ORDER BY created_at ASC").bind(WORKSPACE_ID).all(),
     db.prepare("SELECT id, payroll_account_id AS payrollAccountId, legal_name AS legalName, email, role_title AS roleTitle, department, pay_type AS payType, pay_rate AS payRate, hire_date AS hireDate, status FROM employees WHERE workspace_id = ? ORDER BY legal_name ASC").bind(WORKSPACE_ID).all(),
     db.prepare("SELECT id, employee_id AS employeeId, employee_name AS employeeName, reason_code AS reasonCode, last_day AS lastDay, final_pay_method AS finalPayMethod, status, updated_at AS updatedAt, updated_by AS updatedBy FROM offboarding_drafts WHERE workspace_id = ? ORDER BY updated_at DESC").bind(WORKSPACE_ID).all(),
@@ -173,7 +171,7 @@ async function state(actor: { email: string; role: ComcheqRole }) {
     db.prepare("SELECT p.id, p.contractor_id AS contractorId, c.contractor_number AS contractorNumber, c.legal_name AS contractorName, p.payment_date AS paymentDate, p.amount_cents AS amountCents, p.notes, p.t4a_box AS t4aBox, p.status, p.created_at AS createdAt FROM contractor_payments p JOIN contractors c ON c.id = p.contractor_id WHERE p.workspace_id = ? ORDER BY p.payment_date DESC, c.contractor_number").bind(WORKSPACE_ID).all(),
   ]);
   const activeDraft = activeDrafts.results[0] ?? null;
-  return { actorRole: actor.role, accounts: accounts.results, employees: employees.results, offboarding: offboarding.results, memberships: memberships.results, payrollSettings: payrollSettings.results[0] ?? null, onboarding: onboardingProfiles.results[0] ?? null, schedules: schedules.results, payrollProfiles: payrollProfiles.results, payrollCodes: payrollCodes.results, recurringPayItems: recurringPayItems.results, payRuns: payRuns.results, outputs: outputs.results, billing: billing.results, billingProfile: billingProfiles.results[0] ?? null, billingCharges: billingCharges.results, contractors: contractors.results, contractorPayments: contractorPayments.results, activeDraft, draftLines: activeDraft ? draftLines.results.filter((line) => line.draftId === activeDraft.id) : [], draftComponents: activeDraft ? draftComponents.results.filter((item) => item.draftId === activeDraft.id) : [], complianceChecks: activeDraft ? complianceChecks.results.filter((item) => item.draftId === activeDraft.id) : [], payments: payments.results, paymentComponents: paymentComponents.results, overtimeAgreements: overtimeAgreements.results, overtimeBankEntries: overtimeBankEntries.results, overtimeBalances: overtimeBalances.results, remittances: remittances.results, bankLink: bankLinks.results[0] ?? null, audit: audit.results };
+  return { actorRole: actor.role, organizationConfigured: Boolean(organization), organization, accounts: accounts.results, employees: employees.results, offboarding: offboarding.results, memberships: memberships.results, payrollSettings: payrollSettings.results[0] ?? null, onboarding: onboardingProfiles.results[0] ?? null, schedules: schedules.results, payrollProfiles: payrollProfiles.results, payrollCodes: payrollCodes.results, recurringPayItems: recurringPayItems.results, payRuns: payRuns.results, outputs: outputs.results, billing: billing.results, billingProfile: billingProfiles.results[0] ?? null, billingCharges: billingCharges.results, contractors: contractors.results, contractorPayments: contractorPayments.results, activeDraft, draftLines: activeDraft ? draftLines.results.filter((line) => line.draftId === activeDraft.id) : [], draftComponents: activeDraft ? draftComponents.results.filter((item) => item.draftId === activeDraft.id) : [], complianceChecks: activeDraft ? complianceChecks.results.filter((item) => item.draftId === activeDraft.id) : [], payments: payments.results, paymentComponents: paymentComponents.results, overtimeAgreements: overtimeAgreements.results, overtimeBankEntries: overtimeBankEntries.results, overtimeBalances: overtimeBalances.results, remittances: remittances.results, bankLink: bankLinks.results[0] ?? null, audit: audit.results };
 }
 
 function controlledInteger(value: number, label: string, maximum: number) {
@@ -263,7 +261,16 @@ export async function POST(request: Request) {
   const body = await request.json() as AdminAction;
   const db = database();
   const occurredAt = new Date().toISOString();
-  if (actor.role === "Administrator") await ensureFictionalWorkspace(actor.email);
+
+  if (body.action === "initialize_demo_workspace") {
+    if (actor.role !== "Administrator") return Response.json({ error: "Administrator role required." }, { status: 403 });
+    await ensureFictionalWorkspace(actor.email);
+    await ensureInitialDraft(actor.email);
+    return Response.json({ ok: true, workspaceId: WORKSPACE_ID });
+  }
+
+  const organization = await db.prepare("SELECT id FROM employer_workspaces WHERE id = ? LIMIT 1").bind(WORKSPACE_ID).first<{ id: string }>();
+  if (!organization) return Response.json({ error: "No organization has been configured. Initialize the fictional demo workspace first." }, { status: 409 });
 
   if (body.action === "update_onboarding_service_path") {
     if (actor.role === "Read-only") return Response.json({ error: "Payroll Processor or Administrator role required." }, { status: 403 });
