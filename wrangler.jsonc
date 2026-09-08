@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "coffee-payroll",
+  "account_id": "3589ee9af35206bb182f915ccda686bd",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2026-04-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "binding": "ASSETS" },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "coffee-payroll-db",
+      // PLACEHOLDER ONLY: replace with the real D1 UUID before remote migration or deployment.
+      "database_id": "00000000-0000-4000-8000-000000000000",
+      "migrations_dir": "./drizzle"
+    }
+  ]
+}
