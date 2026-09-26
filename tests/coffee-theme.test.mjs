@@ -27,6 +27,7 @@ test("Coffee Payroll user-facing surfaces do not expose legacy brand styling", a
   const combined = sources.join("\n");
   assert.doesNotMatch(combined, /Comcheq Payroll|Comcheq support/i);
   assert.doesNotMatch(combined, /#6d4aff|#7757e8|#5b35c7|#00a29a|#8d70ff|#00a9a5/i);
+  assert.doesNotMatch(combined, /rounded-xl bg-\[#5a321f\]/i);
 });
 
 test("Coffee Payroll theme keeps warm surfaces, cobalt actions and green success", async () => {
