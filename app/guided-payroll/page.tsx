@@ -115,6 +115,7 @@ export default function GuidedPayrollPreviewPage() {
       payType: employee.payType,
       detail,
       netPay: employee.net,
+      grossPay: employee.gross,
       status: employee.status,
       changeLabel: lifecycle || undefined,
       needsAttention: Boolean(lifecycle),

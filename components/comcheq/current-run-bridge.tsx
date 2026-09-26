@@ -6,7 +6,6 @@ type CurrentRunEmployee = {
   name: string;
   role: string;
   payType: string;
-  gross: number;
   tax: number;
   cpp: number;
   ei: number;
@@ -33,7 +32,6 @@ export function CurrentRunBridge({
   approved,
   timeReady,
   employees,
-  gross,
   net,
   remittance,
   onHome,
@@ -57,7 +55,6 @@ export function CurrentRunBridge({
       approved={approved}
       timeReady={timeReady}
       employees={guidedEmployees}
-      gross={gross}
       net={net}
       remittance={remittance}
       fee={18}
