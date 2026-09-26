@@ -86,7 +86,7 @@ export default function FictionalPilotScenarioPage() {
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            <button onClick={loadScenario} disabled={status === "loading"} className="rounded-xl bg-[#5a321f] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">
+            <button onClick={loadScenario} disabled={status === "loading"} className="rounded-xl bg-[#1557d8] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">
               {status === "loading" ? "Loading scenario…" : "Load fictional test"}
             </button>
             {(status === "ready" || status === "device") && (
