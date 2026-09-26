@@ -200,7 +200,7 @@ export default function GuidedTimeEntryPage() {
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[#eadfd4] pt-5">
             <span className="text-xs text-[#806858]">{mode === "workspace" ? "Saved to your pilot workspace" : mode === "saving" ? "Saving hours…" : mode === "device" ? "Saved on this device" : mode === "error" ? "Workspace save needs attention" : "Loading…"}</span>
-            <button onClick={state.ready ? () => router.push("/guided-payroll") : markReady} disabled={completeRows !== hourly.length} className="rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white disabled:opacity-35">{state.ready ? "Continue to review" : "Yes, hours are complete"}</button>
+            <button onClick={state.ready ? () => router.push("/guided-payroll") : markReady} disabled={completeRows !== hourly.length} className="rounded-xl bg-[#1557d8] px-5 py-3 font-semibold text-white disabled:opacity-35">{state.ready ? "Continue to review" : "Yes, hours are complete"}</button>
           </div>
         </section>
       </div>
