@@ -126,7 +126,7 @@ export default function OnboardingPage() {
                 <label className="text-sm font-medium">Province<select value={province} onChange={(e) => setProvince(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] bg-white px-4 py-3"><option>Alberta</option><option>British Columbia</option><option>Saskatchewan</option><option>Manitoba</option><option>Ontario</option></select></label>
                 <label className="text-sm font-medium">Employees<input value={employeeCount} onChange={(e) => setEmployeeCount(e.target.value)} type="number" min="1" max="100" className="mt-2 w-full rounded-xl border border-[#d8c8ba] bg-white px-4 py-3" /></label>
               </div>
-              <button className="mt-8 rounded-xl bg-[#5a321f] px-6 py-3 font-semibold text-white">Continue</button>
+              <button className="mt-8 rounded-xl bg-[#1557d8] px-6 py-3 font-semibold text-white">Continue</button>
             </form>}
 
             {step === 1 && <div className="mx-auto max-w-2xl">
@@ -137,7 +137,7 @@ export default function OnboardingPage() {
                 <button onClick={() => setFrequency("Biweekly")} className={`rounded-2xl border p-5 text-left ${frequency === "Biweekly" ? "border-[#6a3b24] bg-[#f6eadf]" : "border-[#ded0c3] bg-white"}`}><strong>Biweekly</strong><div className="mt-1 text-sm text-[#796050]">A common small-business schedule.</div></button>
                 <button onClick={() => setFrequency("Semi-monthly")} className={`rounded-2xl border p-5 text-left ${frequency === "Semi-monthly" ? "border-[#6a3b24] bg-[#f6eadf]" : "border-[#ded0c3] bg-white"}`}><strong>Semi-monthly</strong><div className="mt-1 text-sm text-[#796050]">Two predictable payrolls each month.</div></button>
               </div>
-              <div className="mt-8 flex gap-3"><button onClick={() => setStep(0)} className="rounded-xl border border-[#d6c6b8] px-5 py-3 font-semibold">Back</button><button onClick={() => next()} className="rounded-xl bg-[#5a321f] px-6 py-3 font-semibold text-white">Continue</button></div>
+              <div className="mt-8 flex gap-3"><button onClick={() => setStep(0)} className="rounded-xl border border-[#d6c6b8] px-5 py-3 font-semibold">Back</button><button onClick={() => next()} className="rounded-xl bg-[#1557d8] px-6 py-3 font-semibold text-white">Continue</button></div>
             </div>}
 
             {step === 2 && <div className="mx-auto max-w-2xl">
@@ -155,7 +155,7 @@ export default function OnboardingPage() {
               <h1 className="mt-5 text-4xl font-semibold tracking-tight">Your workspace is ready</h1>
               <p className="mt-3 text-[#745948]">{businessName || "Your business"} · {province} · {frequency} · about {employeeCount} employees</p>
               <p className="mx-auto mt-5 max-w-xl text-sm leading-6 text-[#7c6555]">Next we’ll use the pilot UAT area to test hires, employee changes, timesheets and the guided payroll flow before you put real payroll through the system.</p>
-              <div className="mt-8 flex flex-wrap justify-center gap-3"><button onClick={() => router.push("/uat")} className="rounded-xl bg-[#5a321f] px-6 py-3 font-semibold text-white">Start pilot UAT</button><button onClick={() => router.push("/guided-payroll")} className="rounded-xl border border-[#d6c6b8] px-6 py-3 font-semibold">Preview payroll</button></div>
+              <div className="mt-8 flex flex-wrap justify-center gap-3"><button onClick={() => router.push("/uat")} className="rounded-xl bg-[#1557d8] px-6 py-3 font-semibold text-white">Start pilot UAT</button><button onClick={() => router.push("/guided-payroll")} className="rounded-xl border border-[#d6c6b8] px-6 py-3 font-semibold">Preview payroll</button></div>
             </div>}
           </div>
         </section>
