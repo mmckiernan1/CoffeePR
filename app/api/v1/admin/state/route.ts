@@ -9,6 +9,7 @@ const OPTION_1 = "Option 1 — Periodic";
 const OPTION_2 = "Option 2 — Cumulative averaging";
 
 type AdminAction =
+  | { action: "initialize_demo_workspace" }
   | { action: "update_onboarding_service_path"; servicePath: "Self-service" | "Shoebox setup" }
   | { action: "create_account"; legalEntity: string; rpSuffix: string; remitterType: string }
   | { action: "save_offboarding"; employeeId: string; employeeName: string; reasonCode: string; lastDay: string; finalPayMethod: string }
@@ -134,10 +135,6 @@ async function ensureInitialDraft(actorEmail: string) {
 }
 
 async function state(actor: { email: string; role: ComcheqRole }) {
-  if (actor.role === "Administrator") {
-    await ensureFictionalWorkspace(actor.email);
-    await ensureInitialDraft(actor.email);
-  }
   const db = database();
   const [accounts, employees, offboarding, memberships, payrollSettings, onboardingProfiles, schedules, payrollProfiles, payrollCodes, recurringPayItems, payRuns, outputs, billing, activeDrafts, draftLines, draftComponents, complianceChecks, payments, paymentComponents, overtimeAgreements, overtimeBankEntries, overtimeBalances, remittances, bankLinks, audit] = await Promise.all([
     db.prepare("SELECT id, program_account_masked AS programAccount, remitter_type AS remitterType, status, employee_count AS employeeCount, next_run AS nextRun, created_at AS createdAt FROM payroll_accounts WHERE workspace_id = ? ORDER BY created_at ASC").bind(WORKSPACE_ID).all(),
@@ -263,7 +260,16 @@ export async function POST(request: Request) {
   const body = await request.json() as AdminAction;
   const db = database();
   const occurredAt = new Date().toISOString();
-  if (actor.role === "Administrator") await ensureFictionalWorkspace(actor.email);
+
+  if (body.action === "initialize_demo_workspace") {
+    if (actor.role !== "Administrator") return Response.json({ error: "Administrator role required." }, { status: 403 });
+    await ensureFictionalWorkspace(actor.email);
+    await ensureInitialDraft(actor.email);
+    return Response.json({ ok: true, workspaceId: WORKSPACE_ID });
+  }
+
+  const organization = await db.prepare("SELECT id FROM employer_workspaces WHERE id = ? LIMIT 1").bind(WORKSPACE_ID).first<{ id: string }>();
+  if (!organization) return Response.json({ error: "No organization has been configured. Initialize the fictional demo workspace first." }, { status: 409 });
 
   if (body.action === "update_onboarding_service_path") {
     if (actor.role === "Read-only") return Response.json({ error: "Payroll Processor or Administrator role required." }, { status: 403 });
