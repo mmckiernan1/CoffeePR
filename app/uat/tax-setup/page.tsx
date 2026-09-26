@@ -121,11 +121,11 @@ export default function PilotTaxSetupPage() {
                 <CheckRow checked={value.openingYtd} onChange={(checked) => updateCheck(employee.id, "openingYtd", checked)} title="Prior payroll reviewed" detail="Confirm opening YTD amounts were entered, or that none apply." />
               </div>}
 
-              {!ready && <button disabled={savingId === employee.id || !reviewComplete(employee.id)} onClick={() => markReviewed(employee.id)} className="mt-5 rounded-xl bg-[#5a321f] px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">{savingId === employee.id ? "Saving…" : "Complete statutory setup"}</button>}
+              {!ready && <button disabled={savingId === employee.id || !reviewComplete(employee.id)} onClick={() => markReviewed(employee.id)} className="mt-5 rounded-xl bg-[#1557d8] px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">{savingId === employee.id ? "Saving…" : "Complete statutory setup"}</button>}
             </article>;
           })}</div>}
 
-          <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-[#eadfd4] pt-6"><span className="text-sm text-[#795f4f]">{pending.length === 0 ? "All required employee statutory checkpoints are complete." : `${pending.length} employee${pending.length === 1 ? "" : "s"} still need statutory setup.`}</span><button onClick={() => router.push("/guided-payroll")} className="rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white">Return to payroll</button></div>
+          <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-[#eadfd4] pt-6"><span className="text-sm text-[#795f4f]">{pending.length === 0 ? "All required employee statutory checkpoints are complete." : `${pending.length} employee${pending.length === 1 ? "" : "s"} still need statutory setup.`}</span><button onClick={() => router.push("/guided-payroll")} className="rounded-xl bg-[#1557d8] px-5 py-3 font-semibold text-white">Return to payroll</button></div>
         </section>
       </div>
     </main>
