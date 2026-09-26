@@ -208,7 +208,7 @@ export default function PilotPaymentsPage() {
 
                 <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
                   <label className="text-xs font-semibold text-[#745948]">Bank confirmation / reference<input disabled={!enabled || paid} value={payments.references[employee.id] ?? ""} onChange={(e) => updateReference(employee.id, e.target.value)} placeholder="Paste or type the bank confirmation" className="mt-1.5 w-full rounded-xl border border-[#d8c8ba] bg-white px-3 py-2.5 text-sm font-normal outline-none transition focus:border-[#9fb5d6] disabled:bg-[#f3eee9]" /></label>
-                  <button disabled={!enabled || (!paid && !hasReference)} onClick={() => togglePaid(employee.id)} className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-35 ${paid ? "border border-[#b9d2a9] bg-white text-[#3f6330]" : "bg-[#5a321f] text-white hover:bg-[#452518]"}`}>{paid ? "✓ Paid" : "Mark paid"}</button>
+                  <button disabled={!enabled || (!paid && !hasReference)} onClick={() => togglePaid(employee.id)} className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-35 ${paid ? "border border-[#b9d2a9] bg-white text-[#3f6330]" : "bg-[#1557d8] text-white hover:bg-[#0f47b5]"}`}>{paid ? "✓ Paid" : "Mark paid"}</button>
                 </div>
 
                 {!paid && enabled && !hasReference && <p className="mt-2 text-xs text-[#846f60]">Enter the bank confirmation after you send the e-transfer. Then “Mark paid” will become available.</p>}
@@ -219,7 +219,7 @@ export default function PilotPaymentsPage() {
 
           <div className="mt-7 flex flex-wrap items-end justify-between gap-4 border-t border-[#eadfd4] pt-6">
             <div><div className="text-sm font-semibold text-[#4f4037]">{remainingCount === 0 && rows.length > 0 ? "All employee payments are confirmed." : `${remainingCount} ${remainingCount === 1 ? "payment" : "payments"} left to confirm.`}</div><div className="mt-1 text-xs text-[#846f60]">{sync === "workspace" ? "Checklist saved to your pilot workspace" : sync === "saving" ? "Saving checklist…" : "Checklist saved on this device"}</div></div>
-            <button disabled={!payments.approved || approvalStale || !allPaid || !allReferences || sync === "saving"} onClick={finishPayroll} className="rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white disabled:opacity-35">{allPaid && allReferences ? "Finish payroll" : `Confirmed ${confirmedCount} of ${rows.length}`}</button>
+            <button disabled={!payments.approved || approvalStale || !allPaid || !allReferences || sync === "saving"} onClick={finishPayroll} className="rounded-xl bg-[#1557d8] px-5 py-3 font-semibold text-white disabled:opacity-35">{allPaid && allReferences ? "Finish payroll" : `Confirmed ${confirmedCount} of ${rows.length}`}</button>
           </div>
         </section>
       </div>
