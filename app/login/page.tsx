@@ -107,7 +107,7 @@ export default function LoginPage() {
 
               {message && <div className="rounded-xl border border-[#e4c5ad] bg-[#fff4e8] px-4 py-3 text-sm leading-5 text-[#71452f]">{message}</div>}
 
-              <button disabled={busy} className="w-full rounded-xl bg-[#5a321f] px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#452518] disabled:cursor-wait disabled:opacity-60">{busy ? "One moment…" : mode === "signup" ? "Create account" : "Sign in"}</button>
+              <button disabled={busy} className="w-full rounded-xl bg-[#1557d8] px-4 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0f47b5] disabled:cursor-wait disabled:opacity-60">{busy ? "One moment…" : mode === "signup" ? "Create account" : "Sign in"}</button>
             </form>
 
             <p className="mt-6 text-center text-sm text-[#786151]">
