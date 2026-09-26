@@ -139,7 +139,7 @@ export default function PilotUatPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <button onClick={() => router.push("/")} className="rounded-xl border border-[#d6c6b8] bg-[#fffaf5] px-4 py-2 text-sm font-semibold">Main menu</button>
-            <button onClick={() => router.push("/guided-payroll")} className="rounded-xl bg-[#5a321f] px-4 py-2 text-sm font-semibold text-white">Run payroll</button>
+            <button onClick={() => router.push("/guided-payroll")} className="rounded-xl bg-[#1557d8] px-4 py-2 text-sm font-semibold text-white">Run payroll</button>
           </div>
         </header>
 
