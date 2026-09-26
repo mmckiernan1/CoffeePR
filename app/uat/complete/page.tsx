@@ -169,7 +169,7 @@ export default function PilotCompletePage() {
                 <p className="mt-3 text-xs leading-5 text-[#806858]">CRA remittance timing depends on the employer&apos;s remitter schedule and is not yet configured in this pilot.</p>
               </div>
 
-              <div className="mt-8 flex flex-wrap justify-center gap-3"><button onClick={() => router.push("/?workspace=reports")} className="rounded-xl border border-[#d6c6b8] bg-white px-5 py-3 text-sm font-semibold">Reports & statements</button><button onClick={() => router.push("/")} className="rounded-xl bg-[#5a321f] px-5 py-3 text-sm font-semibold text-white">Back to main menu</button></div>
+              <div className="mt-8 flex flex-wrap justify-center gap-3"><button onClick={() => router.push("/?workspace=reports")} className="rounded-xl border border-[#d6c6b8] bg-white px-5 py-3 text-sm font-semibold">Reports & statements</button><button onClick={() => router.push("/")} className="rounded-xl bg-[#1557d8] px-5 py-3 text-sm font-semibold text-white">Back to main menu</button></div>
 
               <div className="mx-auto mt-8 max-w-2xl border-t border-[#eadfd4] pt-5">
                 <button onClick={() => setShowDetails((current) => !current)} className="text-xs font-semibold text-[#806858] underline decoration-[#c8b4a3] underline-offset-4">{showDetails ? "Hide payroll record details" : "Payroll record details"}</button>
@@ -188,7 +188,7 @@ export default function PilotCompletePage() {
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#f3e6da] text-2xl">…</div>
               <h1 className="mt-5 text-3xl font-semibold">{approvalStale ? "Payroll changed after approval" : "Payroll is not finished yet"}</h1>
               <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#745948]">{approvalStale ? "An employee, rate, time or final-pay input changed. Review the updated payroll and approve it again before Coffee Payroll can mark this run complete." : "Approval, every employee payment, and a bank confirmation/reference for each payment must all be present before Coffee Payroll marks the run complete."}</p>
-              <div className="mt-7 flex justify-center"><button onClick={() => router.push(approvalStale ? "/guided-payroll" : "/uat/payments")} className="rounded-xl bg-[#5a321f] px-5 py-3 font-semibold text-white">{approvalStale ? "Review payroll again" : "Return to employee payments"}</button></div>
+              <div className="mt-7 flex justify-center"><button onClick={() => router.push(approvalStale ? "/guided-payroll" : "/uat/payments")} className="rounded-xl bg-[#1557d8] px-5 py-3 font-semibold text-white">{approvalStale ? "Review payroll again" : "Return to employee payments"}</button></div>
             </div>
           )}
         </section>
