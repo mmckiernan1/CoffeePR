@@ -131,10 +131,31 @@ export default function GuidedTimeEntryPage() {
     setNotice("Split hours changed. Coffee Payroll will apply each rate to the hours in its effective segment.");
   }
 
-  function markReady() {
+  async function markReady() {
     if (!state || completeRows !== hourly.length) return;
-    setState({ ...state, ready: true });
-    setNotice("Hours and pay are ready. You can continue to payroll review.");
+    const readyState = { ...state, ready: true };
+    if (timer.current) clearTimeout(timer.current);
+    setState(readyState);
+    window.localStorage.setItem(PILOT_UAT_STORAGE_KEY, JSON.stringify(readyState));
+
+    if (cloudSave.current) {
+      setMode("saving");
+      try {
+        const response = await fetch("/api/pilot/workspace", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ state: readyState }),
+        });
+        if (!response.ok) throw new Error("save failed");
+        setMode("workspace");
+      } catch {
+        setMode("error");
+        setNotice("Coffee Payroll saved your hours on this device, but the workspace save needs attention before you continue.");
+        return;
+      }
+    }
+
+    router.push("/guided-payroll");
   }
 
   if (!state) return <main className="min-h-screen bg-[#f4eadf] px-4 py-8 text-[#332118]"><div className="mx-auto max-w-4xl rounded-2xl border border-[#decdbd] bg-[#fffaf5] p-6">{notice}</div></main>;
