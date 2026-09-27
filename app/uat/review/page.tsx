@@ -1,4 +1,5 @@
 "use client";
+import { FICTIONAL_PILOT_PROFILE_KEY } from "@/lib/payroll/pilot-fictional-scenario";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -30,7 +31,7 @@ export default function UatReviewPage() {
         const response = await fetch("/api/pilot/workspace", { cache: "no-store" });
         if (response.ok) { const payload = await response.json(); if (!cancelled) { setState(payload.state); setProfile(payload.profile); setSource("Synced UAT workspace"); } return; }
       } catch { /* device fallback */ }
-      try { const raw = window.localStorage.getItem(PILOT_UAT_STORAGE_KEY); if (raw && !cancelled) setState(JSON.parse(raw)); } catch { /* starter data */ }
+      try { const raw = window.localStorage.getItem(PILOT_UAT_STORAGE_KEY); if (raw && !cancelled) setState(JSON.parse(raw)); const localProfile = window.localStorage.getItem(FICTIONAL_PILOT_PROFILE_KEY); if (localProfile && !cancelled) setProfile(JSON.parse(localProfile)); } catch { /* starter data */ }
       if (!cancelled) setSource("Saved on this device");
     })();
     return () => { cancelled = true; };

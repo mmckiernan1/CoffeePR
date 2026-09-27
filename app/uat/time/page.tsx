@@ -1,4 +1,5 @@
 "use client";
+import { FICTIONAL_PILOT_PROFILE_KEY } from "@/lib/payroll/pilot-fictional-scenario";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -54,6 +55,8 @@ export default function GuidedTimeEntryPage() {
           if (raw) next = JSON.parse(raw) as PilotUatState;
         } catch { /* use fictional fallback */ }
         if (!cancelled) {
+          const localProfile = window.localStorage.getItem(FICTIONAL_PILOT_PROFILE_KEY);
+          if (localProfile) setBusinessName(JSON.parse(localProfile).businessName);
           setState(next);
           cloudSave.current = false;
           setMode("device");

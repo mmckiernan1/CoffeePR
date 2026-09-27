@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { dollarsToCents } from "@/lib/payroll/money";
-import { pilotRateHistoryWithChange, type PilotUatEmployee as Employee, type PilotUatState as WorkspaceState } from "@/lib/payroll/pilot-uat";
+import { PILOT_UAT_STORAGE_KEY, pilotRateHistoryWithChange, type PilotUatEmployee as Employee, type PilotUatState as WorkspaceState } from "@/lib/payroll/pilot-uat";
 
 type ChangeKind = "hire" | "leave" | "pay" | "bonus" | "absence" | "other" | null;
 
@@ -47,7 +47,15 @@ export default function LifecycleUatPage() {
         setEmployeeId(payload.state.employees[0]?.id ?? "");
         setNotice("Tell Coffee Payroll what changed. We’ll only ask for the details that matter.");
       })
-      .catch((error) => setNotice(error instanceof Error ? error.message : "Unable to load employee changes."));
+      .catch((error) => {
+        const raw = window.localStorage.getItem(PILOT_UAT_STORAGE_KEY);
+        if (raw) {
+          const local = JSON.parse(raw) as WorkspaceState;
+          setState(local);
+          setEmployeeId(local.employees[0]?.id ?? "");
+          setNotice("Fictional employee changes are saved on this device.");
+        } else setNotice(error instanceof Error ? error.message : "Unable to load employee changes.");
+      });
   }, []);
 
   async function persist(nextState: WorkspaceState, message: string) {
@@ -59,6 +67,13 @@ export default function LifecycleUatPage() {
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
+      if (payload.code === "UAT_DEVICE_ONLY") {
+        window.localStorage.setItem(PILOT_UAT_STORAGE_KEY, JSON.stringify(nextState));
+        setState(nextState);
+        setNotice(message);
+        setKind(null);
+        return;
+      }
       throw new Error(payload.error ?? "Unable to save employee change.");
     }
     const payload = await response.json();

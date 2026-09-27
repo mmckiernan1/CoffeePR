@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GuidedPayrollRun, type GuidedPayrollEmployee } from "@/components/comcheq";
+import { FICTIONAL_PILOT_PROFILE_KEY } from "@/lib/payroll/pilot-fictional-scenario";
 import { pilotUnresolvedHourlyRateChanges } from "@/lib/payroll/pilot-rate-change-guard";
 import {
   PILOT_RUN_PERIOD,
@@ -47,6 +48,8 @@ export default function GuidedPayrollPreviewPage() {
       } catch {
         try {
           const raw = window.localStorage.getItem(PILOT_UAT_STORAGE_KEY);
+          const localProfile = window.localStorage.getItem(FICTIONAL_PILOT_PROFILE_KEY);
+          if (localProfile && !cancelled) setProfile(JSON.parse(localProfile));
           if (raw) {
             const parsed = JSON.parse(raw) as PilotUatState;
             if (Array.isArray(parsed.employees) && parsed.timesheets) setState(parsed);
@@ -150,6 +153,13 @@ export default function GuidedPayrollPreviewPage() {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
+        if (response.status === 404 && payload.code === "UAT_DEVICE_ONLY") {
+          // Isolated fictional preview intentionally has no hosted API or D1.
+          const local = { ...payments, approved: true, completedAt: null };
+          setPayments(local);
+          window.localStorage.setItem(paymentStorageKey, JSON.stringify(local));
+          return;
+        }
         setPayments((current) => ({ ...current, approved: false, completedAt: null }));
         setApprovalError(payload.error ?? "Payroll could not be approved yet.");
         if (payload.code === "EMPLOYEE_TAX_SETUP_REQUIRED" || payload.code === "NEW_HIRE_TAX_SETUP_REQUIRED") router.push("/uat/tax-setup");

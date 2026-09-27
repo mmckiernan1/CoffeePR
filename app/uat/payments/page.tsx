@@ -1,4 +1,5 @@
 "use client";
+import { FICTIONAL_PILOT_PROFILE_KEY } from "@/lib/payroll/pilot-fictional-scenario";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -49,6 +50,8 @@ export default function PilotPaymentsPage() {
           const data = await workspace.json();
           if (!cancelled) { setUat(data.state); setProfile(data.profile); }
         } else {
+          const localProfile = window.localStorage.getItem(FICTIONAL_PILOT_PROFILE_KEY);
+          if (localProfile && !cancelled) setProfile(JSON.parse(localProfile));
           const raw = window.localStorage.getItem(PILOT_UAT_STORAGE_KEY);
           if (raw && !cancelled) setUat(JSON.parse(raw));
         }

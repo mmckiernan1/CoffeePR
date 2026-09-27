@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   FICTIONAL_PILOT_EXPECTATIONS,
+  FICTIONAL_PILOT_PROFILE_KEY,
   FICTIONAL_PILOT_PROFILE,
   FICTIONAL_PILOT_STATE,
 } from "@/lib/payroll/pilot-fictional-scenario";
@@ -23,6 +24,7 @@ export default function FictionalPilotScenarioPage() {
     setMessage("Loading Juniper Trail Coffee Co. and clearing prior pilot progress…");
 
     window.localStorage.setItem(PILOT_UAT_STORAGE_KEY, JSON.stringify(FICTIONAL_PILOT_STATE));
+    window.localStorage.setItem(FICTIONAL_PILOT_PROFILE_KEY, JSON.stringify(FICTIONAL_PILOT_PROFILE));
     window.localStorage.setItem(paymentStorageKey, JSON.stringify(emptyPayments));
     window.sessionStorage.removeItem(guidedProgressKey);
 

@@ -1,5 +1,7 @@
 import type { PilotProfile, PilotUatState } from "@/lib/payroll/pilot-uat";
 
+export const FICTIONAL_PILOT_PROFILE_KEY = "coffee-payroll:fictional-pilot-profile";
+
 export const FICTIONAL_PILOT_PROFILE: PilotProfile = {
   businessName: "Juniper Trail Coffee Co.",
   province: "Alberta",
