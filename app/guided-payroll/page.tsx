@@ -212,7 +212,7 @@ export default function GuidedPayrollPreviewPage() {
 
         {supported && (
           <GuidedPayrollRun
-            runKey="2026-17-pilot"
+            runKey="2026-18-pilot"
             approved={payments.approved}
             paymentsComplete={paymentsComplete}
             timeReady={state.ready}
