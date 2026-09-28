@@ -66,7 +66,7 @@ export const FICTIONAL_PILOT_STATE: PilotUatState = {
     },
   ],
   timesheets: {
-    "EMP-0002": { regular: 80, overtime: 2.5, vacation: 0 },
+    "EMP-0002": { regular: 80, overtime: 2.5, vacation: 0, allocationTarget: { regular: 80, overtime: 2.5, vacation: 0 } },
     "EMP-0004": { regular: 64, overtime: 0, vacation: 0 },
   },
   openingBalances: {},
