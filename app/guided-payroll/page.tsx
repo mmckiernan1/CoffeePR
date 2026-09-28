@@ -183,7 +183,7 @@ export default function GuidedPayrollPreviewPage() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-1 text-xs text-[#795f4f]">
           <div>
             <strong className="text-[#332118]">{profile.businessName} · Run payroll</strong>
-            <span className="ml-2">Run 17 · August 16–31 · Pay date September 4, 2026</span>
+            <span className="ml-2">Run 18 · August 16–29 · Pay date September 4, 2026</span>
           </div>
           {lifecycleChanges.length > 0 && <button onClick={() => router.push("/uat/lifecycle")} className="rounded-lg px-2 py-1.5 font-semibold text-[#7b4b23] transition hover:bg-[#fff0dc]">{lifecycleChanges.length} employee change{lifecycleChanges.length === 1 ? "" : "s"}</button>}
         </div>
