@@ -28,7 +28,7 @@ type PilotProfile = { businessName: string; province: string; frequency: string;
 
 const paymentKey = "coffee-payroll:pilot-payments";
 const uatKey = "coffee-payroll:pilot-uat";
-const runPeriod = { periodStart: "2026-08-16", periodEnd: "2026-08-31", payDate: "2026-09-04" } as const;
+const runPeriod = { periodStart: "2026-08-16", periodEnd: "2026-08-29", payDate: "2026-09-04" } as const;
 
 function employeeIsInRun(employee: UatEmployee) {
   try {
@@ -150,7 +150,7 @@ export default function PilotCompletePage() {
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#e8efdf] text-3xl font-bold text-[#3d5a2f]">✓</div>
                 <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-[#6f7f66]">Payroll complete</p>
                 <h1 className="mt-1 text-4xl font-semibold tracking-tight">You did your payroll.</h1>
-                <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#745948]">{profile.businessName}’s Run 17 is approved and every employee payment has been confirmed.</p>
+                <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#745948]">{profile.businessName}’s Run 18 is approved and every employee payment has been confirmed.</p>
                 {completionTime && <p className="mt-2 text-xs text-[#7d746c]">Completed {completionTime}</p>}
               </div>
 
