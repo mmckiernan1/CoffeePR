@@ -145,28 +145,30 @@ test("Juniper Trail periodic employees reconcile to the fictional UAT answer key
       name: "Avery Chen",
       grossCents: 307_692,
       ytd: { pensionableEarningsCents: 4_923_072, cppCents: 280_000, cpp2Cents: 0, eiCents: 80_000 },
-      expected: { tax: 53_009, cpp: 17_507, cpp2: 0, ei: 5_015, net: 232_161 },
+      expected: { tax: 53_009, cpp: 17_507, cpp2: 0, ei: 5_015, net: 232_161, employerCpp: 17_507, employerEi: 7_021 },
     },
     {
       name: "Noah Williams",
       grossCents: 253_625,
       ytd: { pensionableEarningsCents: 3_600_000, cppCents: 210_000, cpp2Cents: 0, eiCents: 58_000 },
-      expected: { tax: 37_423, cpp: 14_290, cpp2: 0, ei: 4_134, net: 197_778 },
+      expected: { tax: 37_423, cpp: 14_290, cpp2: 0, ei: 4_134, net: 197_778, employerCpp: 14_290, employerEi: 5_788 },
     },
     {
       name: "Priya Singh",
       grossCents: 426_923,
       ytd: { pensionableEarningsCents: 6_826_923, cppCents: 390_000, cpp2Cents: 0, eiCents: 111_000 },
-      expected: { tax: 89_011, cpp: 24_601, cpp2: 0, ei: 1_307, net: 312_004 },
+      expected: { tax: 89_011, cpp: 24_601, cpp2: 0, ei: 1_307, net: 312_004, employerCpp: 24_601, employerEi: 1_830 },
     },
     {
       name: "Liam Martin",
       grossCents: 188_800,
       ytd: { pensionableEarningsCents: 2_900_000, cppCents: 165_000, cpp2Cents: 0, eiCents: 47_000 },
-      expected: { tax: 22_023, cpp: 10_433, cpp2: 0, ei: 3_077, net: 153_267 },
+      expected: { tax: 22_023, cpp: 10_433, cpp2: 0, ei: 3_077, net: 153_267, employerCpp: 10_433, employerEi: 4_308 },
     },
   ];
 
+  let craTotalCents = 0;
+  let employeeNetCents = 0;
   for (const item of cases) {
     const result = calculateAlbertaPayroll({
       payDate: "2026-09-04",
@@ -184,5 +186,20 @@ test("Juniper Trail periodic employees reconcile to the fictional UAT answer key
     assert.equal(result.deductions.cpp2Cents, item.expected.cpp2, item.name);
     assert.equal(result.deductions.eiCents, item.expected.ei, item.name);
     assert.equal(result.netPayCents, item.expected.net, item.name);
+    assert.equal(result.employerContributions.cppCents, item.expected.employerCpp, item.name);
+    assert.equal(result.employerContributions.eiCents, item.expected.employerEi, item.name);
+    craTotalCents += result.deductions.incomeTaxCents
+      + result.deductions.cppCents
+      + result.deductions.cpp2Cents
+      + result.deductions.eiCents
+      + result.employerContributions.cppCents
+      + result.employerContributions.eiCents;
+    employeeNetCents += result.netPayCents;
   }
+
+  const liamReimbursementCents = 12_000;
+  const coffeePayrollFeeCents = 1_800;
+  assert.equal(craTotalCents, 367_608);
+  assert.equal(employeeNetCents + liamReimbursementCents, 907_210);
+  assert.equal(employeeNetCents + liamReimbursementCents + craTotalCents + coffeePayrollFeeCents, 1_276_618);
 });
