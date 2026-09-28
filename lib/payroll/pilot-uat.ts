@@ -97,6 +97,8 @@ export type PilotCalculatedEmployee = PilotUatEmployee & {
 
 export const PILOT_UAT_STORAGE_KEY = "coffee-payroll:pilot-uat";
 
+export const PILOT_RUN_KEY = "2026-18-pilot";
+
 export const PILOT_RUN_PERIOD = {
   periodStart: "2026-08-16",
   periodEnd: "2026-08-29",
