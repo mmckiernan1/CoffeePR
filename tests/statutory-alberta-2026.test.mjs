@@ -137,3 +137,52 @@ test("unsupported paths and negative net pay are blocking calculation errors", (
     yearToDate: emptyYtd,
   }), (error) => error instanceof PayrollCalculationError && error.code === "NEGATIVE_NET_PAY");
 });
+
+
+test("Juniper Trail periodic employees reconcile to the fictional UAT answer key", () => {
+  const cases = [
+    {
+      name: "Avery Chen",
+      grossCents: 307_692,
+      ytd: { pensionableEarningsCents: 4_923_072, cppCents: 280_000, cpp2Cents: 0, eiCents: 80_000 },
+      expected: { tax: 53_009, cpp: 17_507, cpp2: 0, ei: 5_015, net: 232_161 },
+    },
+    {
+      name: "Noah Williams",
+      grossCents: 253_625,
+      ytd: { pensionableEarningsCents: 3_600_000, cppCents: 210_000, cpp2Cents: 0, eiCents: 58_000 },
+      expected: { tax: 37_423, cpp: 14_290, cpp2: 0, ei: 4_134, net: 197_778 },
+    },
+    {
+      name: "Priya Singh",
+      grossCents: 426_923,
+      ytd: { pensionableEarningsCents: 6_826_923, cppCents: 390_000, cpp2Cents: 0, eiCents: 111_000 },
+      expected: { tax: 89_011, cpp: 24_601, cpp2: 0, ei: 1_307, net: 312_004 },
+    },
+    {
+      name: "Liam Martin",
+      grossCents: 188_800,
+      ytd: { pensionableEarningsCents: 2_900_000, cppCents: 165_000, cpp2Cents: 0, eiCents: 47_000 },
+      expected: { tax: 22_023, cpp: 10_433, cpp2: 0, ei: 3_077, net: 153_267 },
+    },
+  ];
+
+  for (const item of cases) {
+    const result = calculateAlbertaPayroll({
+      payDate: "2026-09-04",
+      province: "AB",
+      incomePath: "regular-periodic",
+      payPeriodsPerYear: 26,
+      periodsRemainingIncludingCurrent: 9,
+      cashEarningsCents: item.grossCents,
+      federalClaimCents: 1_645_200,
+      albertaClaimCents: 2_276_900,
+      yearToDate: item.ytd,
+    });
+    assert.equal(result.deductions.incomeTaxCents, item.expected.tax, item.name);
+    assert.equal(result.deductions.cppCents, item.expected.cpp, item.name);
+    assert.equal(result.deductions.cpp2Cents, item.expected.cpp2, item.name);
+    assert.equal(result.deductions.eiCents, item.expected.ei, item.name);
+    assert.equal(result.netPayCents, item.expected.net, item.name);
+  }
+});
