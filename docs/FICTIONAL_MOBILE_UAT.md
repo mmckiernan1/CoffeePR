@@ -58,7 +58,7 @@ knew what to do next.
 Expected attention items:
 
 - **Noah Williams** — hourly rate changed during the pay period.
-- **Liam Martin** — leaving employee/final pay.
+- **Liam Martin** — leaving employee with a $120 reimbursement on final pay.
 - **Avery Chen** and **Priya Singh** — no special change.
 
 Pass: exactly the employees needing attention stand out and the wording explains
@@ -81,9 +81,13 @@ forward pay and **No time entry required** where appropriate.
 Expected:
 
 - Avery and Priya require no time entry.
-- Noah has 80 regular hours and 2.5 overtime hours, with the mid-period rate
-  change split correctly.
-- Liam has 64 regular hours plus the fictional final-pay items.
+- Noah has 80 regular hours and 2.5 overtime hours. Enter **40 regular at
+  $29.50** before August 24, then **40 regular + 2.5 overtime at $31.00**
+  from August 24.
+- Liam has 64 regular hours at $29.50 plus a **$120 reimbursement**.
+- The first validated UAT intentionally excludes an accrued-vacation payout
+  because that payment requires the CRA bonus/irregular-payment withholding
+  path, which remains a separate production gate.
 - **Yes, hours are complete** should save and continue without requiring a
   second confirmation click.
 
@@ -122,6 +126,28 @@ The completion screen should clearly distinguish:
 - payroll numbers approved;
 - employees paid;
 - payroll complete.
+
+## Run 18 answer key
+
+For the fictional inputs above, the validated periodic calculation should show:
+
+| Employee | Taxable gross | Income tax | CPP | EI | Employee payment |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Avery Chen | $3,076.92 | $530.09 | $175.07 | $50.15 | $2,321.61 |
+| Noah Williams | $2,536.25 | $374.23 | $142.90 | $41.34 | $1,977.78 |
+| Priya Singh | $4,269.23 | $890.11 | $246.01 | $13.07 | $3,120.04 |
+| Liam Martin | $1,888.00 | $220.23 | $104.33 | $30.77 | $1,652.67 |
+
+Liam's employee payment includes the $120 reimbursement after statutory
+deductions; the reimbursement is not part of taxable gross.
+
+Expected controls:
+
+- Taxable gross: **$11,770.40**
+- Employee payments: **$9,072.10**
+- CRA obligation including employer CPP/EI: **$3,676.08**
+- Coffee Payroll fee: **$18.00**
+- Money to have ready: **$12,766.18**
 
 ## Feedback shorthand
 
