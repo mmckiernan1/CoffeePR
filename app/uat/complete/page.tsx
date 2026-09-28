@@ -115,8 +115,8 @@ export default function PilotCompletePage() {
 
   const includedEmployees = useMemo(() => uat?.employees.filter(employeeIsInRun) ?? [], [uat]);
   const employeeCount = includedEmployees.length;
-  const paidCount = useMemo(() => includedEmployees.filter((employee) => displayPayments.paidEmployeeIds.includes(employee.id)).length, [includedEmployees, payments]);
-  const referenceCount = useMemo(() => includedEmployees.filter((employee) => Boolean(displayPayments.references[employee.id]?.trim())).length, [includedEmployees, displayPayments.references]);
+  const paidCount = includedEmployees.filter((employee) => displayPayments.paidEmployeeIds.includes(employee.id)).length;
+  const referenceCount = includedEmployees.filter((employee) => Boolean(displayPayments.references[employee.id]?.trim())).length;
   const complete = Boolean(!approvalInvalid && displayPayments.approved && displayPayments.completedAt && employeeCount > 0 && paidCount === employeeCount && referenceCount === employeeCount);
   const nextDate = nextPayDate(profile.frequency);
   const latestApproval = displayPayments.approvalHistory?.at(-1) ?? null;
@@ -198,7 +198,7 @@ export default function PilotCompletePage() {
                 <div className="rounded-2xl border border-[#e2d5c9] bg-white p-4 text-center"><div className="text-xs text-[#856f60]">Next pay date</div><div className="mt-1 text-sm font-bold">{nextDate}</div></div>
               </div>
 
-              <div className="mx-auto mt-7 max-w-2xl rounded-2xl border border-[#d7e5ce] bg-[#f7fbf4] px-5 py-4 text-sm leading-6 text-[#4f6944]"><strong>Everything for this payroll is saved.</strong> The approved run, employee payment confirmations and bank references are kept with the payroll record.</div>
+              <div className="mx-auto mt-7 max-w-2xl rounded-2xl border border-[#d7e5ce] bg-[#f7fbf4] px-5 py-4 text-sm leading-6 text-[#4f6944]"><strong>Everything for this payroll is saved.</strong> {workspaceConnected ? "The approved run, employee payment confirmations and bank references are kept with the pilot payroll record." : "For this isolated test, the payroll and payment confirmations are saved only on this iPhone. Clearing Safari website data will erase them."}</div>
 
               <div className="mx-auto mt-7 max-w-2xl">
                 <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#967663]">What you may need next</p>
