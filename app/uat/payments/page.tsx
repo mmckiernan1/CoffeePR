@@ -104,25 +104,18 @@ export default function PilotPaymentsPage() {
     && payments.approved
     && payments.approvedFingerprint !== currentFingerprint;
   const approvalInvalid = approvalStale || localApprovalStale;
-
-  useEffect(() => {
-    if (sync !== "device" || !payments.approved) return;
-    const reconciled = reconcilePilotLocalApproval(payments, currentFingerprint);
-    if (!reconciled.approvalStale) return;
-    paymentsRef.current = reconciled.state as PaymentState;
-    setPayments(reconciled.state as PaymentState);
-    setApprovalStale(true);
-    window.localStorage.setItem(paymentKey, JSON.stringify(reconciled.state));
-  }, [sync, payments, currentFingerprint]);
+  const displayPayments = localApprovalStale
+    ? reconcilePilotLocalApproval(payments, currentFingerprint).state as PaymentState
+    : payments;
 
   const rows = useMemo(() => profile.province === "Alberta"
     ? uat.employees
       .filter(pilotEmployeeIsInRun)
       .map((employee) => ({ employee, net: pilotCalculateEmployee(employee, uat.timesheets, profile.frequency, uat.openingBalances ?? {}).net }))
     : [], [uat.employees, uat.timesheets, uat.openingBalances, profile]);
-  const allPaid = rows.length > 0 && rows.every(({ employee }) => payments.paidEmployeeIds.includes(employee.id));
-  const allReferences = rows.length > 0 && rows.every(({ employee }) => Boolean(payments.references[employee.id]?.trim()));
-  const confirmedCount = rows.filter(({ employee }) => payments.paidEmployeeIds.includes(employee.id) && Boolean(payments.references[employee.id]?.trim())).length;
+  const allPaid = rows.length > 0 && rows.every(({ employee }) => displayPayments.paidEmployeeIds.includes(employee.id));
+  const allReferences = rows.length > 0 && rows.every(({ employee }) => Boolean(displayPayments.references[employee.id]?.trim()));
+  const confirmedCount = rows.filter(({ employee }) => displayPayments.paidEmployeeIds.includes(employee.id) && Boolean(displayPayments.references[employee.id]?.trim())).length;
   const totalNet = rows.reduce((sum, row) => sum + row.net, 0);
   const remainingCount = Math.max(rows.length - confirmedCount, 0);
 
@@ -229,8 +222,8 @@ export default function PilotPaymentsPage() {
 
           <div className="mt-6 space-y-3">
             {rows.map(({ employee, net }, index) => {
-              const paid = payments.paidEmployeeIds.includes(employee.id);
-              const hasReference = Boolean(payments.references[employee.id]?.trim());
+              const paid = displayPayments.paidEmployeeIds.includes(employee.id);
+              const hasReference = Boolean(displayPayments.references[employee.id]?.trim());
               const enabled = payments.approved && !approvalInvalid;
               return <div key={employee.id} className={`rounded-2xl border p-4 sm:p-5 ${paid && hasReference ? "border-[#cfe0c2] bg-[#f7fbf4]" : "border-[#e2d4c8] bg-white"}`}>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -239,7 +232,7 @@ export default function PilotPaymentsPage() {
                 </div>
 
                 <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
-                  <label className="text-xs font-semibold text-[#745948]">Bank confirmation / reference<input disabled={!enabled || paid} value={payments.references[employee.id] ?? ""} onChange={(e) => updateReference(employee.id, e.target.value)} placeholder="Paste or type the bank confirmation" className="mt-1.5 w-full rounded-xl border border-[#d8c8ba] bg-white px-3 py-2.5 text-sm font-normal outline-none transition focus:border-[#9fb5d6] disabled:bg-[#f3eee9]" /></label>
+                  <label className="text-xs font-semibold text-[#745948]">Bank confirmation / reference<input disabled={!enabled || paid} value={displayPayments.references[employee.id] ?? ""} onChange={(e) => updateReference(employee.id, e.target.value)} placeholder="Paste or type the bank confirmation" className="mt-1.5 w-full rounded-xl border border-[#d8c8ba] bg-white px-3 py-2.5 text-sm font-normal outline-none transition focus:border-[#9fb5d6] disabled:bg-[#f3eee9]" /></label>
                   <button disabled={!enabled || (!paid && !hasReference)} onClick={() => togglePaid(employee.id)} className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-35 ${paid ? "border border-[#b9d2a9] bg-white text-[#3f6330]" : "bg-[#1557d8] text-white hover:bg-[#0f47b5]"}`}>{paid ? "✓ Paid" : "Mark paid"}</button>
                 </div>
 
