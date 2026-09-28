@@ -1,5 +1,6 @@
 /** Cloudflare Worker entry point for Coffee Payroll. */
 import handler from "vinext/server/app-router-entry";
+import { isFictionalUatDeviceApi, isFictionalUatPathAllowed } from "../lib/fictional-uat-route-guard";
 
 interface Env {
   ASSETS: Fetcher;
@@ -21,14 +22,10 @@ const worker = {
     if (env.COFFEE_PAYROLL_UAT_ONLY === "true") {
       const path = url.pathname;
       if (path === "/") return Response.redirect(new URL("/uat/fictional", url), 302);
-      if (path === "/api/pilot/workspace" || path === "/api/pilot/payments") {
+      if (isFictionalUatDeviceApi(path)) {
         return Response.json({ code: "UAT_DEVICE_ONLY", error: "This fictional preview stores progress on this device." }, { status: 404 });
       }
-      const allowed = path === "/uat/fictional" || path === "/guided-payroll" ||
-        path === "/uat" || path.startsWith("/uat/") ||
-        path.startsWith("/_next/") || path.startsWith("/assets/") ||
-        path === "/favicon.svg";
-      if (!allowed) return new Response("Not found", { status: 404 });
+      if (!isFictionalUatPathAllowed(path)) return new Response("Not found", { status: 404 });
     }
     return handler.fetch(request, env, ctx);
   },
