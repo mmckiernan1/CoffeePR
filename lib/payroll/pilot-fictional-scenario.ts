@@ -34,7 +34,7 @@ export const FICTIONAL_PILOT_STATE: PilotUatState = {
       status: "Active",
       hireDate: "2024-05-13",
       taxSetupComplete: true,
-      changeNote: "Hourly rate increased during this pay period.",
+      changeNote: "Hourly rate increased during this pay period. Test allocation: 40 regular hours before August 24; 40 regular hours plus 2.5 overtime hours from August 24.",
     },
     {
       id: "EMP-0003",
@@ -56,9 +56,9 @@ export const FICTIONAL_PILOT_STATE: PilotUatState = {
       hireDate: "2025-02-03",
       terminationDate: "2026-08-28",
       taxSetupComplete: true,
-      changeNote: "Final regular shift was August 28.",
+      changeNote: "Final regular shift was August 28. A $120 reimbursement is due on final pay; accrued vacation payout is reserved for a later irregular-payment UAT.",
       finalPay: {
-        vacationPayCents: 85000,
+        vacationPayCents: 0,
         overtimePayCents: 0,
         otherTaxablePayCents: 0,
         reimbursementCents: 12000,
