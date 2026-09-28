@@ -1,6 +1,7 @@
 export type HourlyRateHistoryEntry = { effectiveDate: string; rate: number };
 export type HourlyRateSplitEmployee = { rate: number; rateHistory?: HourlyRateHistoryEntry[] };
 export type HourlyRateSplitRow = { effectiveFrom: string; regular: number; overtime: number; vacation: number };
+export type HourlyRateSplitTarget = { regular: number; overtime: number; vacation: number };
 export type HourlyRateSplitPeriod = { periodStart: string; periodEnd: string };
 export type HourlyRateSplitDetail = HourlyRateSplitRow & { rate: number; gross: number };
 
@@ -27,12 +28,23 @@ export function pilotHourlyRateSplitsComplete(
   employee: HourlyRateSplitEmployee,
   run: HourlyRateSplitPeriod,
   splits: unknown,
+  target?: HourlyRateSplitTarget,
 ): splits is HourlyRateSplitRow[] {
   const expectedDates = pilotHourlyRateSegmentDates(employee, run);
   if (expectedDates.length <= 1) return true;
   if (!Array.isArray(splits) || splits.length !== expectedDates.length) return false;
   const ordered = [...splits].sort((left, right) => String(left?.effectiveFrom ?? "").localeCompare(String(right?.effectiveFrom ?? "")));
-  return ordered.every((row, index) => row && typeof row === "object" && row.effectiveFrom === expectedDates[index] && validHours(row.regular) && validHours(row.overtime) && validHours(row.vacation));
+  const structurallyComplete = ordered.every((row, index) => row && typeof row === "object" && row.effectiveFrom === expectedDates[index] && validHours(row.regular) && validHours(row.overtime) && validHours(row.vacation));
+  if (!structurallyComplete || !target) return structurallyComplete;
+  const allocated = ordered.reduce((total, row) => ({
+    regular: total.regular + row.regular,
+    overtime: total.overtime + row.overtime,
+    vacation: total.vacation + row.vacation,
+  }), { regular: 0, overtime: 0, vacation: 0 });
+  const same = (left: number, right: number) => Math.abs(left - right) < 0.000001;
+  return same(allocated.regular, target.regular)
+    && same(allocated.overtime, target.overtime)
+    && same(allocated.vacation, target.vacation);
 }
 
 export function pilotHourlyRateSplitDetails(employee: HourlyRateSplitEmployee, splits: HourlyRateSplitRow[]): HourlyRateSplitDetail[] {
