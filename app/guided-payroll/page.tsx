@@ -167,7 +167,7 @@ export default function GuidedPayrollPreviewPage() {
     if (workspace === "time") return router.push("/uat/time");
     if (workspace === "review") return router.push("/uat/review");
     if (workspace === "payments") return router.push("/uat/payments");
-    router.push(`/?workspace=${workspace}`);
+    router.push("/uat/reports");
   };
 
   async function approvePayroll() {
@@ -266,7 +266,7 @@ export default function GuidedPayrollPreviewPage() {
             net={totals.net}
             remittance={remittance}
             fee={18}
-            onHome={() => router.push("/")}
+            onHome={() => router.push("/uat/fictional")}
             onOpenEmployees={() => openWorkspace("employees")}
             onOpenTime={() => openWorkspace("time")}
             onOpenReview={() => openWorkspace("review")}
