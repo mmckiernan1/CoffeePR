@@ -237,14 +237,14 @@ export default function GuidedPayrollPreviewPage() {
         {pendingTaxSetup.length > 0 && (
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e2b999] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">
             <div><strong>{pendingTaxSetup.length} employee{pendingTaxSetup.length === 1 ? " needs" : "s need"} statutory setup review before approval.</strong><div className="mt-1 text-xs">Coffee Payroll will keep approval locked until the required checkpoint is complete.</div></div>
-            <button onClick={() => router.push("/uat/tax-setup")} className="rounded-lg bg-[#5a321f] px-4 py-2 text-xs font-semibold text-white">Review tax setup</button>
+            <button onClick={() => router.push("/uat/tax-setup")} className="rounded-lg bg-[#1557d8] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0f47b5]">Review tax setup</button>
           </div>
         )}
 
         {unresolvedHourlyRateChanges.length > 0 && (
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e2b999] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">
             <div><strong>{unresolvedHourlyRateChanges.length} hourly employee{unresolvedHourlyRateChanges.length === 1 ? " has" : "s have"} a rate change inside this pay period.</strong><div className="mt-1 text-xs">Split their hours between the old and new rates in Hours & pay. Approval will unlock once every rate segment has been reviewed.</div></div>
-            <button onClick={() => router.push("/uat/time")} className="rounded-lg bg-[#5a321f] px-4 py-2 text-xs font-semibold text-white">Split hours by rate</button>
+            <button onClick={() => router.push("/uat/time")} className="rounded-lg bg-[#1557d8] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0f47b5]">Split hours by rate</button>
           </div>
         )}
 
