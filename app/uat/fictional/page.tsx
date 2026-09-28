@@ -78,9 +78,9 @@ export default function FictionalPilotScenarioPage() {
           <h2 className="text-2xl font-semibold">What this scenario tests</h2>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <ScenarioCard title="Avery Chen" detail="Salaried employee. Regular salary should carry forward automatically." />
-            <ScenarioCard title="Noah Williams" detail="Hourly employee. Rate changes from $29.50 to $31.00 on August 24, so hours must be split between rates before approval." />
+            <ScenarioCard title="Noah Williams" detail="Hourly employee. Rate changes from $29.50 to $31.00 on August 24. Test allocation: 40 regular hours before the change; 40 regular plus 2.5 overtime hours from August 24." />
             <ScenarioCard title="Priya Singh" detail="Salaried employee. Clean, routine employee for comparison." />
-            <ScenarioCard title="Liam Martin" detail="Hourly employee leaving August 28, with final pay items and a $120 reimbursement." />
+            <ScenarioCard title="Liam Martin" detail="Hourly employee leaving August 28. This first validated UAT includes regular earnings plus a $120 reimbursement; accrued vacation payout is reserved for the later irregular-payment test." />
           </div>
 
           <div className="mt-6 rounded-2xl border border-[#e3c39f] bg-[#fff8ee] p-5 text-sm leading-6 text-[#714a32]">
@@ -104,7 +104,7 @@ export default function FictionalPilotScenarioPage() {
             <li>1. Changes shows exactly {FICTIONAL_PILOT_EXPECTATIONS.changedEmployees.length} employees requiring attention: Noah and Liam.</li>
             <li>2. Employees shows all {FICTIONAL_PILOT_EXPECTATIONS.employeesInRun} employees and every employee card is clickable.</li>
             <li>3. Hours & pay shows {FICTIONAL_PILOT_EXPECTATIONS.hourlyEmployees} hourly employees and keeps approval blocked until Noah&apos;s rate split is completed.</li>
-            <li>4. Review shows Avery and Priya as routine salary carry-forward, Noah&apos;s split-rate pay, and Liam&apos;s final pay.</li>
+            <li>4. Review shows Avery and Priya as routine salary carry-forward, Noah&apos;s split-rate pay, and Liam&apos;s final-pay status and reimbursement.</li>
             <li>5. Approve & pay does not send money. After approval, each employee payment must be confirmed separately.</li>
             <li>6. Done appears only after all employee payments are confirmed.</li>
           </ol>
