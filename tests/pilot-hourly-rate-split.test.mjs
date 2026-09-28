@@ -63,3 +63,19 @@ test("split allocation must add back to the original hours when a target is supp
     { effectiveFrom: "2026-08-24", regular: 40, overtime: 2.5, vacation: 0 },
   ], target), true);
 });
+
+
+test("Juniper Trail Noah split produces the expected gross", () => {
+  const noah = {
+    rate: 31,
+    rateHistory: [
+      { effectiveDate: "2024-05-13", rate: 29.5 },
+      { effectiveDate: "2026-08-24", rate: 31 },
+    ],
+  };
+  const gross = pilotHourlyGrossFromSplits(noah, [
+    { effectiveFrom: "2026-08-16", regular: 40, overtime: 0, vacation: 0 },
+    { effectiveFrom: "2026-08-24", regular: 40, overtime: 2.5, vacation: 0 },
+  ]);
+  assert.equal(gross, 2536.25);
+});
