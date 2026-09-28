@@ -108,7 +108,7 @@ export default function PilotPaymentsPage() {
   useEffect(() => {
     if (sync !== "device" || !payments.approved) return;
     const reconciled = reconcilePilotLocalApproval(payments, currentFingerprint);
-    if (!reconciled.approvalInvalid) return;
+    if (!reconciled.approvalStale) return;
     paymentsRef.current = reconciled.state as PaymentState;
     setPayments(reconciled.state as PaymentState);
     setApprovalStale(true);
@@ -149,7 +149,7 @@ export default function PilotPaymentsPage() {
         return false;
       }
       storeLocal(payload.state);
-      setApprovalStale(Boolean(payload.approvalInvalid));
+      setApprovalStale(Boolean(payload.approvalStale));
       setSync("workspace");
       return true;
     } catch {
@@ -190,7 +190,7 @@ export default function PilotPaymentsPage() {
         const payload = await response.json();
         const merged = { ...payload.state, references: paymentsRef.current.references } as PaymentState;
         storeLocal(merged);
-        setApprovalStale(Boolean(payload.approvalInvalid));
+        setApprovalStale(Boolean(payload.approvalStale));
         setSync("workspace");
       } catch {
         setSync("device");
