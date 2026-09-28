@@ -4,6 +4,15 @@ import { FICTIONAL_PILOT_PROFILE_KEY } from "@/lib/payroll/pilot-fictional-scena
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isEmployeeInPayPeriod } from "@/lib/payroll/employee-lifecycle";
+import { reconcilePilotLocalApproval } from "@/lib/payroll/pilot-local-payment-state";
+import { pilotRunFingerprint } from "@/lib/payroll/pilot-run-fingerprint";
+import {
+  PILOT_RUN_KEY,
+  PILOT_RUN_PERIOD,
+  type PilotProfile,
+  type PilotUatEmployee,
+  type PilotUatState,
+} from "@/lib/payroll/pilot-uat";
 
 type ApprovalSnapshot = {
   approvedAt: string;
@@ -14,32 +23,18 @@ type ApprovalSnapshot = {
 };
 type ReopenEvent = { reopenedAt: string; reopenedBy: string; reason: string; priorCompletedAt: string };
 type PaymentState = { approved: boolean; approvedFingerprint?: string | null; paidEmployeeIds: string[]; references: Record<string, string>; completedAt: string | null; approvalHistory?: ApprovalSnapshot[]; reopenHistory?: ReopenEvent[] };
-type UatEmployee = {
-  id: string;
-  name: string;
-  payType: "Salary" | "Hourly";
-  rate: number;
-  status: "Active" | "New hire" | "Terminating" | "Terminated";
-  hireDate?: string;
-  terminationDate?: string;
-};
-type UatState = { employees: UatEmployee[]; timesheets: Record<string, { regular: number; overtime: number; vacation: number }>; ready: boolean };
-type PilotProfile = { businessName: string; province: string; frequency: string; employeeCount: number };
-
 const paymentKey = "coffee-payroll:pilot-payments";
 const uatKey = "coffee-payroll:pilot-uat";
-const runPeriod = { periodStart: "2026-08-16", periodEnd: "2026-08-29", payDate: "2026-09-04" } as const;
-
-function employeeIsInRun(employee: UatEmployee) {
+function employeeIsInRun(employee: PilotUatEmployee) {
   try {
-    return isEmployeeInPayPeriod({ hireDate: employee.hireDate ?? "2020-01-01", terminationDate: employee.terminationDate ?? null, status: employee.status }, runPeriod);
+    return isEmployeeInPayPeriod({ hireDate: employee.hireDate ?? "2020-01-01", terminationDate: employee.terminationDate ?? null, status: employee.status }, PILOT_RUN_PERIOD);
   } catch {
     return true;
   }
 }
 
 function nextPayDate(frequency: string) {
-  const payDate = new Date(`${runPeriod.payDate}T12:00:00`);
+  const payDate = new Date(`${PILOT_RUN_PERIOD.payDate}T12:00:00`);
   const days = frequency === "Weekly" ? 7 : frequency === "Biweekly" ? 14 : null;
   if (days) payDate.setDate(payDate.getDate() + days);
   else if (frequency === "Semi-monthly") payDate.setDate(payDate.getDate() + 15);
@@ -50,7 +45,7 @@ function nextPayDate(frequency: string) {
 export default function PilotCompletePage() {
   const router = useRouter();
   const [payments, setPayments] = useState<PaymentState>({ approved: false, approvedFingerprint: null, paidEmployeeIds: [], references: {}, completedAt: null, approvalHistory: [], reopenHistory: [] });
-  const [uat, setUat] = useState<UatState | null>(null);
+  const [uat, setUat] = useState<PilotUatState | null>(null);
   const [profile, setProfile] = useState<PilotProfile>({ businessName: "My business", province: "Alberta", frequency: "Biweekly", employeeCount: 4 });
   const [approvalStale, setApprovalStale] = useState(false);
   const [workspaceConnected, setWorkspaceConnected] = useState(false);
@@ -99,11 +94,36 @@ export default function PilotCompletePage() {
     return () => { cancelled = true; };
   }, []);
 
+  const currentFingerprint = useMemo(() => uat ? pilotRunFingerprint({
+    runKey: PILOT_RUN_KEY,
+    ...PILOT_RUN_PERIOD,
+    province: profile.province,
+    frequency: profile.frequency,
+    employees: uat.employees as Array<Record<string, unknown> & { id: string }>,
+    timesheets: uat.timesheets,
+    openingBalances: uat.openingBalances ?? {},
+  }) : null, [uat, profile]);
+
+  const localApprovalStale = !workspaceConnected
+    && Boolean(currentFingerprint)
+    && payments.approved
+    && payments.approvedFingerprint !== currentFingerprint;
+  const approvalInvalid = approvalStale || localApprovalStale;
+
+  useEffect(() => {
+    if (workspaceConnected || !payments.approved || !currentFingerprint) return;
+    const reconciled = reconcilePilotLocalApproval(payments, currentFingerprint);
+    if (!reconciled.approvalStale) return;
+    setPayments(reconciled.state as PaymentState);
+    setApprovalStale(true);
+    window.localStorage.setItem(paymentKey, JSON.stringify(reconciled.state));
+  }, [workspaceConnected, payments, currentFingerprint]);
+
   const includedEmployees = useMemo(() => uat?.employees.filter(employeeIsInRun) ?? [], [uat]);
   const employeeCount = includedEmployees.length;
   const paidCount = useMemo(() => includedEmployees.filter((employee) => payments.paidEmployeeIds.includes(employee.id)).length, [includedEmployees, payments]);
   const referenceCount = useMemo(() => includedEmployees.filter((employee) => Boolean(payments.references[employee.id]?.trim())).length, [includedEmployees, payments.references]);
-  const complete = Boolean(!approvalStale && payments.approved && payments.completedAt && employeeCount > 0 && paidCount === employeeCount && referenceCount === employeeCount);
+  const complete = Boolean(!approvalInvalid && payments.approved && payments.completedAt && employeeCount > 0 && paidCount === employeeCount && referenceCount === employeeCount);
   const nextDate = nextPayDate(profile.frequency);
   const latestApproval = payments.approvalHistory?.at(-1) ?? null;
   const latestReopen = payments.reopenHistory?.at(-1) ?? null;
@@ -117,7 +137,31 @@ export default function PilotCompletePage() {
       return;
     }
     if (!workspaceConnected) {
-      setCorrectionError("Reconnect to the pilot workspace before reopening a completed payroll.");
+      if (!payments.completedAt) {
+        setCorrectionError("Only a completed payroll can be reopened.");
+        return;
+      }
+      const reopenedAt = new Date().toISOString();
+      const next: PaymentState = {
+        ...payments,
+        approved: false,
+        approvedFingerprint: null,
+        paidEmployeeIds: [],
+        references: {},
+        completedAt: null,
+        reopenHistory: [
+          ...(payments.reopenHistory ?? []),
+          {
+            reopenedAt,
+            reopenedBy: "Device UAT",
+            reason,
+            priorCompletedAt: payments.completedAt,
+          },
+        ],
+      };
+      window.localStorage.setItem(paymentKey, JSON.stringify(next));
+      setPayments(next);
+      router.push("/guided-payroll");
       return;
     }
     setReopening(true);
@@ -189,9 +233,9 @@ export default function PilotCompletePage() {
           ) : (
             <div className="text-center">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#f3e6da] text-2xl">…</div>
-              <h1 className="mt-5 text-3xl font-semibold">{approvalStale ? "Payroll changed after approval" : "Payroll is not finished yet"}</h1>
-              <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#745948]">{approvalStale ? "An employee, rate, time or final-pay input changed. Review the updated payroll and approve it again before Coffee Payroll can mark this run complete." : "Approval, every employee payment, and a bank confirmation/reference for each payment must all be present before Coffee Payroll marks the run complete."}</p>
-              <div className="mt-7 flex justify-center"><button onClick={() => router.push(approvalStale ? "/guided-payroll" : "/uat/payments")} className="rounded-xl bg-[#1557d8] px-5 py-3 font-semibold text-white">{approvalStale ? "Review payroll again" : "Return to employee payments"}</button></div>
+              <h1 className="mt-5 text-3xl font-semibold">{approvalInvalid ? "Payroll changed after approval" : "Payroll is not finished yet"}</h1>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#745948]">{approvalInvalid ? "An employee, rate, time or final-pay input changed. Review the updated payroll and approve it again before Coffee Payroll can mark this run complete." : "Approval, every employee payment, and a bank confirmation/reference for each payment must all be present before Coffee Payroll marks the run complete."}</p>
+              <div className="mt-7 flex justify-center"><button onClick={() => router.push(approvalInvalid ? "/guided-payroll" : "/uat/payments")} className="rounded-xl bg-[#1557d8] px-5 py-3 font-semibold text-white">{approvalInvalid ? "Review payroll again" : "Return to employee payments"}</button></div>
             </div>
           )}
         </section>
