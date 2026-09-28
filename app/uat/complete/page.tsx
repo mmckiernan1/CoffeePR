@@ -109,26 +109,20 @@ export default function PilotCompletePage() {
     && payments.approved
     && payments.approvedFingerprint !== currentFingerprint;
   const approvalInvalid = approvalStale || localApprovalStale;
-
-  useEffect(() => {
-    if (workspaceConnected || !payments.approved || !currentFingerprint) return;
-    const reconciled = reconcilePilotLocalApproval(payments, currentFingerprint);
-    if (!reconciled.approvalStale) return;
-    setPayments(reconciled.state as PaymentState);
-    setApprovalStale(true);
-    window.localStorage.setItem(paymentKey, JSON.stringify(reconciled.state));
-  }, [workspaceConnected, payments, currentFingerprint]);
+  const displayPayments = localApprovalStale && currentFingerprint
+    ? reconcilePilotLocalApproval(payments, currentFingerprint).state as PaymentState
+    : payments;
 
   const includedEmployees = useMemo(() => uat?.employees.filter(employeeIsInRun) ?? [], [uat]);
   const employeeCount = includedEmployees.length;
-  const paidCount = useMemo(() => includedEmployees.filter((employee) => payments.paidEmployeeIds.includes(employee.id)).length, [includedEmployees, payments]);
-  const referenceCount = useMemo(() => includedEmployees.filter((employee) => Boolean(payments.references[employee.id]?.trim())).length, [includedEmployees, payments.references]);
-  const complete = Boolean(!approvalInvalid && payments.approved && payments.completedAt && employeeCount > 0 && paidCount === employeeCount && referenceCount === employeeCount);
+  const paidCount = useMemo(() => includedEmployees.filter((employee) => displayPayments.paidEmployeeIds.includes(employee.id)).length, [includedEmployees, payments]);
+  const referenceCount = useMemo(() => includedEmployees.filter((employee) => Boolean(displayPayments.references[employee.id]?.trim())).length, [includedEmployees, displayPayments.references]);
+  const complete = Boolean(!approvalInvalid && displayPayments.approved && displayPayments.completedAt && employeeCount > 0 && paidCount === employeeCount && referenceCount === employeeCount);
   const nextDate = nextPayDate(profile.frequency);
-  const latestApproval = payments.approvalHistory?.at(-1) ?? null;
-  const latestReopen = payments.reopenHistory?.at(-1) ?? null;
+  const latestApproval = displayPayments.approvalHistory?.at(-1) ?? null;
+  const latestReopen = displayPayments.reopenHistory?.at(-1) ?? null;
   const approvalTime = latestApproval ? new Date(latestApproval.approvedAt).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" }) : null;
-  const completionTime = payments.completedAt ? new Date(payments.completedAt).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" }) : null;
+  const completionTime = displayPayments.completedAt ? new Date(displayPayments.completedAt).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" }) : null;
 
   async function reopenPayroll() {
     const reason = correctionReason.trim();
