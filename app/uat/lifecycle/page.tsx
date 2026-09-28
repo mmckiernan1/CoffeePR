@@ -27,7 +27,7 @@ export default function LifecycleUatPage() {
   const [hireType, setHireType] = useState<"Salary" | "Hourly">("Hourly");
   const [hireRate, setHireRate] = useState("");
   const [hireDate, setHireDate] = useState("2026-09-01");
-  const [terminationDate, setTerminationDate] = useState("2026-08-31");
+  const [terminationDate, setTerminationDate] = useState("2026-08-29");
   const [vacationPay, setVacationPay] = useState("0");
   const [overtimePay, setOvertimePay] = useState("0");
   const [otherTaxablePay, setOtherTaxablePay] = useState("0");
