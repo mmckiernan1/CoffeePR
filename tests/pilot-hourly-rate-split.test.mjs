@@ -50,3 +50,16 @@ test("ordinary single-rate hourly payroll does not require split rows", () => {
   const stable = { rate: 30, rateHistory: [{ effectiveDate: "2026-01-01", rate: 30 }] };
   assert.equal(pilotHourlyRateSplitsComplete(stable, run, undefined), true);
 });
+
+
+test("split allocation must add back to the original hours when a target is supplied", () => {
+  const target = { regular: 80, overtime: 2.5, vacation: 0 };
+  assert.equal(pilotHourlyRateSplitsComplete(employee, run, [
+    { effectiveFrom: "2026-08-16", regular: 40, overtime: 0, vacation: 0 },
+    { effectiveFrom: "2026-08-24", regular: 20, overtime: 0, vacation: 0 },
+  ], target), false);
+  assert.equal(pilotHourlyRateSplitsComplete(employee, run, [
+    { effectiveFrom: "2026-08-16", regular: 40, overtime: 0, vacation: 0 },
+    { effectiveFrom: "2026-08-24", regular: 40, overtime: 2.5, vacation: 0 },
+  ], target), true);
+});
