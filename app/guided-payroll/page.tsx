@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { GuidedPayrollRun, type GuidedPayrollEmployee } from "@/components/comcheq";
 import { FICTIONAL_PILOT_PROFILE_KEY } from "@/lib/payroll/pilot-fictional-scenario";
 import { pilotUnresolvedHourlyRateChanges } from "@/lib/payroll/pilot-rate-change-guard";
+import { approvePilotLocalPayroll, reconcilePilotLocalApproval } from "@/lib/payroll/pilot-local-payment-state";
+import { pilotRunFingerprint } from "@/lib/payroll/pilot-run-fingerprint";
 import {
+  PILOT_RUN_KEY,
   PILOT_RUN_PERIOD,
   PILOT_STARTER_STATE,
   PILOT_UAT_STORAGE_KEY,
@@ -18,10 +21,10 @@ import {
   type PilotUatState,
 } from "@/lib/payroll/pilot-uat";
 
-type PaymentState = { approved: boolean; paidEmployeeIds: string[]; references: Record<string, string>; completedAt: string | null };
+type PaymentState = { approved: boolean; approvedFingerprint?: string | null; paidEmployeeIds: string[]; references: Record<string, string>; completedAt: string | null };
 
 const paymentStorageKey = "coffee-payroll:pilot-payments";
-const emptyPayments: PaymentState = { approved: false, paidEmployeeIds: [], references: {}, completedAt: null };
+const emptyPayments: PaymentState = { approved: false, approvedFingerprint: null, paidEmployeeIds: [], references: {}, completedAt: null };
 
 export default function GuidedPayrollPreviewPage() {
   const router = useRouter();
@@ -66,12 +69,46 @@ export default function GuidedPayrollPreviewPage() {
           if (!cancelled) setPayments(payload.state);
         } else {
           const raw = window.localStorage.getItem(paymentStorageKey);
-          if (raw && !cancelled) setPayments(JSON.parse(raw));
+          if (raw && !cancelled) {
+            const localStateRaw = window.localStorage.getItem(PILOT_UAT_STORAGE_KEY);
+            const localProfileRaw = window.localStorage.getItem(FICTIONAL_PILOT_PROFILE_KEY);
+            const localState = localStateRaw ? JSON.parse(localStateRaw) as PilotUatState : PILOT_STARTER_STATE;
+            const localProfile = localProfileRaw ? JSON.parse(localProfileRaw) as PilotProfile : profile;
+            const fingerprint = pilotRunFingerprint({
+              runKey: PILOT_RUN_KEY,
+              ...PILOT_RUN_PERIOD,
+              province: localProfile.province,
+              frequency: localProfile.frequency,
+              employees: localState.employees as Array<Record<string, unknown> & { id: string }>,
+              timesheets: localState.timesheets,
+              openingBalances: localState.openingBalances ?? {},
+            });
+            const reconciled = reconcilePilotLocalApproval(JSON.parse(raw) as PaymentState, fingerprint);
+            setPayments(reconciled.state);
+            if (reconciled.approvalStale) window.localStorage.setItem(paymentStorageKey, JSON.stringify(reconciled.state));
+          }
         }
       } catch {
         try {
           const raw = window.localStorage.getItem(paymentStorageKey);
-          if (raw && !cancelled) setPayments(JSON.parse(raw));
+          if (raw && !cancelled) {
+            const localStateRaw = window.localStorage.getItem(PILOT_UAT_STORAGE_KEY);
+            const localProfileRaw = window.localStorage.getItem(FICTIONAL_PILOT_PROFILE_KEY);
+            const localState = localStateRaw ? JSON.parse(localStateRaw) as PilotUatState : PILOT_STARTER_STATE;
+            const localProfile = localProfileRaw ? JSON.parse(localProfileRaw) as PilotProfile : profile;
+            const fingerprint = pilotRunFingerprint({
+              runKey: PILOT_RUN_KEY,
+              ...PILOT_RUN_PERIOD,
+              province: localProfile.province,
+              frequency: localProfile.frequency,
+              employees: localState.employees as Array<Record<string, unknown> & { id: string }>,
+              timesheets: localState.timesheets,
+              openingBalances: localState.openingBalances ?? {},
+            });
+            const reconciled = reconcilePilotLocalApproval(JSON.parse(raw) as PaymentState, fingerprint);
+            setPayments(reconciled.state);
+            if (reconciled.approvalStale) window.localStorage.setItem(paymentStorageKey, JSON.stringify(reconciled.state));
+          }
         } catch {
           // Keep clean payment state.
         }
@@ -155,7 +192,16 @@ export default function GuidedPayrollPreviewPage() {
       if (!response.ok) {
         if (response.status === 404 && payload.code === "UAT_DEVICE_ONLY") {
           // Isolated fictional preview intentionally has no hosted API or D1.
-          const local = { ...payments, approved: true, completedAt: null };
+          const fingerprint = pilotRunFingerprint({
+            runKey: PILOT_RUN_KEY,
+            ...PILOT_RUN_PERIOD,
+            province: profile.province,
+            frequency: profile.frequency,
+            employees: state.employees as Array<Record<string, unknown> & { id: string }>,
+            timesheets: state.timesheets,
+            openingBalances: state.openingBalances ?? {},
+          });
+          const local = approvePilotLocalPayroll(payments, fingerprint) as PaymentState;
           setPayments(local);
           window.localStorage.setItem(paymentStorageKey, JSON.stringify(local));
           return;
@@ -212,7 +258,7 @@ export default function GuidedPayrollPreviewPage() {
 
         {supported && (
           <GuidedPayrollRun
-            runKey="2026-18-pilot"
+            runKey={PILOT_RUN_KEY}
             approved={payments.approved}
             paymentsComplete={paymentsComplete}
             timeReady={state.ready}
