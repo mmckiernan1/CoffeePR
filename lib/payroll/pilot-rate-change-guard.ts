@@ -48,8 +48,19 @@ export function pilotUnresolvedHourlyRateChanges(
   return pilotMidPeriodRateChanges(employees, run).filter((change) => {
     const employee = employees.find((item) => item.id === change.employeeId);
     if (!employee) return true;
-    const row = timesheets[change.employeeId] as { rateSplits?: unknown } | undefined;
-    return !pilotHourlyRateSplitsComplete(employee, run, row?.rateSplits);
+    const row = timesheets[change.employeeId] as {
+      regular?: number;
+      overtime?: number;
+      vacation?: number;
+      allocationTarget?: { regular: number; overtime: number; vacation: number };
+      rateSplits?: unknown;
+    } | undefined;
+    const target = row?.allocationTarget ?? (
+      typeof row?.regular === "number" && typeof row?.overtime === "number" && typeof row?.vacation === "number"
+        ? { regular: row.regular, overtime: row.overtime, vacation: row.vacation }
+        : undefined
+    );
+    return !pilotHourlyRateSplitsComplete(employee, run, row?.rateSplits, target);
   });
 }
 
