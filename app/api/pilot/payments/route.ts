@@ -16,6 +16,7 @@ import { pilotPaymentCompletionCheck } from "@/lib/payroll/pilot-payment-complet
 import { pilotUnresolvedHourlyRateChanges } from "@/lib/payroll/pilot-rate-change-guard";
 import { pilotRunFingerprint } from "@/lib/payroll/pilot-run-fingerprint";
 import { pilotEmployeeTaxSetupReady } from "@/lib/payroll/pilot-tax-setup";
+import { PILOT_RUN_KEY, PILOT_RUN_PERIOD } from "@/lib/payroll/pilot-uat";
 
 type PilotUatState = { employees: PilotApprovalEmployee[]; timesheets: Record<string, unknown>; openingBalances?: Record<string, unknown> };
 
@@ -30,10 +31,8 @@ type UpdateBody = {
 };
 
 const run = {
-  runKey: "2026-17-pilot",
-  periodStart: "2026-08-16",
-  periodEnd: "2026-08-31",
-  payDate: "2026-09-04",
+  runKey: PILOT_RUN_KEY,
+  ...PILOT_RUN_PERIOD,
 } as const;
 
 function database() {
