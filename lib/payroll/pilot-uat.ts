@@ -186,21 +186,13 @@ export function pilotHourlyRateSplitNeeded(employee: PilotUatEmployee): boolean 
 
 export function pilotHourlyRateSplitReady(employee: PilotUatEmployee, timesheet: PilotTimesheet | undefined): boolean {
   if (!pilotHourlyRateSplitNeeded(employee)) return true;
-  if (!timesheet || !pilotHourlyRateSplitsComplete(employee, PILOT_RUN_PERIOD, timesheet.rateSplits)) return false;
+  if (!timesheet) return false;
   const target = timesheet.allocationTarget ?? {
     regular: timesheet.regular,
     overtime: timesheet.overtime,
     vacation: timesheet.vacation,
   };
-  const allocated = (timesheet.rateSplits ?? []).reduce((total, row) => ({
-    regular: total.regular + row.regular,
-    overtime: total.overtime + row.overtime,
-    vacation: total.vacation + row.vacation,
-  }), { regular: 0, overtime: 0, vacation: 0 });
-  const same = (left: number, right: number) => Math.abs(left - right) < 0.000001;
-  return same(allocated.regular, target.regular)
-    && same(allocated.overtime, target.overtime)
-    && same(allocated.vacation, target.vacation);
+  return pilotHourlyRateSplitsComplete(employee, PILOT_RUN_PERIOD, timesheet.rateSplits, target);
 }
 
 function pilotFinalPayCents(finalPay: PilotFinalPay | undefined): PilotFinalPay {
