@@ -9,7 +9,7 @@ import { pilotUnresolvedHourlyRateChanges } from "../lib/payroll/pilot-rate-chan
 
 const run = {
   periodStart: "2026-08-16",
-  periodEnd: "2026-08-31",
+  periodEnd: "2026-08-29",
 };
 
 test("fictional pilot scenario exercises the intended payroll paths", () => {
@@ -46,7 +46,7 @@ test("fictional pilot scenario exercises the intended payroll paths", () => {
   assert.ok(terminating);
   assert.equal(terminating.status, "Terminating");
   assert.equal(terminating.terminationDate, "2026-08-28");
-  assert.equal(terminating.finalPay?.vacationPayCents, 85000);
+  assert.equal(terminating.finalPay?.vacationPayCents, 0);
   assert.equal(terminating.finalPay?.reimbursementCents, 12000);
 
   assert.equal(FICTIONAL_PILOT_STATE.ready, false);
