@@ -61,6 +61,11 @@ export type PilotTimesheet = {
   overtime: number;
   vacation: number;
   rateSplits?: HourlyRateSplitRow[];
+  allocationTarget?: {
+    regular: number;
+    overtime: number;
+    vacation: number;
+  };
 };
 
 export type PilotUatState = {
@@ -94,7 +99,7 @@ export const PILOT_UAT_STORAGE_KEY = "coffee-payroll:pilot-uat";
 
 export const PILOT_RUN_PERIOD = {
   periodStart: "2026-08-16",
-  periodEnd: "2026-08-31",
+  periodEnd: "2026-08-29",
   payDate: "2026-09-04",
 } as const;
 
@@ -181,7 +186,21 @@ export function pilotHourlyRateSplitNeeded(employee: PilotUatEmployee): boolean 
 
 export function pilotHourlyRateSplitReady(employee: PilotUatEmployee, timesheet: PilotTimesheet | undefined): boolean {
   if (!pilotHourlyRateSplitNeeded(employee)) return true;
-  return pilotHourlyRateSplitsComplete(employee, PILOT_RUN_PERIOD, timesheet?.rateSplits);
+  if (!timesheet || !pilotHourlyRateSplitsComplete(employee, PILOT_RUN_PERIOD, timesheet.rateSplits)) return false;
+  const target = timesheet.allocationTarget ?? {
+    regular: timesheet.regular,
+    overtime: timesheet.overtime,
+    vacation: timesheet.vacation,
+  };
+  const allocated = (timesheet.rateSplits ?? []).reduce((total, row) => ({
+    regular: total.regular + row.regular,
+    overtime: total.overtime + row.overtime,
+    vacation: total.vacation + row.vacation,
+  }), { regular: 0, overtime: 0, vacation: 0 });
+  const same = (left: number, right: number) => Math.abs(left - right) < 0.000001;
+  return same(allocated.regular, target.regular)
+    && same(allocated.overtime, target.overtime)
+    && same(allocated.vacation, target.vacation);
 }
 
 function pilotFinalPayCents(finalPay: PilotFinalPay | undefined): PilotFinalPay {
