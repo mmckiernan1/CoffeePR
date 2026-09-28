@@ -1,9 +1,9 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { dollarsToCents } from "@/lib/payroll/money";
-import { PILOT_UAT_STORAGE_KEY, pilotRateHistoryWithChange, type PilotUatEmployee as Employee, type PilotUatState as WorkspaceState } from "@/lib/payroll/pilot-uat";
+import { PILOT_UAT_STORAGE_KEY, pilotFinalPayDollars, pilotRateHistoryWithChange, type PilotUatEmployee as Employee, type PilotUatState as WorkspaceState } from "@/lib/payroll/pilot-uat";
 
 type ChangeKind = "hire" | "leave" | "pay" | "bonus" | "absence" | "other" | null;
 
@@ -18,6 +18,12 @@ const choices: Array<{ id: Exclude<ChangeKind, null>; title: string; detail: str
 
 export default function LifecycleUatPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedEmployeeId = searchParams.get("employee");
+  const requestedKindRaw = searchParams.get("kind");
+  const requestedKind = choices.some((choice) => choice.id === requestedKindRaw)
+    ? requestedKindRaw as Exclude<ChangeKind, null>
+    : null;
   const [state, setState] = useState<WorkspaceState | null>(null);
   const [kind, setKind] = useState<ChangeKind>(null);
   const [employeeId, setEmployeeId] = useState("");
@@ -39,24 +45,42 @@ export default function LifecycleUatPage() {
   const selected = useMemo(() => state?.employees.find((employee) => employee.id === employeeId) ?? null, [employeeId, state]);
 
   useEffect(() => {
+    function hydrate(nextState: WorkspaceState, noticeText: string) {
+      const requested = requestedEmployeeId
+        ? nextState.employees.find((employee) => employee.id === requestedEmployeeId)
+        : null;
+      const chosen = requested ?? nextState.employees[0] ?? null;
+      setState(nextState);
+      setEmployeeId(chosen?.id ?? "");
+      setKind(requestedKind);
+      if (chosen && requestedKind === "pay") {
+        setNewRate(String(chosen.rate));
+        setEffectiveDate(chosen.rateEffectiveDate ?? chosen.rateHistory?.at(-1)?.effectiveDate ?? "2026-09-01");
+      }
+      if (chosen && requestedKind === "leave") {
+        const finalPay = pilotFinalPayDollars(chosen.finalPay);
+        setTerminationDate(chosen.terminationDate ?? "2026-08-29");
+        setVacationPay(String(finalPay.vacationPay));
+        setOvertimePay(String(finalPay.overtimePay));
+        setOtherTaxablePay(String(finalPay.otherTaxablePay));
+        setReimbursement(String(finalPay.reimbursement));
+      }
+      setNotice(noticeText);
+    }
+
     fetch("/api/pilot/workspace", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("Sign in to save employee changes to your workspace.");
         const payload = await response.json();
-        setState(payload.state);
-        setEmployeeId(payload.state.employees[0]?.id ?? "");
-        setNotice("Tell Coffee Payroll what changed. We’ll only ask for the details that matter.");
+        hydrate(payload.state, "Tell Coffee Payroll what changed. We’ll only ask for the details that matter.");
       })
       .catch((error) => {
         const raw = window.localStorage.getItem(PILOT_UAT_STORAGE_KEY);
         if (raw) {
-          const local = JSON.parse(raw) as WorkspaceState;
-          setState(local);
-          setEmployeeId(local.employees[0]?.id ?? "");
-          setNotice("Fictional employee changes are saved on this device.");
+          hydrate(JSON.parse(raw) as WorkspaceState, "Fictional employee changes are saved on this device.");
         } else setNotice(error instanceof Error ? error.message : "Unable to load employee changes.");
       });
-  }, []);
+  }, [requestedEmployeeId, requestedKind]);
 
   async function persist(nextState: WorkspaceState, message: string) {
     setNotice("Saving…");
