@@ -162,6 +162,16 @@ export default function GuidedPayrollPreviewPage() {
     };
   });
 
+  const openEmployeeWorkspace = (employee?: GuidedPayrollEmployee) => {
+    if (!employee?.id) return router.push("/uat/lifecycle");
+    const source = state.employees.find((item) => item.id === employee.id);
+    const params = new URLSearchParams({ employee: employee.id });
+    if (source?.status === "Terminating" || source?.status === "Terminated") params.set("kind", "leave");
+    else if (source?.rateEffectiveDate) params.set("kind", "pay");
+    else if ((source?.extraTaxablePayCents ?? 0) > 0) params.set("kind", "bonus");
+    router.push(`/uat/lifecycle?${params.toString()}`);
+  };
+
   const openWorkspace = (workspace: "employees" | "time" | "review" | "payments" | "reports") => {
     if (workspace === "employees") return router.push("/uat/lifecycle");
     if (workspace === "time") return router.push("/uat/time");
@@ -267,7 +277,7 @@ export default function GuidedPayrollPreviewPage() {
             remittance={remittance}
             fee={18}
             onHome={() => router.push("/uat/fictional")}
-            onOpenEmployees={() => openWorkspace("employees")}
+            onOpenEmployees={openEmployeeWorkspace}
             onOpenTime={() => openWorkspace("time")}
             onOpenReview={() => openWorkspace("review")}
             onApprove={approvePayroll}
