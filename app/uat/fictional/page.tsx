@@ -11,7 +11,7 @@ import {
 import { PILOT_UAT_STORAGE_KEY } from "@/lib/payroll/pilot-uat";
 
 const paymentStorageKey = "coffee-payroll:pilot-payments";
-const guidedProgressKey = "coffee-payroll:guided-payroll:2026-17-pilot";
+const guidedProgressKey = "coffee-payroll:guided-payroll:2026-18-pilot";
 const emptyPayments = { approved: false, paidEmployeeIds: [], references: {}, completedAt: null };
 
 export default function FictionalPilotScenarioPage() {
