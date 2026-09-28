@@ -3,7 +3,11 @@ import { FICTIONAL_PILOT_PROFILE_KEY } from "@/lib/payroll/pilot-fictional-scena
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { reconcilePilotLocalApproval } from "@/lib/payroll/pilot-local-payment-state";
+import { pilotRunFingerprint } from "@/lib/payroll/pilot-run-fingerprint";
 import {
+  PILOT_RUN_KEY,
+  PILOT_RUN_PERIOD,
   PILOT_STARTER_STATE,
   PILOT_UAT_STORAGE_KEY,
   pilotCalculateEmployee,
@@ -86,6 +90,31 @@ export default function PilotPaymentsPage() {
     return () => { cancelled = true; };
   }, []);
 
+  const currentFingerprint = useMemo(() => pilotRunFingerprint({
+    runKey: PILOT_RUN_KEY,
+    ...PILOT_RUN_PERIOD,
+    province: profile.province,
+    frequency: profile.frequency,
+    employees: uat.employees as Array<Record<string, unknown> & { id: string }>,
+    timesheets: uat.timesheets,
+    openingBalances: uat.openingBalances ?? {},
+  }), [uat, profile]);
+
+  const localApprovalStale = sync === "device"
+    && payments.approved
+    && payments.approvedFingerprint !== currentFingerprint;
+  const approvalInvalid = approvalStale || localApprovalStale;
+
+  useEffect(() => {
+    if (sync !== "device" || !payments.approved) return;
+    const reconciled = reconcilePilotLocalApproval(payments, currentFingerprint);
+    if (!reconciled.approvalInvalid) return;
+    paymentsRef.current = reconciled.state as PaymentState;
+    setPayments(reconciled.state as PaymentState);
+    setApprovalStale(true);
+    window.localStorage.setItem(paymentKey, JSON.stringify(reconciled.state));
+  }, [sync, payments, currentFingerprint]);
+
   const rows = useMemo(() => profile.province === "Alberta"
     ? uat.employees
       .filter(pilotEmployeeIsInRun)
@@ -120,7 +149,7 @@ export default function PilotPaymentsPage() {
         return false;
       }
       storeLocal(payload.state);
-      setApprovalStale(Boolean(payload.approvalStale));
+      setApprovalStale(Boolean(payload.approvalInvalid));
       setSync("workspace");
       return true;
     } catch {
@@ -161,7 +190,7 @@ export default function PilotPaymentsPage() {
         const payload = await response.json();
         const merged = { ...payload.state, references: paymentsRef.current.references } as PaymentState;
         storeLocal(merged);
-        setApprovalStale(Boolean(payload.approvalStale));
+        setApprovalStale(Boolean(payload.approvalInvalid));
         setSync("workspace");
       } catch {
         setSync("device");
@@ -173,7 +202,7 @@ export default function PilotPaymentsPage() {
 
   async function finishPayroll() {
     setCompletionError("");
-    if (!payments.approved || approvalStale || !allPaid || !allReferences) return;
+    if (!payments.approved || approvalInvalid || !allPaid || !allReferences) return;
     clearReferenceTimers();
     const next = { ...paymentsRef.current, completedAt: new Date().toISOString() };
     const saved = await save(next);
@@ -194,15 +223,15 @@ export default function PilotPaymentsPage() {
             <div className="text-right"><div className="text-xs text-[#7d6554]">Total employee payments</div><div className="mt-1 font-mono text-2xl font-bold">{cad.format(totalNet)}</div><div className="mt-1 text-xs text-[#846f60]">{confirmedCount} of {rows.length} complete</div></div>
           </div>
 
-          {approvalStale && <div className="mt-6 rounded-xl border border-[#d89b6c] bg-[#fff0dc] px-4 py-3 text-sm font-semibold text-[#75451f]">Payroll changed after approval. Return to Review, confirm the updated numbers and approve again before continuing payments.</div>}
-          {!approvalStale && !payments.approved && <div className="mt-6 rounded-xl border border-[#e2b999] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">This payroll has not been approved yet. Return to the guided payroll and approve it before confirming employee payments.</div>}
+          {approvalInvalid && <div className="mt-6 rounded-xl border border-[#d89b6c] bg-[#fff0dc] px-4 py-3 text-sm font-semibold text-[#75451f]">Payroll changed after approval. Return to Review, confirm the updated numbers and approve again before continuing payments.</div>}
+          {!approvalInvalid && !payments.approved && <div className="mt-6 rounded-xl border border-[#e2b999] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">This payroll has not been approved yet. Return to the guided payroll and approve it before confirming employee payments.</div>}
           {completionError && <div className="mt-6 rounded-xl border border-[#d89b6c] bg-[#fff0dc] px-4 py-3 text-sm font-semibold text-[#75451f]">{completionError}</div>}
 
           <div className="mt-6 space-y-3">
             {rows.map(({ employee, net }, index) => {
               const paid = payments.paidEmployeeIds.includes(employee.id);
               const hasReference = Boolean(payments.references[employee.id]?.trim());
-              const enabled = payments.approved && !approvalStale;
+              const enabled = payments.approved && !approvalInvalid;
               return <div key={employee.id} className={`rounded-2xl border p-4 sm:p-5 ${paid && hasReference ? "border-[#cfe0c2] bg-[#f7fbf4]" : "border-[#e2d4c8] bg-white"}`}>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0"><div className="flex items-center gap-2"><span className={`grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold ${paid && hasReference ? "bg-[#e8f3df] text-[#4f7440]" : "bg-[#f2e8df] text-[#7b5c49]"}`}>{paid && hasReference ? "✓" : index + 1}</span><div><div className="font-semibold">{employee.name}</div><div className="mt-0.5 text-xs text-[#826b5a]">Business e-transfer{employee.status === "Terminating" || employee.status === "Terminated" ? ` · final pay${employee.terminationDate ? ` · last day ${employee.terminationDate}` : ""}` : ""}</div></div></div></div>
@@ -222,7 +251,7 @@ export default function PilotPaymentsPage() {
 
           <div className="mt-7 flex flex-wrap items-end justify-between gap-4 border-t border-[#eadfd4] pt-6">
             <div><div className="text-sm font-semibold text-[#4f4037]">{remainingCount === 0 && rows.length > 0 ? "All employee payments are confirmed." : `${remainingCount} ${remainingCount === 1 ? "payment" : "payments"} left to confirm.`}</div><div className="mt-1 text-xs text-[#846f60]">{sync === "workspace" ? "Checklist saved to your pilot workspace" : sync === "saving" ? "Saving checklist…" : "Checklist saved on this device"}</div></div>
-            <button disabled={!payments.approved || approvalStale || !allPaid || !allReferences || sync === "saving"} onClick={finishPayroll} className="rounded-xl bg-[#1557d8] px-5 py-3 font-semibold text-white disabled:opacity-35">{allPaid && allReferences ? "Finish payroll" : `Confirmed ${confirmedCount} of ${rows.length}`}</button>
+            <button disabled={!payments.approved || approvalInvalid || !allPaid || !allReferences || sync === "saving"} onClick={finishPayroll} className="rounded-xl bg-[#1557d8] px-5 py-3 font-semibold text-white disabled:opacity-35">{allPaid && allReferences ? "Finish payroll" : `Confirmed ${confirmedCount} of ${rows.length}`}</button>
           </div>
         </section>
       </div>
