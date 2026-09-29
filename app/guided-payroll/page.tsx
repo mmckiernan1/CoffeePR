@@ -172,6 +172,11 @@ export default function GuidedPayrollPreviewPage() {
     router.push(`/uat/lifecycle?${params.toString()}`);
   };
 
+  const openTimeWorkspace = (employee?: GuidedPayrollEmployee) => {
+    if (!employee?.id) return router.push("/uat/time");
+    router.push(`/uat/time?employee=${encodeURIComponent(employee.id)}`);
+  };
+
   const openWorkspace = (workspace: "employees" | "time" | "review" | "payments" | "reports") => {
     if (workspace === "employees") return router.push("/uat/lifecycle");
     if (workspace === "time") return router.push("/uat/time");
@@ -278,7 +283,7 @@ export default function GuidedPayrollPreviewPage() {
             fee={18}
             onHome={() => router.push("/uat/fictional")}
             onOpenEmployees={openEmployeeWorkspace}
-            onOpenTime={() => openWorkspace("time")}
+            onOpenTime={openTimeWorkspace}
             onOpenReview={() => openWorkspace("review")}
             onApprove={approvePayroll}
             onOpenPayments={() => openWorkspace("payments")}
