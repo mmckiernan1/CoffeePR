@@ -12,7 +12,7 @@ export type RunPayrollStep = {
 export const RUN_PAYROLL_STEPS: readonly RunPayrollStep[] = [
   { id: "changes", label: "Changes", helper: "Anything different?" },
   { id: "employees", label: "Employees", helper: "Who are you paying?" },
-  { id: "hours-pay", label: "Hours & pay", helper: "Enter this pay" },
+  { id: "hours-pay", label: "Hours & pay", helper: "Check hours & pay" },
   { id: "review", label: "Review", helper: "Check the results" },
   { id: "approve-pay", label: "Approve & pay", helper: "Approve, then pay" },
   { id: "done", label: "Done", helper: "Payroll complete" },
