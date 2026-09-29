@@ -63,9 +63,9 @@ export default function LifecycleUatPage() {
 
     fetch("/api/pilot/workspace", { cache: "no-store" })
       .then(async (response) => {
-        if (!response.ok) throw new Error("Sign in to save employee changes to your workspace.");
+        if (!response.ok) throw new Error("Sign in to save employee changes.");
         const payload = await response.json();
-        hydrate(payload.state, "Tell Coffee Payroll what changed. We’ll only ask for the details that matter.");
+        hydrate(payload.state, "Tell Coffee Payroll what changed. We’ll only ask for the details needed for this payroll.");
       })
       .catch((error) => {
         const raw = window.localStorage.getItem(PILOT_UAT_STORAGE_KEY);
