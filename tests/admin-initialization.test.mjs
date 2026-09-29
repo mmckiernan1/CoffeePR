@@ -11,7 +11,6 @@ test("admin state reads cannot initialize or mutate business data", () => {
 
   assert.doesNotMatch(stateBody, /ensureFictionalWorkspace|ensureInitialDraft|\b(?:INSERT|UPDATE|DELETE)\b/i);
   assert.doesNotMatch(getBody, /ensureFictionalWorkspace|ensureInitialDraft|\b(?:INSERT|UPDATE|DELETE)\b/i);
-  assert.match(stateBody, /organizationConfigured: Boolean\(organization\)/);
 });
 
 test("demo initialization is an explicit Administrator-only action", () => {

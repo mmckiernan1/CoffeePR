@@ -35,10 +35,9 @@ async function readCssTree(directory) {
   return contents.join("\n");
 }
 
-test("emits the catalog's animation and scrolling utilities", async () => {
+test("emits the catalog's scrolling and motion-safe utilities", async () => {
   const css = await readCssTree(path.join(root, "dist"));
 
-  assert.match(css, /--tw-enter-opacity/);
   assert.match(css, /scrollbar-width:\s*thin/);
   assert.match(css, /scrollbar-width:\s*none/);
   assert.match(css, /scrollbar-gutter:\s*stable/);

@@ -1,0 +1,296 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { GuidedPayrollRun, type GuidedPayrollEmployee } from "@/components/comcheq";
+import { FICTIONAL_PILOT_PROFILE_KEY } from "@/lib/payroll/pilot-fictional-scenario";
+import { pilotUnresolvedHourlyRateChanges } from "@/lib/payroll/pilot-rate-change-guard";
+import { approvePilotLocalPayroll, reconcilePilotLocalApproval } from "@/lib/payroll/pilot-local-payment-state";
+import { pilotRunFingerprint } from "@/lib/payroll/pilot-run-fingerprint";
+import {
+  PILOT_RUN_KEY,
+  PILOT_RUN_PERIOD,
+  PILOT_STARTER_STATE,
+  PILOT_UAT_STORAGE_KEY,
+  pilotCalculateEmployee,
+  pilotChangeSummary,
+  pilotEmployeeIsInRun,
+  pilotFinalPayDollars,
+  pilotTaxSetupReady,
+  type PilotProfile,
+  type PilotUatState,
+} from "@/lib/payroll/pilot-uat";
+
+type PaymentState = { approved: boolean; approvedFingerprint?: string | null; paidEmployeeIds: string[]; references: Record<string, string>; completedAt: string | null };
+
+const paymentStorageKey = "coffee-payroll:pilot-payments";
+const emptyPayments: PaymentState = { approved: false, approvedFingerprint: null, paidEmployeeIds: [], references: {}, completedAt: null };
+
+export default function GuidedPayrollPreviewPage() {
+  const router = useRouter();
+  const [state, setState] = useState<PilotUatState>(PILOT_STARTER_STATE);
+  const [profile, setProfile] = useState<PilotProfile>({ businessName: "My business", province: "Alberta", frequency: "Biweekly", employeeCount: 4 });
+  const [payments, setPayments] = useState<PaymentState>(emptyPayments);
+  const [approvalError, setApprovalError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPilot() {
+      try {
+        const response = await fetch("/api/pilot/workspace", { cache: "no-store" });
+        if (response.ok) {
+          const payload = await response.json();
+          if (!cancelled) {
+            setState(payload.state);
+            setProfile(payload.profile);
+          }
+        } else {
+          throw new Error("workspace unavailable");
+        }
+      } catch {
+        try {
+          const raw = window.localStorage.getItem(PILOT_UAT_STORAGE_KEY);
+          const localProfile = window.localStorage.getItem(FICTIONAL_PILOT_PROFILE_KEY);
+          if (localProfile && !cancelled) setProfile(JSON.parse(localProfile));
+          if (raw) {
+            const parsed = JSON.parse(raw) as PilotUatState;
+            if (Array.isArray(parsed.employees) && parsed.timesheets) setState(parsed);
+          }
+        } catch {
+          // Starter fictional data remains available for preview.
+        }
+      }
+
+      try {
+        const paymentResponse = await fetch("/api/pilot/payments", { cache: "no-store" });
+        if (paymentResponse.ok) {
+          const payload = await paymentResponse.json();
+          if (!cancelled) setPayments(payload.state);
+        } else {
+          const raw = window.localStorage.getItem(paymentStorageKey);
+          if (raw && !cancelled) {
+            const localStateRaw = window.localStorage.getItem(PILOT_UAT_STORAGE_KEY);
+            const localProfileRaw = window.localStorage.getItem(FICTIONAL_PILOT_PROFILE_KEY);
+            const localState = localStateRaw ? JSON.parse(localStateRaw) as PilotUatState : PILOT_STARTER_STATE;
+            const localProfile = localProfileRaw ? JSON.parse(localProfileRaw) as PilotProfile : profile;
+            const fingerprint = pilotRunFingerprint({
+              runKey: PILOT_RUN_KEY,
+              ...PILOT_RUN_PERIOD,
+              province: localProfile.province,
+              frequency: localProfile.frequency,
+              employees: localState.employees as Array<Record<string, unknown> & { id: string }>,
+              timesheets: localState.timesheets,
+              openingBalances: localState.openingBalances ?? {},
+            });
+            const reconciled = reconcilePilotLocalApproval(JSON.parse(raw) as PaymentState, fingerprint);
+            setPayments(reconciled.state);
+            if (reconciled.approvalStale) window.localStorage.setItem(paymentStorageKey, JSON.stringify(reconciled.state));
+          }
+        }
+      } catch {
+        try {
+          const raw = window.localStorage.getItem(paymentStorageKey);
+          if (raw && !cancelled) {
+            const localStateRaw = window.localStorage.getItem(PILOT_UAT_STORAGE_KEY);
+            const localProfileRaw = window.localStorage.getItem(FICTIONAL_PILOT_PROFILE_KEY);
+            const localState = localStateRaw ? JSON.parse(localStateRaw) as PilotUatState : PILOT_STARTER_STATE;
+            const localProfile = localProfileRaw ? JSON.parse(localProfileRaw) as PilotProfile : profile;
+            const fingerprint = pilotRunFingerprint({
+              runKey: PILOT_RUN_KEY,
+              ...PILOT_RUN_PERIOD,
+              province: localProfile.province,
+              frequency: localProfile.frequency,
+              employees: localState.employees as Array<Record<string, unknown> & { id: string }>,
+              timesheets: localState.timesheets,
+              openingBalances: localState.openingBalances ?? {},
+            });
+            const reconciled = reconcilePilotLocalApproval(JSON.parse(raw) as PaymentState, fingerprint);
+            setPayments(reconciled.state);
+            if (reconciled.approvalStale) window.localStorage.setItem(paymentStorageKey, JSON.stringify(reconciled.state));
+          }
+        } catch {
+          // Keep clean payment state.
+        }
+      }
+    }
+
+    loadPilot();
+    return () => { cancelled = true; };
+  }, []);
+
+  const includedEmployees = useMemo(() => state.employees.filter(pilotEmployeeIsInRun), [state.employees]);
+  const lifecycleChanges = useMemo(() => state.employees.filter((employee) => pilotChangeSummary(employee)), [state.employees]);
+  const pendingTaxSetup = useMemo(() => includedEmployees.filter((employee) => !pilotTaxSetupReady(employee)), [includedEmployees]);
+  const unresolvedHourlyRateChanges = useMemo(() => pilotUnresolvedHourlyRateChanges(includedEmployees, state.timesheets, PILOT_RUN_PERIOD), [includedEmployees, state.timesheets]);
+
+  const calculated = useMemo(() => {
+    if (profile.province !== "Alberta") return [];
+    return includedEmployees.map((employee) => pilotCalculateEmployee(employee, state.timesheets, profile.frequency, state.openingBalances ?? {}));
+  }, [includedEmployees, state.timesheets, state.openingBalances, profile]);
+
+  const totals = useMemo(() => calculated.reduce((result, employee) => ({
+    gross: result.gross + employee.gross,
+    tax: result.tax + employee.incomeTax,
+    cpp: result.cpp + employee.cpp + employee.cpp2,
+    ei: result.ei + employee.ei,
+    net: result.net + employee.net,
+    employerCpp: result.employerCpp + employee.employerCpp,
+    employerEi: result.employerEi + employee.employerEi,
+  }), { gross: 0, tax: 0, cpp: 0, ei: 0, net: 0, employerCpp: 0, employerEi: 0 }), [calculated]);
+
+  const remittance = totals.tax + totals.cpp + totals.employerCpp + totals.ei + totals.employerEi;
+  const employees: GuidedPayrollEmployee[] = calculated.map((employee) => {
+    const row = state.timesheets[employee.id];
+    const lifecycle = pilotChangeSummary(employee);
+    const finalPay = pilotFinalPayDollars(employee.finalPay);
+    const finalPayTotal = finalPay.vacationPay + finalPay.overtimePay + finalPay.otherTaxablePay + finalPay.reimbursement;
+    const ordinary = employee.payType === "Hourly"
+      ? `${row?.regular ?? 0} regular · ${row?.overtime ?? 0} OT · $${employee.appliedRate.toFixed(2)}/hr`
+      : `$${employee.appliedRate.toLocaleString("en-CA")}/yr · regular salary carries forward`;
+    const detail = [lifecycle, ordinary, finalPayTotal > 0 ? `Final-pay items $${finalPayTotal.toFixed(2)}` : ""].filter(Boolean).join(" · ");
+    return {
+      id: employee.id,
+      name: employee.name,
+      payType: employee.payType,
+      detail,
+      netPay: employee.net,
+      grossPay: employee.gross,
+      status: employee.status,
+      changeLabel: lifecycle || undefined,
+      needsAttention: Boolean(lifecycle),
+    };
+  });
+
+  const openEmployeeWorkspace = (employee?: GuidedPayrollEmployee) => {
+    if (!employee?.id) return router.push("/uat/lifecycle");
+    const source = state.employees.find((item) => item.id === employee.id);
+    const params = new URLSearchParams({ employee: employee.id });
+    if (source?.status === "Terminating" || source?.status === "Terminated") params.set("kind", "leave");
+    else if (source?.rateEffectiveDate) params.set("kind", "pay");
+    else if ((source?.extraTaxablePayCents ?? 0) > 0) params.set("kind", "bonus");
+    router.push(`/uat/lifecycle?${params.toString()}`);
+  };
+
+  const openTimeWorkspace = (employee?: GuidedPayrollEmployee) => {
+    if (!employee?.id) return router.push("/uat/time");
+    router.push(`/uat/time?employee=${encodeURIComponent(employee.id)}`);
+  };
+
+  const openWorkspace = (workspace: "employees" | "time" | "review" | "payments" | "reports") => {
+    if (workspace === "employees") return router.push("/uat/lifecycle");
+    if (workspace === "time") return router.push("/uat/time");
+    if (workspace === "review") return router.push("/uat/review");
+    if (workspace === "payments") return router.push("/uat/payments");
+    router.push("/uat/reports");
+  };
+
+  async function approvePayroll() {
+    setApprovalError("");
+    if (pendingTaxSetup.length > 0) {
+      setApprovalError("Employee statutory setup needs to be reviewed before this payroll can be approved.");
+      router.push("/uat/tax-setup");
+      return;
+    }
+    if (unresolvedHourlyRateChanges.length > 0) {
+      setApprovalError("Hourly pay changed during this pay period. Allocate the hours before and after the rate change before approving payroll.");
+      router.push("/uat/time");
+      return;
+    }
+    try {
+      const response = await fetch("/api/pilot/payments", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approved: true, completedAt: null }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 404 && payload.code === "UAT_DEVICE_ONLY") {
+          // Isolated fictional preview intentionally has no hosted API or D1.
+          const fingerprint = pilotRunFingerprint({
+            runKey: PILOT_RUN_KEY,
+            ...PILOT_RUN_PERIOD,
+            province: profile.province,
+            frequency: profile.frequency,
+            employees: state.employees as Array<Record<string, unknown> & { id: string }>,
+            timesheets: state.timesheets,
+            openingBalances: state.openingBalances ?? {},
+          });
+          const local = approvePilotLocalPayroll(payments, fingerprint) as PaymentState;
+          setPayments(local);
+          window.localStorage.setItem(paymentStorageKey, JSON.stringify(local));
+          return;
+        }
+        setPayments((current) => ({ ...current, approved: false, completedAt: null }));
+        setApprovalError(payload.error ?? "Payroll could not be approved yet.");
+        if (payload.code === "EMPLOYEE_TAX_SETUP_REQUIRED" || payload.code === "NEW_HIRE_TAX_SETUP_REQUIRED") router.push("/uat/tax-setup");
+        if (payload.code === "MID_PERIOD_RATE_CHANGE_REVIEW_REQUIRED") router.push("/uat/time");
+        return;
+      }
+      setPayments(payload.state);
+      window.localStorage.setItem(paymentStorageKey, JSON.stringify(payload.state));
+    } catch {
+      setPayments((current) => ({ ...current, approved: false, completedAt: null }));
+      setApprovalError("Approval could not be saved. Try again when the workspace connection is available.");
+    }
+  }
+
+  const supported = profile.province === "Alberta";
+  const paymentsComplete = Boolean(payments.approved && payments.completedAt);
+
+  return (
+    <main className="min-h-screen bg-[#f4eadf] text-[#332118]">
+      <div className="mx-auto max-w-[1240px] px-4 py-5 sm:px-7 sm:py-8">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-1 text-xs text-[#795f4f]">
+          <div>
+            <strong className="text-[#332118]">{profile.businessName} · Run payroll</strong>
+            <span className="ml-2">Run 18 · August 16–29 · Pay date September 4, 2026</span>
+          </div>
+          {lifecycleChanges.length > 0 && <button onClick={() => router.push("/uat/lifecycle")} className="rounded-lg px-2 py-1.5 font-semibold text-[#7b4b23] transition hover:bg-[#fff0dc]">{lifecycleChanges.length} employee change{lifecycleChanges.length === 1 ? "" : "s"}</button>}
+        </div>
+
+        {pendingTaxSetup.length > 0 && (
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e2b999] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">
+            <div><strong>{pendingTaxSetup.length} employee{pendingTaxSetup.length === 1 ? " needs" : "s need"} statutory setup review before approval.</strong><div className="mt-1 text-xs">Coffee Payroll will keep approval locked until the required checkpoint is complete.</div></div>
+            <button onClick={() => router.push("/uat/tax-setup")} className="rounded-lg bg-[#1557d8] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0f47b5]">Review tax setup</button>
+          </div>
+        )}
+
+        {unresolvedHourlyRateChanges.length > 0 && (
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e2b999] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">
+            <div><strong>{unresolvedHourlyRateChanges.length} hourly employee{unresolvedHourlyRateChanges.length === 1 ? " has" : "s have"} a rate change inside this pay period.</strong><div className="mt-1 text-xs">Split their hours between the old and new rates in Hours & pay. Approval will unlock once every rate segment has been reviewed.</div></div>
+            <button onClick={() => router.push("/uat/time")} className="rounded-lg bg-[#1557d8] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0f47b5]">Split hours by rate</button>
+          </div>
+        )}
+
+        {approvalError && <div className="mb-5 rounded-xl border border-[#d89b6c] bg-[#fff0dc] px-4 py-3 text-sm font-semibold text-[#75451f]">{approvalError}</div>}
+
+        {!supported && (
+          <div className="mb-5 rounded-xl border border-[#e2b999] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">
+            Coffee Payroll&apos;s current calculation pack is validated for Alberta. Change the business province to Alberta before running this payroll.
+          </div>
+        )}
+
+        {supported && (
+          <GuidedPayrollRun
+            runKey={PILOT_RUN_KEY}
+            approved={payments.approved}
+            paymentsComplete={paymentsComplete}
+            timeReady={state.ready}
+            employees={employees}
+            net={totals.net}
+            remittance={remittance}
+            fee={18}
+            onHome={() => router.push("/uat/fictional")}
+            onOpenEmployees={openEmployeeWorkspace}
+            onOpenTime={openTimeWorkspace}
+            onOpenReview={() => openWorkspace("review")}
+            onApprove={approvePayroll}
+            onOpenPayments={() => openWorkspace("payments")}
+            onOpenReports={() => openWorkspace("reports")}
+          />
+        )}
+      </div>
+    </main>
+  );
+}

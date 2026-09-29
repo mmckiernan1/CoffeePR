@@ -1,0 +1,81 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  pilotHourlyGrossFromSplits,
+  pilotHourlyRateSegmentDates,
+  pilotHourlyRateSplitDetails,
+  pilotHourlyRateSplitsComplete,
+} from "../lib/payroll/pilot-hourly-rate-split.ts";
+
+const run = { periodStart: "2026-08-16", periodEnd: "2026-08-31" };
+const employee = {
+  rate: 30,
+  rateHistory: [
+    { effectiveDate: "2026-01-01", rate: 30 },
+    { effectiveDate: "2026-08-24", rate: 32 },
+  ],
+};
+
+test("hourly split dates include the period start and each in-period rate change", () => {
+  assert.deepEqual(pilotHourlyRateSegmentDates(employee, run), ["2026-08-16", "2026-08-24"]);
+});
+
+test("split allocation is incomplete until every rate segment is present", () => {
+  assert.equal(pilotHourlyRateSplitsComplete(employee, run, [{ effectiveFrom: "2026-08-16", regular: 32, overtime: 0, vacation: 0 }]), false);
+  assert.equal(pilotHourlyRateSplitsComplete(employee, run, [
+    { effectiveFrom: "2026-08-16", regular: 32, overtime: 0, vacation: 0 },
+    { effectiveFrom: "2026-08-24", regular: 48, overtime: 2, vacation: 0 },
+  ]), true);
+});
+
+test("hourly gross applies the correct rate to each segment including overtime", () => {
+  const gross = pilotHourlyGrossFromSplits(employee, [
+    { effectiveFrom: "2026-08-16", regular: 32, overtime: 0, vacation: 0 },
+    { effectiveFrom: "2026-08-24", regular: 48, overtime: 2, vacation: 0 },
+  ]);
+  assert.equal(gross, 32 * 30 + 48 * 32 + 2 * 32 * 1.5);
+});
+
+test("review detail exposes the rate and gross for each hourly segment", () => {
+  assert.deepEqual(pilotHourlyRateSplitDetails(employee, [
+    { effectiveFrom: "2026-08-16", regular: 32, overtime: 0, vacation: 0 },
+    { effectiveFrom: "2026-08-24", regular: 48, overtime: 2, vacation: 0 },
+  ]), [
+    { effectiveFrom: "2026-08-16", regular: 32, overtime: 0, vacation: 0, rate: 30, gross: 960 },
+    { effectiveFrom: "2026-08-24", regular: 48, overtime: 2, vacation: 0, rate: 32, gross: 1632 },
+  ]);
+});
+
+test("ordinary single-rate hourly payroll does not require split rows", () => {
+  const stable = { rate: 30, rateHistory: [{ effectiveDate: "2026-01-01", rate: 30 }] };
+  assert.equal(pilotHourlyRateSplitsComplete(stable, run, undefined), true);
+});
+
+
+test("split allocation must add back to the original hours when a target is supplied", () => {
+  const target = { regular: 80, overtime: 2.5, vacation: 0 };
+  assert.equal(pilotHourlyRateSplitsComplete(employee, run, [
+    { effectiveFrom: "2026-08-16", regular: 40, overtime: 0, vacation: 0 },
+    { effectiveFrom: "2026-08-24", regular: 20, overtime: 0, vacation: 0 },
+  ], target), false);
+  assert.equal(pilotHourlyRateSplitsComplete(employee, run, [
+    { effectiveFrom: "2026-08-16", regular: 40, overtime: 0, vacation: 0 },
+    { effectiveFrom: "2026-08-24", regular: 40, overtime: 2.5, vacation: 0 },
+  ], target), true);
+});
+
+
+test("Juniper Trail Noah split produces the expected gross", () => {
+  const noah = {
+    rate: 31,
+    rateHistory: [
+      { effectiveDate: "2024-05-13", rate: 29.5 },
+      { effectiveDate: "2026-08-24", rate: 31 },
+    ],
+  };
+  const gross = pilotHourlyGrossFromSplits(noah, [
+    { effectiveFrom: "2026-08-16", regular: 40, overtime: 0, vacation: 0 },
+    { effectiveFrom: "2026-08-24", regular: 40, overtime: 2.5, vacation: 0 },
+  ]);
+  assert.equal(gross, 2536.25);
+});

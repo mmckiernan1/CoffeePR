@@ -30,11 +30,11 @@ export const payrollApiControls = [
 export const openApiDocument = {
   openapi: "3.1.0",
   info: {
-    title: "Comcheq Canadian Payroll API",
+    title: "Coffee Payroll Canadian API",
     version: "0.4.0-effective-dating",
     description: "Design contract for a Canadian small-employer payroll API. Effective-dated configuration writes use authenticated employer roles and durable versioned records; public demo routes contain fictional data only.",
   },
-  servers: [{ url: "/", description: "Current Comcheq prototype" }],
+  servers: [{ url: "/", description: "Current Coffee Payroll prototype" }],
   paths: {
     "/api/v1/health": {
       get: {

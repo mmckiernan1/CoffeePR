@@ -114,7 +114,7 @@ export const dataExchangeSections = [
   {
     id: "opening_balances", area: "Customer setup", label: "Opening balances", primaryKey: "balance_external_id",
     description: "Employee year-to-date earnings, deductions and contribution balances.",
-    importRule: "Import only before the first approved Comcheq run; corrections use an adjustment batch.",
+    importRule: "Import only before the first approved Coffee Payroll run; corrections use an adjustment batch.",
     columns: [
       { key: "balance_external_id", label: "Balance ID", required: true, type: "text" },
       { key: "employee_external_id", label: "Employee ID", required: true, type: "text" },
