@@ -92,7 +92,7 @@ export function GuidedPayrollRun({ approved, paymentsComplete, timeReady, employ
     const maxStep = paymentsComplete ? 5 : 4;
     setStep(Math.min(Math.max(next, 0), maxStep));
   }
-  function openEmployeeChanges() { const progress = { step: 0, changesConfirmed: true, employeesConfirmed }; setChangesConfirmed(true); saveProgress(progress); onOpenEmployees(); }
+  function openEmployeeChanges() { const progress = { step: 1, changesConfirmed: true, employeesConfirmed }; setChangesConfirmed(true); saveProgress(progress); onOpenEmployees(); }
   function openEmployeesFromRoster(employee?: GuidedPayrollEmployee) { saveProgress({ step: 1, changesConfirmed, employeesConfirmed }); onOpenEmployees(employee); }
   function openTimeEntry(employee?: GuidedPayrollEmployee) { saveProgress({ step: 2, changesConfirmed, employeesConfirmed }); onOpenTime(employee); }
   function openReview() { saveProgress({ step: 3, changesConfirmed, employeesConfirmed }); onOpenReview(); }
