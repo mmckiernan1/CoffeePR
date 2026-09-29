@@ -2,7 +2,7 @@
 import { FICTIONAL_PILOT_PROFILE_KEY } from "@/lib/payroll/pilot-fictional-scenario";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { pilotHourlyRateForSegment, pilotHourlyRateSegmentDates } from "@/lib/payroll/pilot-hourly-rate-split";
 import {
   PILOT_RUN_PERIOD,
@@ -19,6 +19,8 @@ type SaveMode = "loading" | "workspace" | "saving" | "device" | "error";
 
 export default function GuidedTimeEntryPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedEmployeeId = searchParams.get("employee");
   const [state, setState] = useState<PilotUatState | null>(null);
   const [businessName, setBusinessName] = useState("My business");
   const [mode, setMode] = useState<SaveMode>("loading");
@@ -34,6 +36,14 @@ export default function GuidedTimeEntryPage() {
     return Boolean(row && row.regular >= 0 && row.overtime >= 0 && row.vacation >= 0 && pilotHourlyRateSplitReady(employee, row));
   }).length, [hourly, state]);
   const splitCount = useMemo(() => hourly.filter(pilotHourlyRateSplitNeeded).length, [hourly]);
+  const orderedHourly = useMemo(() => {
+    if (!requestedEmployeeId) return hourly;
+    return [...hourly].sort((left, right) => {
+      if (left.id === requestedEmployeeId) return -1;
+      if (right.id === requestedEmployeeId) return 1;
+      return 0;
+    });
+  }, [hourly, requestedEmployeeId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +57,7 @@ export default function GuidedTimeEntryPage() {
         setBusinessName(payload.profile?.businessName ?? "My business");
         cloudSave.current = true;
         setMode("workspace");
-        setNotice("Only the people who need hours are shown here.");
+        setNotice("Only hourly employees are shown here. Review what is already entered and change only what is different.");
       } catch {
         let next = PILOT_STARTER_STATE;
         try {
@@ -60,7 +70,7 @@ export default function GuidedTimeEntryPage() {
           setState(next);
           cloudSave.current = false;
           setMode("device");
-          setNotice("Hours are being saved on this device for now.");
+          setNotice("Hours are saved on this device for this test.");
         }
       } finally {
         hydrated.current = true;
@@ -103,7 +113,7 @@ export default function GuidedTimeEntryPage() {
         [id]: { ...(current.timesheets[id] ?? { regular: 0, overtime: 0, vacation: 0 }), [field]: Number.isFinite(number) && number >= 0 ? number : 0 },
       },
     } : current);
-    setNotice("Hours changed. Coffee Payroll will recalculate before review.");
+    setNotice("Hours updated. Coffee Payroll will recalculate before review.");
   }
 
   function splitRows(employee: PilotUatEmployee, row: PilotTimesheet) {
@@ -132,7 +142,7 @@ export default function GuidedTimeEntryPage() {
         timesheets: { ...current.timesheets, [employee.id]: { ...totals, allocationTarget, rateSplits: splits } },
       };
     });
-    setNotice("Split hours changed. Coffee Payroll will apply each rate to the hours in its effective segment.");
+    setNotice("Rate-split hours updated. Coffee Payroll will apply each rate to the correct part of the pay period.");
   }
 
   async function markReady() {
@@ -175,19 +185,20 @@ export default function GuidedTimeEntryPage() {
         <section className="mt-7 rounded-[28px] border border-[#decdbd] bg-[#fffaf5] p-6 shadow-sm sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#967663]">Step 3 · Hours & pay</p>
           <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
-            <div><h1 className="text-3xl font-semibold">{hourly.length === 0 ? "No hours to enter this pay" : `Only ${hourly.length} ${hourly.length === 1 ? "person needs" : "people need"} hours this pay`}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[#795f4f]">{salaryCount > 0 ? `${salaryCount} salaried ${salaryCount === 1 ? "employee is" : "employees are"} already carried forward automatically. ` : ""}Enter regular, overtime and vacation hours only for the hourly employees below.</p></div>
+            <div><h1 className="text-3xl font-semibold">{hourly.length === 0 ? "No hours to enter this pay" : `Review ${hourly.length} hourly ${hourly.length === 1 ? "employee" : "employees"}`}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[#795f4f]">{salaryCount > 0 ? `${salaryCount} salaried ${salaryCount === 1 ? "employee is" : "employees are"} already carried forward automatically. ` : ""}Check the regular, overtime and vacation hours already shown. Change only what is different.</p></div>
             <div className="rounded-2xl bg-[#f3e6da] px-4 py-3 text-right"><div className="text-xs text-[#806858]">{businessName}</div><div className="mt-1 text-sm font-semibold">{state.ready ? "✓ Hours ready" : `${completeRows} of ${hourly.length} checked`}</div></div>
           </div>
 
           {splitCount > 0 && <div className="mt-5 rounded-2xl border border-[#e0c7ad] bg-[#fff6ec] px-5 py-4 text-sm leading-6 text-[#714a32]"><strong>{splitCount} hourly employee{splitCount === 1 ? " has" : "s have"} a rate change during this pay period.</strong> Their hours are split below so Coffee Payroll can pay the hours before and after the change at the correct rates.</div>}
 
           <div className="mt-6 space-y-4">
-            {hourly.map((employee) => {
+            {orderedHourly.map((employee) => {
               const row = state.timesheets[employee.id] ?? { regular: 0, overtime: 0, vacation: 0 };
               const needsSplit = pilotHourlyRateSplitNeeded(employee);
               const segments = needsSplit ? splitRows(employee, row) : [];
-              return <div key={employee.id} className="rounded-2xl border border-[#e2d4c8] bg-white p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="font-semibold">{employee.name}</div><div className="mt-1 text-xs text-[#806858]">Hourly · ${employee.rate.toFixed(2)}/hr{employee.status === "New hire" ? " · New hire" : employee.status === "Terminating" ? " · Leaving" : ""}</div></div><span className={`rounded-full px-3 py-1 text-xs font-semibold ${needsSplit ? "bg-[#fff0dc] text-[#75451f]" : "bg-[#fff8e7] text-[#725a22]"}`}>{needsSplit ? "Rate changed this pay" : "Hours needed"}</span></div>
+              const requested = employee.id === requestedEmployeeId;
+              return <div key={employee.id} className={`rounded-2xl border bg-white p-5 ${requested ? "border-[#8fb0e8] ring-2 ring-[#dbe8fb]" : "border-[#e2d4c8]"}`}>
+                <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="font-semibold">{employee.name}</div><div className="mt-1 text-xs text-[#806858]">Hourly · ${employee.rate.toFixed(2)}/hr{employee.status === "New hire" ? " · New hire" : employee.status === "Terminating" ? " · Leaving" : ""}</div></div><div className="flex flex-wrap items-center gap-2">{requested && <span className="rounded-full bg-[#edf3ff] px-3 py-1 text-xs font-semibold text-[#1557d8]">Selected</span>}<span className={`rounded-full px-3 py-1 text-xs font-semibold ${needsSplit ? "bg-[#fff0dc] text-[#75451f]" : "bg-[#f1f6ed] text-[#5f7654]"}`}>{needsSplit ? "Rate changed this pay" : "Review hours"}</span></div></div>
 
                 {needsSplit && <div className="mt-4 rounded-xl border border-[#c9d9ef] bg-[#f7fbff] px-4 py-3 text-xs leading-5 text-[#466985]"><strong>Allocate exactly {row.allocationTarget?.regular ?? row.regular} regular and {row.allocationTarget?.overtime ?? row.overtime} overtime hours across the two rate periods.</strong> Coffee Payroll will keep this employee incomplete until the allocation matches the original hours.{employee.changeNote && <span className="mt-1 block">{employee.changeNote}</span>}</div>}
                 {!needsSplit ? <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -201,11 +212,11 @@ export default function GuidedTimeEntryPage() {
             })}
           </div>
 
-          <div className="mt-6 rounded-2xl border border-[#d8e5ce] bg-[#f7fbf4] px-5 py-4 text-sm text-[#4f6944]">Regular salary and the payroll setup you already confirmed carry forward automatically. You only need to touch the exceptions.</div>
+          <div className="mt-6 rounded-2xl border border-[#d8e5ce] bg-[#f7fbf4] px-5 py-4 text-sm text-[#4f6944]">Salaried employees carry forward automatically. For hourly employees, change only the hours that are different.</div>
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[#eadfd4] pt-5">
             <span className="text-xs text-[#806858]">{mode === "workspace" ? "Saved to your pilot workspace" : mode === "saving" ? "Saving hours…" : mode === "device" ? "Saved on this device" : mode === "error" ? "Workspace save needs attention" : "Loading…"}</span>
-            <button onClick={state.ready ? () => router.push("/guided-payroll") : markReady} disabled={completeRows !== hourly.length} className="rounded-xl bg-[#1557d8] px-5 py-3 font-semibold text-white disabled:opacity-35">{state.ready ? "Continue to review" : "Yes, hours are complete"}</button>
+            <button onClick={state.ready ? () => router.push("/guided-payroll") : markReady} disabled={completeRows !== hourly.length} className="rounded-xl bg-[#1557d8] px-5 py-3 font-semibold text-white disabled:opacity-35">{state.ready ? "Continue to review" : "Hours look right"}</button>
           </div>
         </section>
       </div>
