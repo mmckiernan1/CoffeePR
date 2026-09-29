@@ -8,11 +8,12 @@ import {
   FICTIONAL_PILOT_PROFILE,
   FICTIONAL_PILOT_STATE,
 } from "@/lib/payroll/pilot-fictional-scenario";
-import { PILOT_UAT_STORAGE_KEY } from "@/lib/payroll/pilot-uat";
+import { PILOT_RUN_KEY, PILOT_UAT_STORAGE_KEY } from "@/lib/payroll/pilot-uat";
 
 const paymentStorageKey = "coffee-payroll:pilot-payments";
-const guidedProgressKey = "coffee-payroll:guided-payroll:2026-18-pilot";
-const emptyPayments = { approved: false, paidEmployeeIds: [], references: {}, completedAt: null };
+const guidedProgressKey = `coffee-payroll:guided-payroll:${PILOT_RUN_KEY}`;
+const legacyGuidedProgressKey = "coffee-payroll:guided-payroll:2026-17-pilot";
+const emptyPayments = { approved: false, approvedFingerprint: null, paidEmployeeIds: [], references: {}, completedAt: null };
 
 export default function FictionalPilotScenarioPage() {
   const router = useRouter();
@@ -27,6 +28,7 @@ export default function FictionalPilotScenarioPage() {
     window.localStorage.setItem(FICTIONAL_PILOT_PROFILE_KEY, JSON.stringify(FICTIONAL_PILOT_PROFILE));
     window.localStorage.setItem(paymentStorageKey, JSON.stringify(emptyPayments));
     window.sessionStorage.removeItem(guidedProgressKey);
+    window.sessionStorage.removeItem(legacyGuidedProgressKey);
 
     let workspaceSaved = false;
     try {
