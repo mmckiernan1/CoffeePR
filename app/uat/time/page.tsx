@@ -98,7 +98,7 @@ export default function GuidedTimeEntryPage() {
       } catch {
         cloudSave.current = false;
         setMode("error");
-        setNotice("The workspace save needs attention. Your latest hours remain saved on this device.");
+        setNotice("Coffee Payroll could not sync your latest hours, but they remain saved on this device.");
       }
     }, 500);
   }, [state]);
@@ -164,7 +164,7 @@ export default function GuidedTimeEntryPage() {
         setMode("workspace");
       } catch {
         setMode("error");
-        setNotice("Coffee Payroll saved your hours on this device, but the workspace save needs attention before you continue.");
+        setNotice("Coffee Payroll saved your hours on this device, but could not sync them. Try again before continuing.");
         return;
       }
     }
@@ -215,7 +215,7 @@ export default function GuidedTimeEntryPage() {
           <div className="mt-6 rounded-2xl border border-[#d8e5ce] bg-[#f7fbf4] px-5 py-4 text-sm text-[#4f6944]">Salaried employees carry forward automatically. For hourly employees, change only the hours that are different.</div>
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[#eadfd4] pt-5">
-            <span className="text-xs text-[#806858]">{mode === "workspace" ? "Saved to your pilot workspace" : mode === "saving" ? "Saving hours…" : mode === "device" ? "Saved on this device" : mode === "error" ? "Workspace save needs attention" : "Loading…"}</span>
+            <span className="text-xs text-[#806858]">{mode === "workspace" ? "Saved" : mode === "saving" ? "Saving hours…" : mode === "device" ? "Saved on this device" : mode === "error" ? "Save needs attention" : "Loading…"}</span>
             <button onClick={state.ready ? () => router.push("/guided-payroll") : markReady} disabled={completeRows !== hourly.length} className="rounded-xl bg-[#1557d8] px-5 py-3 font-semibold text-white disabled:opacity-35">{state.ready ? "Continue to review" : "Hours look right"}</button>
           </div>
         </section>
