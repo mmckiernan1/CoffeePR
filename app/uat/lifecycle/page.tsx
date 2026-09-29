@@ -89,6 +89,7 @@ export default function LifecycleUatPage() {
         setState(nextState);
         setNotice(message);
         setKind(null);
+        router.push("/guided-payroll");
         return;
       }
       throw new Error(payload.error ?? "Unable to save employee change.");
@@ -97,6 +98,7 @@ export default function LifecycleUatPage() {
     setState(payload.state);
     setNotice(message);
     setKind(null);
+    router.push("/guided-payroll");
   }
 
   function nextEmployeeId() {
@@ -204,10 +206,10 @@ export default function LifecycleUatPage() {
         <section className="mt-6 rounded-[28px] border border-[#decdbd] bg-[#fffaf5] p-6 shadow-sm sm:p-8">
           <div className="text-xs font-bold uppercase tracking-[0.18em] text-[#967663]">Step 1 · Changes</div>
           <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">What changed since last payroll?</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#795f4f]">Pick the thing that happened. Coffee Payroll will ask only the questions needed for that change.</p>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#795f4f]">Choose what changed. Coffee Payroll will ask only for the details needed for this payroll.</p>
 
           <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {choices.map((choice) => (
+            {choices.filter((choice) => choice.available !== false).map((choice) => (
               <button key={choice.id} disabled={choice.available === false} onClick={() => setKind(choice.id)} className={`rounded-2xl border p-5 text-left transition ${choice.available === false ? "cursor-not-allowed border-[#e2d4c8] bg-[#f8f3ee] opacity-65" : "hover:-translate-y-0.5 hover:shadow-md"} ${kind === choice.id ? "border-[#8e6046] bg-[#fff6ec] ring-2 ring-[#d9bda8]" : choice.available === false ? "" : "border-[#e2d4c8] bg-white"}`}>
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f3e6da] text-lg font-bold text-[#6c432e]">{choice.icon}</div>
                 <div className="mt-4 font-semibold">{choice.title}</div>
@@ -216,7 +218,7 @@ export default function LifecycleUatPage() {
             ))}
           </div>
 
-          {!kind && <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#f8efe6] px-5 py-4"><span className="text-sm text-[#765c4b]">Nothing changed?</span><button onClick={() => router.push("/guided-payroll")} className="rounded-xl bg-[#1557d8] px-5 py-2.5 text-sm font-semibold text-white">Continue to employees</button></div>}
+          {!kind && <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#f8efe6] px-5 py-4"><span className="text-sm text-[#765c4b]">Nothing else changed?</span><button onClick={() => router.push("/guided-payroll")} className="rounded-xl bg-[#1557d8] px-5 py-2.5 text-sm font-semibold text-white">Continue to employees</button></div>}
         </section>
 
         {kind === "hire" && <form onSubmit={addHire} className="mt-5 rounded-[26px] border border-[#decdbd] bg-white p-6 shadow-sm sm:p-7"><h2 className="text-2xl font-semibold">Tell us about the new employee</h2><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-sm font-medium">Employee name<input value={hireName} onChange={(e) => setHireName(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label><label className="text-sm font-medium">Hire date<input type="date" value={hireDate} onChange={(e) => setHireDate(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label><label className="text-sm font-medium">Paid by<select value={hireType} onChange={(e) => setHireType(e.target.value as "Salary" | "Hourly")} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5"><option>Hourly</option><option>Salary</option></select></label><label className="text-sm font-medium">{hireType === "Hourly" ? "Hourly rate" : "Annual salary"}<input type="number" min="0.01" step="0.01" value={hireRate} onChange={(e) => setHireRate(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8c8ba] px-3 py-2.5" /></label></div><button className="mt-6 rounded-xl bg-[#1557d8] px-5 py-3 font-semibold text-white">Add employee</button></form>}
