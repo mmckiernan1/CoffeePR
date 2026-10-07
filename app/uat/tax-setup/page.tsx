@@ -98,7 +98,7 @@ export default function PilotTaxSetupPage() {
           <button onClick={() => router.push("/guided-payroll")} className="rounded-xl border border-[#d9e3f2] bg-[#ffffff] px-4 py-2 text-sm font-semibold">Back to payroll</button>
         </header>
 
-        <div className="mt-6 rounded-2xl border border-[#e0c7ad] bg-[#fff6ec] px-5 py-4 text-sm text-[#714a32]">{notice}</div>
+        <div className="mt-6 rounded-2xl border border-[#e0c7ad] bg-[#fff8e7] px-5 py-4 text-sm text-[#7a5d18]">{notice}</div>
 
         <section className="mt-6 rounded-[28px] border border-[#dde6eb] bg-[#ffffff] p-6 shadow-sm sm:p-8">
           <div className="text-xs font-bold uppercase tracking-[0.18em] text-[#647087]">Employee statutory setup</div>
