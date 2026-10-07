@@ -146,7 +146,7 @@ export default function PilotUatPage() {
           </div>
         </header>
 
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#e0c7ad] bg-[#fff6ec] px-5 py-4 text-sm text-[#714a32]">
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dde6eb] bg-[#fff8e7] px-5 py-4 text-sm text-[#7a5d18]">
           <span>{notice}</span>
           <span className="rounded-full bg-white/80 px-3 py-1.5 text-xs font-semibold">{profile.businessName} · {sourceLabel}</span>
         </div>
@@ -175,7 +175,7 @@ export default function PilotUatPage() {
               <div className="text-xs font-bold uppercase tracking-[0.16em] text-[#647087]">{card.step}</div>
               <h2 className="mt-2 text-2xl font-semibold">{card.title}</h2>
               <p className="mt-2 text-sm leading-6 text-[#4c5c68]">{card.detail}</p>
-              <div className="mt-5 text-sm font-semibold text-[#6c432e]">{card.action} →</div>
+              <div className="mt-5 text-sm font-semibold text-[#4c5c68]">{card.action} →</div>
             </button>
           ))}
         </section>
