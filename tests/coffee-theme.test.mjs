@@ -32,8 +32,8 @@ test("Coffee Payroll user-facing surfaces do not expose legacy brand styling", a
 
 test("Coffee Payroll theme keeps light-neutral surfaces, cobalt actions and green success", async () => {
   const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
-  assert.match(css, /--background:\\s*#f5f7fa/i);
-  assert.match(css, /--foreground:\\s*#1a2930/i);
+  assert.match(css, /--background:\s*#f5f7fa/i);
+  assert.match(css, /--foreground:\s*#1a2930/i);
   assert.match(css, /--primary:\s*#1557d8/i);
   assert.match(css, /--chart-2:\s*#5f7d4e/i);
 });
