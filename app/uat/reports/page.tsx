@@ -150,5 +150,5 @@ function Summary({ label, value, accent = false }: { label: string; value: numbe
 }
 
 function Cell({ label, value }: { label: string; value: string }) {
-  return <div><p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#647087]">{label}</p><p className="mt-1 font-medium text-[#4f4037]">{value}</p></div>;
+  return <div><p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#647087]">{label}</p><p className="mt-1 font-medium text-[#1a2930]">{value}</p></div>;
 }
