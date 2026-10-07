@@ -52,6 +52,17 @@ export default function PilotPaymentsPage() {
     let cancelled = false;
     async function load() {
       try {
+        const savedMethods = window.localStorage.getItem(paymentMethodKey);
+        if (savedMethods && !cancelled) {
+          const parsed = JSON.parse(savedMethods) as Record<string, unknown>;
+          const valid = Object.fromEntries(Object.entries(parsed).filter(([, method]) => method === "Business e-transfer" || method === "Business cheque")) as Record<string, PaymentMethod>;
+          setPaymentMethods(valid);
+        }
+      } catch {
+        // Keep e-transfer as the default payment method.
+      }
+
+      try {
         const workspace = await fetch("/api/pilot/workspace", { cache: "no-store" });
         if (workspace.ok) {
           const data = await workspace.json();
@@ -78,12 +89,6 @@ export default function PilotPaymentsPage() {
         // Device fallback below.
       }
       try {
-        const savedMethods = window.localStorage.getItem(paymentMethodKey);
-        if (savedMethods && !cancelled) {
-          const parsed = JSON.parse(savedMethods) as Record<string, unknown>;
-          const valid = Object.fromEntries(Object.entries(parsed).filter(([, method]) => method === "Business e-transfer" || method === "Business cheque")) as Record<string, PaymentMethod>;
-          setPaymentMethods(valid);
-        }
         const raw = window.localStorage.getItem(paymentKey);
         if (raw && !cancelled) {
           const parsed = JSON.parse(raw) as PaymentState;
