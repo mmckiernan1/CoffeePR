@@ -85,7 +85,7 @@ export default function FictionalPilotScenarioPage() {
             <ScenarioCard title="Liam Martin" detail="Hourly employee leaving August 28. This first validated UAT includes regular earnings plus a $120 reimbursement; accrued vacation payout is reserved for the later irregular-payment test." />
           </div>
 
-          <div className="mt-6 rounded-2xl border border-[#e6c566] bg-[#fff8e7] p-5 text-sm leading-6 text-[#714a32]">
+          <div className="mt-6 rounded-2xl border border-[#e6c566] bg-[#fff8e7] p-5 text-sm leading-6 text-[#7a5d18]">
             <strong>Expected friction is intentional.</strong> Noah&apos;s rate change should stop approval until his hours are allocated to the old and new rates. Liam should be visibly identified as leaving and should carry final-pay amounts into Review.
           </div>
 
