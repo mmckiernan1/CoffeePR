@@ -246,18 +246,18 @@ export default function GuidedPayrollPreviewPage() {
             <strong className="text-[#1a2930]">{profile.businessName} · Run payroll</strong>
             <span className="ml-2">Run 18 · August 16–29 · Pay date September 4, 2026</span>
           </div>
-          {lifecycleChanges.length > 0 && <button onClick={() => router.push("/uat/lifecycle")} className="rounded-lg px-2 py-1.5 font-semibold text-[#7b4b23] transition hover:bg-[#fff8e7]">{lifecycleChanges.length} employee change{lifecycleChanges.length === 1 ? "" : "s"}</button>}
+          {lifecycleChanges.length > 0 && <button onClick={() => router.push("/uat/lifecycle")} className="rounded-lg px-2 py-1.5 font-semibold text-[#7a5d18] transition hover:bg-[#fff8e7]">{lifecycleChanges.length} employee change{lifecycleChanges.length === 1 ? "" : "s"}</button>}
         </div>
 
         {pendingTaxSetup.length > 0 && (
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e6c566] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e6c566] bg-[#fff8e7] px-4 py-3 text-sm text-[#7a5d18]">
             <div><strong>{pendingTaxSetup.length} employee{pendingTaxSetup.length === 1 ? " needs" : "s need"} statutory setup review before approval.</strong><div className="mt-1 text-xs">Coffee Payroll will keep approval locked until the required checkpoint is complete.</div></div>
             <button onClick={() => router.push("/uat/tax-setup")} className="rounded-lg bg-[#1557d8] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0f47b5]">Review tax setup</button>
           </div>
         )}
 
         {unresolvedHourlyRateChanges.length > 0 && (
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e6c566] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e6c566] bg-[#fff8e7] px-4 py-3 text-sm text-[#7a5d18]">
             <div><strong>{unresolvedHourlyRateChanges.length} hourly employee{unresolvedHourlyRateChanges.length === 1 ? " has" : "s have"} a rate change inside this pay period.</strong><div className="mt-1 text-xs">Split their hours between the old and new rates in Hours & pay. Approval will unlock once every rate segment has been reviewed.</div></div>
             <button onClick={() => router.push("/uat/time")} className="rounded-lg bg-[#1557d8] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0f47b5]">Split hours by rate</button>
           </div>
@@ -266,7 +266,7 @@ export default function GuidedPayrollPreviewPage() {
         {approvalError && <div className="mb-5 rounded-xl border border-[#e6c566] bg-[#fff8e7] px-4 py-3 text-sm font-semibold text-[#7a5d18]">{approvalError}</div>}
 
         {!supported && (
-          <div className="mb-5 rounded-xl border border-[#e6c566] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">
+          <div className="mb-5 rounded-xl border border-[#e6c566] bg-[#fff8e7] px-4 py-3 text-sm text-[#7a5d18]">
             Coffee Payroll&apos;s current calculation pack is validated for Alberta. Change the business province to Alberta before running this payroll.
           </div>
         )}
