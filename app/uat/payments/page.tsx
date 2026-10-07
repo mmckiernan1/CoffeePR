@@ -229,7 +229,7 @@ export default function PilotPaymentsPage() {
 
         <section className="mt-7 rounded-[28px] border border-[#dde6eb] bg-[#ffffff] p-6 shadow-sm sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#967663]">Employee payments</p><h1 className="mt-2 text-3xl font-semibold">Pay your employees</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[#4c5c68]">Pay each employee by business e-transfer or business cheque. Enter the bank confirmation or cheque number, then mark that employee paid. Coffee Payroll keeps the checklist; it does not move the money.</p></div>
+            <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#647087]">Employee payments</p><h1 className="mt-2 text-3xl font-semibold">Pay your employees</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[#4c5c68]">Pay each employee by business e-transfer or business cheque. Enter the bank confirmation or cheque number, then mark that employee paid. Coffee Payroll keeps the checklist; it does not move the money.</p></div>
             <div className="text-right"><div className="text-xs text-[#647087]">Total employee payments</div><div className="mt-1 font-mono text-2xl font-bold">{cad.format(totalNet)}</div><div className="mt-1 text-xs text-[#647087]">{confirmedCount} of {rows.length} complete</div></div>
           </div>
 
@@ -263,7 +263,7 @@ export default function PilotPaymentsPage() {
           </div>
 
           <div className="mt-7 flex flex-wrap items-end justify-between gap-4 border-t border-[#e6edf2] pt-6">
-            <div><div className="text-sm font-semibold text-[#4f4037]">{remainingCount === 0 && rows.length > 0 ? "All employee payments are confirmed." : `${remainingCount} ${remainingCount === 1 ? "payment" : "payments"} left to confirm.`}</div><div className="mt-1 text-xs text-[#647087]">{sync === "workspace" ? "Checklist saved to your pilot workspace" : sync === "saving" ? "Saving checklist…" : "Checklist saved on this device"}</div></div>
+            <div><div className="text-sm font-semibold text-[#1a2930]">{remainingCount === 0 && rows.length > 0 ? "All employee payments are confirmed." : `${remainingCount} ${remainingCount === 1 ? "payment" : "payments"} left to confirm.`}</div><div className="mt-1 text-xs text-[#647087]">{sync === "workspace" ? "Checklist saved to your pilot workspace" : sync === "saving" ? "Saving checklist…" : "Checklist saved on this device"}</div></div>
             <button disabled={!payments.approved || approvalInvalid || !allPaid || !allReferences || sync === "saving"} onClick={finishPayroll} className="rounded-xl bg-[#1557d8] px-5 py-3 font-semibold text-white disabled:opacity-35">{allPaid && allReferences ? "Finish payroll" : `Confirmed ${confirmedCount} of ${rows.length}`}</button>
           </div>
         </section>
