@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   PILOT_STARTER_STATE,
+  PILOT_RUN_KEY,
   PILOT_UAT_STORAGE_KEY,
   pilotChangeSummary,
   pilotEmployeeIsInRun,
@@ -38,7 +39,7 @@ const cards = [
   },
   {
     title: "Approve & pay",
-    detail: "Test the business e-transfer checklist and payment completion gate.",
+    detail: "Test business e-transfer and cheque confirmations before finishing payroll.",
     action: "Open Payments",
     href: "/uat/payments",
     step: "Step 5",
@@ -99,6 +100,12 @@ export default function PilotUatPage() {
     setMode("resetting");
     setNotice("Resetting the fictional payroll scenario…");
     window.localStorage.setItem(PILOT_UAT_STORAGE_KEY, JSON.stringify(PILOT_STARTER_STATE));
+    window.localStorage.setItem("coffee-payroll:pilot-payments", JSON.stringify({
+      approved: false, approvedFingerprint: null, paidEmployeeIds: [], references: {}, completedAt: null,
+    }));
+    window.localStorage.removeItem("coffee-payroll:pilot-payment-methods");
+    window.sessionStorage.removeItem(`coffee-payroll:guided-payroll:${PILOT_RUN_KEY}`);
+    window.sessionStorage.removeItem("coffee-payroll:guided-payroll:2026-17-pilot");
     setState(PILOT_STARTER_STATE);
 
     try {
@@ -108,14 +115,20 @@ export default function PilotUatPage() {
         body: JSON.stringify({ resetState: true }),
       });
       if (!response.ok) throw new Error("workspace reset unavailable");
+      const paymentResponse = await fetch("/api/pilot/payments", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reset: true }),
+      });
+      if (!paymentResponse.ok) throw new Error("payment reset unavailable");
       const payload = await response.json();
       setState(payload.state);
       setProfile(payload.profile ?? profile);
       setMode("workspace");
-      setNotice("The fictional payroll scenario has been reset and is ready to test again.");
+      setNotice("The fictional payroll, approval and payment confirmations have been reset.");
     } catch {
       setMode("device");
-      setNotice("The local fictional scenario was reset. Workspace reset can be retried after sync is available.");
+      setNotice("The scenario and payment checklist were reset on this device. Hosted records may still need resetting if workspace sync was previously enabled.");
     }
   }
 
