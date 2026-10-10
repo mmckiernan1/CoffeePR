@@ -18,7 +18,7 @@ import { pilotRunFingerprint } from "@/lib/payroll/pilot-run-fingerprint";
 import { pilotEmployeeTaxSetupReady } from "@/lib/payroll/pilot-tax-setup";
 import { PILOT_RUN_KEY, PILOT_RUN_PERIOD } from "@/lib/payroll/pilot-uat";
 
-type PilotUatState = { employees: PilotApprovalEmployee[]; timesheets: Record<string, unknown>; openingBalances?: Record<string, unknown> };
+type PilotUatState = { employees: PilotApprovalEmployee[]; timesheets: Record<string, unknown>; openingBalances?: Record<string, unknown>; ready?: boolean };
 
 type UpdateBody = {
   approved?: boolean;
