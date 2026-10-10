@@ -1,6 +1,6 @@
 # Isolated Juniper Trail Coffee Co. mobile UAT
 
-The `chat/run-payroll-shell` branch builds a separate Worker named
+The `chat/uat-cobalt-cheque` review branch retains a separate Worker named
 `coffee-payroll-fictional-uat`. It has no D1 binding and never runs migrations.
 The Worker returns 404 for application/API routes outside the fictional UAT
 journey. Payroll progress and payment confirmations remain in the iPhone's
@@ -48,8 +48,8 @@ knew what to do next.
 ### Start
 
 - Open `/uat/fictional`.
-- Confirm the page feels like Coffee Payroll: warm coffee-shop surfaces,
-  espresso branding, cobalt primary actions and green success states.
+- Confirm the page feels like Coffee Payroll: clean white/light-neutral surfaces,
+  cobalt primary actions and green success states, without a brown/beige theme.
 - Tap **Load fictional test**, then **Start Run Payroll**.
 - Pass: the next action is obvious without zooming or horizontal scrolling.
 
@@ -88,8 +88,8 @@ Expected:
 - The first validated UAT intentionally excludes an accrued-vacation payout
   because that payment requires the CRA bonus/irregular-payment withholding
   path, which remains a separate production gate.
-- **Yes, hours are complete** should save and continue without requiring a
-  second confirmation click.
+- **Hours look right** should save and continue without requiring a
+  second confirmation click. Approval must remain blocked until hours are confirmed.
 
 Pass: the iPhone page does not require side-to-side scrolling and it is obvious
 which employees require action.
@@ -113,7 +113,9 @@ Pass:
 - approval confirms the payroll numbers only;
 - the screen does **not** imply that approval sent money;
 - employee payments are confirmed separately;
-- Business e-transfer/reference wording is understandable;
+- both Business e-transfer and Business cheque are available per employee;
+- switching payment method clears the prior bank reference or cheque number;
+- an e-transfer requires a bank confirmation, while a cheque requires a cheque number;
 - a payment cannot be treated as complete until the required confirmation is
   recorded.
 
@@ -156,8 +158,8 @@ When reporting an issue, use whichever label fits best:
 - **BUG** — something is wrong or fails.
 - **CONFUSING** — it works, but you did not know what to do or why.
 - **MOBILE** — cramped, hard to tap/read, zooming or horizontal scrolling.
-- **VISUAL** — does not feel consistent with the Coffee Payroll coffee-shop
-  theme.
+- **VISUAL** — does not feel consistent with the cobalt/green/light-neutral
+  Coffee Payroll theme.
 - **CALC** — amount, rate, deduction, final pay or statutory result looks wrong.
 - **ENHANCEMENT** — works correctly, but there is a better/faster way.
 
