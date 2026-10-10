@@ -166,11 +166,23 @@ export default function PilotPaymentsPage() {
   }
 
   function updatePaymentMethod(id: string, method: PaymentMethod) {
-    setPaymentMethods((current) => {
-      const next = { ...current, [id]: method };
-      window.localStorage.setItem(paymentMethodKey, JSON.stringify(next));
-      return next;
-    });
+    const previous = paymentMethods[id] ?? "Business e-transfer";
+    if (previous === method || paymentsRef.current.paidEmployeeIds.includes(id)) return;
+
+    // A bank confirmation must never be reused as evidence for a cheque, or vice versa.
+    const pendingReferenceSave = referenceTimers.current[id];
+    if (pendingReferenceSave) {
+      clearTimeout(pendingReferenceSave);
+      delete referenceTimers.current[id];
+    }
+    const nextMethods = { ...paymentMethods, [id]: method };
+    setPaymentMethods(nextMethods);
+    window.localStorage.setItem(paymentMethodKey, JSON.stringify(nextMethods));
+
+    const current = paymentsRef.current;
+    const nextReferences = { ...current.references };
+    delete nextReferences[id];
+    void save({ ...current, references: nextReferences, paidEmployeeIds: current.paidEmployeeIds.filter((employeeId) => employeeId !== id), completedAt: null });
   }
 
   function togglePaid(id: string) {
