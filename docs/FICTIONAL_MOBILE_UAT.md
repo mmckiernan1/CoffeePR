@@ -7,32 +7,54 @@ journey. Payroll progress and payment confirmations remain in the iPhone's
 browser storage; use fictional references only. Clearing Safari website data
 will erase this test run.
 
-## Prepare the bundle
+## Prepare and publish the closed UAT Worker
 
-```sh
-npm ci
-npm run build:fictional-uat
+The current UAT branch is `chat/uat-cobalt-cheque`. On Martin's Windows
+desktop, open PowerShell in the existing CoffeePR repository and run:
+
+```powershell
+git fetch origin
+git switch --track origin/chat/uat-cobalt-cheque
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\deploy-closed-fictional-uat.ps1
 ```
+
+If the local branch already exists, use `git switch chat/uat-cobalt-cheque`
+instead of `git switch --track`. The deployment script requires a clean
+working tree and the correct branch; it uses the installed Git Bash for the
+Vinext build, prepares and verifies the isolated bundle, then deploys **only**
+`coffee-payroll-fictional-uat` with **both public URLs disabled**.
 
 The generated `dist/server/wrangler.json` has `workers_dev: false`,
 `preview_urls: false`, no routes, no D1 binding, and Worker-first assets.
 Do not substitute the production `coffee-payroll` Worker or its D1 database.
+The script does not run database migrations.
 
-## Protected publication
+## Enable protected access, then the UAT URL
 
-1. Authenticate to the existing Coffee Payroll Cloudflare account.
-2. Deploy the isolated Worker using
-   `npx wrangler deploy --config dist/server/wrangler.json`. At this stage it
-   has no public endpoint.
-3. In Zero Trust > Access > Applications, protect the **entire isolated
-   Worker** with an Allow policy for Martin's verified email and One-time PIN.
-   Check that production and preview URLs are both covered by that policy.
-4. Only after the policy is active, enable its `workers.dev` route in the
-   Cloudflare dashboard and update `workers_dev` in the generated config to
-   `true` before any future redeploy. Verify a signed-out private Safari tab
-   receives the Access sign-in screen before any application content or assets.
-5. Sign in on the iPhone and open `/uat/fictional`. Tap **Load fictional test**,
-   then **Start Run Payroll**. The scenario is device-local by design.
+1. Confirm the separate **coffee-payroll-fictional-uat** Worker appears under
+   Cloudflare **Workers & Pages** after the closed deployment.
+2. Select **coffee-payroll-fictional-uat** > **Access** >
+   **Protect this Worker behind Access**. Choose **All traffic**, not
+   "Previews only". Use an Allow policy for **Martin's one exact email address**
+   and **One-time PIN**. Do not permit an email domain, everyone, or all account
+   members. Apply Access and confirm the protection is active.
+3. Only after step 2 is confirmed: under this same isolated Worker, open
+   **Settings > Domains & Routes** and enable its production `workers.dev`
+   hostname. **Leave Preview URLs disabled.** Do not change the separate
+   production `coffee-payroll` Worker or expose it.
+4. In a signed-out/private Safari tab, open
+   `https://coffee-payroll-fictional-uat.<YOUR_WORKERS_SUBDOMAIN>.workers.dev/uat/fictional`.
+   **Before seeing any app content or assets**, Safari must show Cloudflare
+   Access sign-in. If app content appears without authentication, immediately
+   disable this Worker's `workers.dev` route.
+5. Complete One-time PIN sign-in, then tap **Load fictional test** and
+   **Start Run Payroll**. The scenario is saved on this device only.
+
+Cloudflare's Worker-level Access policy protects all Worker routes and associated
+hostnames, including `workers.dev`. This is safer than protecting only a
+single page. Leave `workers_dev: false` in the **source UAT configuration**
+until future deployment logic explicitly preserves protection: redeploying with
+`workers_dev: false` will disable its route again.
 
 Keep `workers_dev: false` if Access has not been confirmed. Never apply
 `drizzle/0013`–`0015` as part of this preview. Never merge this branch to
