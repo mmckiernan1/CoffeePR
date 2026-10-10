@@ -26,6 +26,20 @@ const worker = {
         return Response.json({ code: "UAT_DEVICE_ONLY", error: "This fictional preview stores progress on this device." }, { status: 404 });
       }
       if (!isFictionalUatPathAllowed(path)) return new Response("Not found", { status: 404 });
+
+      // UAT uses run_worker_first to enforce the route guard even for static
+      // files. With that setting, Cloudflare will not serve CSS/JS for us:
+      // allowed static files must be fetched explicitly from ASSETS.
+      if (
+        (request.method === "GET" || request.method === "HEAD")
+        && (
+          path.startsWith("/assets/")
+          || path.startsWith("/_next/static/")
+          || path === "/favicon.svg"
+        )
+      ) {
+        return env.ASSETS.fetch(request);
+      }
     }
     return handler.fetch(request, env, ctx);
   },
