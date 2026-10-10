@@ -228,7 +228,7 @@ export default function PilotCompletePage() {
             <div className="text-center">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#edf3ff] text-2xl">…</div>
               <h1 className="mt-5 text-3xl font-semibold">{approvalInvalid ? "Payroll changed after approval" : "Payroll is not finished yet"}</h1>
-              <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#4c5c68]">{approvalInvalid ? "An employee, rate, time or final-pay input changed. Review the updated payroll and approve it again before Coffee Payroll can mark this run complete." : "Approval, every employee payment, and a bank confirmation/reference for each payment must all be present before Coffee Payroll marks the run complete."}</p>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#4c5c68]">{approvalInvalid ? "An employee, rate, time or final-pay input changed. Review the updated payroll and approve it again before Coffee Payroll can mark this run complete." : "Approval, every employee payment, and a bank confirmation or cheque number for each payment must all be present before Coffee Payroll marks the run complete."}</p>
               <div className="mt-7 flex justify-center"><button onClick={() => router.push(approvalInvalid ? "/guided-payroll" : "/uat/payments")} className="rounded-xl bg-[#1557d8] px-5 py-3 font-semibold text-white">{approvalInvalid ? "Review payroll again" : "Return to employee payments"}</button></div>
             </div>
           )}
