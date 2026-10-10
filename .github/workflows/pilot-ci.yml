@@ -36,6 +36,11 @@ jobs:
           set -o pipefail
           node --experimental-strip-types --test tests/*.test.mjs 2>&1 | tee test-output.txt
 
+      - name: Verify isolated fictional UAT package
+        run: |
+          node scripts/prepare-fictional-uat.mjs
+          node scripts/verify-fictional-uat.mjs
+
       - name: Upload test output
         if: always()
         uses: actions/upload-artifact@v4
