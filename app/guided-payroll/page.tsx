@@ -187,6 +187,11 @@ export default function GuidedPayrollPreviewPage() {
 
   async function approvePayroll() {
     setApprovalError("");
+    if (!state.ready) {
+      setApprovalError("Hours must be reviewed and confirmed before payroll can be approved.");
+      router.push("/uat/time");
+      return;
+    }
     if (pendingTaxSetup.length > 0) {
       setApprovalError("Employee statutory setup needs to be reviewed before this payroll can be approved.");
       router.push("/uat/tax-setup");
