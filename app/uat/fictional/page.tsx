@@ -11,6 +11,7 @@ import {
 import { PILOT_RUN_KEY, PILOT_UAT_STORAGE_KEY } from "@/lib/payroll/pilot-uat";
 
 const paymentStorageKey = "coffee-payroll:pilot-payments";
+const paymentMethodStorageKey = "coffee-payroll:pilot-payment-methods";
 const guidedProgressKey = `coffee-payroll:guided-payroll:${PILOT_RUN_KEY}`;
 const legacyGuidedProgressKey = "coffee-payroll:guided-payroll:2026-17-pilot";
 const emptyPayments = { approved: false, approvedFingerprint: null, paidEmployeeIds: [], references: {}, completedAt: null };
@@ -27,6 +28,7 @@ export default function FictionalPilotScenarioPage() {
     window.localStorage.setItem(PILOT_UAT_STORAGE_KEY, JSON.stringify(FICTIONAL_PILOT_STATE));
     window.localStorage.setItem(FICTIONAL_PILOT_PROFILE_KEY, JSON.stringify(FICTIONAL_PILOT_PROFILE));
     window.localStorage.setItem(paymentStorageKey, JSON.stringify(emptyPayments));
+    window.localStorage.removeItem(paymentMethodStorageKey);
     window.sessionStorage.removeItem(guidedProgressKey);
     window.sessionStorage.removeItem(legacyGuidedProgressKey);
 
@@ -65,18 +67,18 @@ export default function FictionalPilotScenarioPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f4eadf] px-4 py-7 text-[#332118] sm:px-6">
+    <main className="min-h-screen bg-[#f5f7fa] px-4 py-7 text-[#1a2930] sm:px-6">
       <div className="mx-auto max-w-4xl">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#967663]">Coffee Payroll pilot</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#647087]">Coffee Payroll pilot</p>
             <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Fictional payroll test</h1>
-            <p className="mt-2 text-sm text-[#795f4f]">{FICTIONAL_PILOT_PROFILE.businessName} · Alberta · Biweekly</p>
+            <p className="mt-2 text-sm text-[#4c5c68]">{FICTIONAL_PILOT_PROFILE.businessName} · Alberta · Biweekly</p>
           </div>
-          <button onClick={() => router.push("/uat")} className="rounded-xl border border-[#d6c6b8] bg-[#fffaf5] px-4 py-2 text-sm font-semibold">Back to UAT hub</button>
+          <button onClick={() => router.push("/uat")} className="rounded-xl border border-[#d9e3f2] bg-[#ffffff] px-4 py-2 text-sm font-semibold">Back to UAT hub</button>
         </header>
 
-        <section className="mt-6 rounded-[28px] border border-[#decdbd] bg-[#fffaf5] p-6 shadow-sm sm:p-8">
+        <section className="mt-6 rounded-[28px] border border-[#dde6eb] bg-[#ffffff] p-6 shadow-sm sm:p-8">
           <h2 className="text-2xl font-semibold">What this scenario tests</h2>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <ScenarioCard title="Avery Chen" detail="Salaried employee. Regular salary should carry forward automatically." />
@@ -85,7 +87,7 @@ export default function FictionalPilotScenarioPage() {
             <ScenarioCard title="Liam Martin" detail="Hourly employee leaving August 28. This first validated UAT includes regular earnings plus a $120 reimbursement; accrued vacation payout is reserved for the later irregular-payment test." />
           </div>
 
-          <div className="mt-6 rounded-2xl border border-[#e3c39f] bg-[#fff8ee] p-5 text-sm leading-6 text-[#714a32]">
+          <div className="mt-6 rounded-2xl border border-[#e6c566] bg-[#fff8e7] p-5 text-sm leading-6 text-[#7a5d18]">
             <strong>Expected friction is intentional.</strong> Noah&apos;s rate change should stop approval until his hours are allocated to the old and new rates. Liam should be visibly identified as leaving and should carry final-pay amounts into Review.
           </div>
 
@@ -97,12 +99,12 @@ export default function FictionalPilotScenarioPage() {
               <button onClick={() => router.push("/guided-payroll")} className="rounded-xl bg-[#1557d8] px-5 py-3 text-sm font-semibold text-white">Start Run Payroll</button>
             )}
           </div>
-          <p className={`mt-4 text-sm ${status === "error" ? "font-semibold text-[#8a4427]" : "text-[#795f4f]"}`}>{message}</p>
+          <p className={`mt-4 text-sm ${status === "error" ? "font-semibold text-[#8a4427]" : "text-[#4c5c68]"}`}>{message}</p>
         </section>
 
-        <section className="mt-5 rounded-2xl border border-[#decdbd] bg-[#fffaf5] p-6">
+        <section className="mt-5 rounded-2xl border border-[#dde6eb] bg-[#ffffff] p-6">
           <h2 className="text-lg font-semibold">Pass criteria</h2>
-          <ol className="mt-4 space-y-3 text-sm leading-6 text-[#795f4f]">
+          <ol className="mt-4 space-y-3 text-sm leading-6 text-[#4c5c68]">
             <li>1. Changes shows exactly {FICTIONAL_PILOT_EXPECTATIONS.changedEmployees.length} employees requiring attention: Noah and Liam.</li>
             <li>2. Employees shows all {FICTIONAL_PILOT_EXPECTATIONS.employeesInRun} employees and every employee card is clickable.</li>
             <li>3. Hours & pay shows {FICTIONAL_PILOT_EXPECTATIONS.hourlyEmployees} hourly employees and keeps approval blocked until Noah&apos;s rate split is completed.</li>
@@ -117,5 +119,5 @@ export default function FictionalPilotScenarioPage() {
 }
 
 function ScenarioCard({ title, detail }: { title: string; detail: string }) {
-  return <div className="rounded-2xl border border-[#e2d4c8] bg-white p-5"><h3 className="font-semibold text-[#332118]">{title}</h3><p className="mt-2 text-sm leading-6 text-[#795f4f]">{detail}</p></div>;
+  return <div className="rounded-2xl border border-[#dde6eb] bg-white p-5"><h3 className="font-semibold text-[#1a2930]">{title}</h3><p className="mt-2 text-sm leading-6 text-[#4c5c68]">{detail}</p></div>;
 }

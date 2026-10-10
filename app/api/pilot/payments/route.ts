@@ -18,7 +18,7 @@ import { pilotRunFingerprint } from "@/lib/payroll/pilot-run-fingerprint";
 import { pilotEmployeeTaxSetupReady } from "@/lib/payroll/pilot-tax-setup";
 import { PILOT_RUN_KEY, PILOT_RUN_PERIOD } from "@/lib/payroll/pilot-uat";
 
-type PilotUatState = { employees: PilotApprovalEmployee[]; timesheets: Record<string, unknown>; openingBalances?: Record<string, unknown> };
+type PilotUatState = { employees: PilotApprovalEmployee[]; timesheets: Record<string, unknown>; openingBalances?: Record<string, unknown>; ready?: boolean };
 
 type UpdateBody = {
   approved?: boolean;
@@ -173,6 +173,12 @@ export async function PUT(request: Request) {
     }
 
     if (body.approved === true) {
+      if (uatState.ready !== true) {
+        return NextResponse.json({
+          error: "Hours must be reviewed and confirmed before payroll approval.",
+          code: "HOURS_NOT_READY",
+        }, { status: 409 });
+      }
       const pendingTaxSetup = uatState.employees.filter((employee) => !pilotEmployeeTaxSetupReady(employee));
       if (pendingTaxSetup.length > 0) {
         return NextResponse.json({
