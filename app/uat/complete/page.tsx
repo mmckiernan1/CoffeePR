@@ -179,7 +179,7 @@ export default function PilotCompletePage() {
   return (
     <main className="min-h-screen bg-[#f7efe6] px-4 py-8 text-[#332118] sm:px-6 sm:py-10">
       <div className="mx-auto max-w-4xl">
-        <div className="flex items-center justify-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#1557d8] text-lg text-white">☕</div><div><div className="text-xl font-semibold">Coffee Payroll</div><div className="text-[9px] tracking-[0.3em] text-[#795f4f]">stress free payroll</div></div></div>
+        <div className="flex items-center justify-center gap-3"><span className="block h-11 w-11 rounded-2xl bg-[#fff7ef]" style={{ background: "center / contain no-repeat url('/favicon.svg')" }} role="img" aria-label="Coffee Payroll cup" /><div><div className="text-xl font-semibold">Coffee Payroll</div><div className="text-[9px] tracking-[0.3em] text-[#795f4f]">stress free payroll</div></div></div>
 
         <section className="mt-7 rounded-[28px] border border-[#decdbd] bg-[#fffdf9] p-6 shadow-[0_20px_60px_rgba(72,42,24,0.10)] sm:p-9">
           {complete ? (
