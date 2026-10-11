@@ -106,7 +106,7 @@ export default function PilotReportsPage() {
     <main className="min-h-screen bg-[#f7efe6] px-4 py-7 text-[#332118] sm:px-6">
       <div className="mx-auto max-w-5xl">
         <header className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1557d8] text-xl text-white">☕</div><div><div className="text-2xl font-semibold">Coffee Payroll</div><div className="text-[10px] tracking-[0.3em] text-[#795f4f]">stress free payroll · reports</div></div></div>
+          <div className="flex items-center gap-3"><span className="block h-12 w-12 rounded-2xl bg-[#fff7ef]" style={{ background: "center / contain no-repeat url('/favicon.svg')" }} role="img" aria-label="Coffee Payroll cup" /><div><div className="text-2xl font-semibold">Coffee Payroll</div><div className="text-[10px] tracking-[0.3em] text-[#795f4f]">stress free payroll · reports</div></div></div>
           <div className="no-print flex flex-wrap gap-2"><button onClick={() => router.push(displayPayments.completedAt ? "/uat/complete" : "/guided-payroll")} className="rounded-xl border border-[#e5d1bd] bg-[#fffdf9] px-4 py-2 text-sm font-semibold">Back</button><button onClick={() => window.print()} className="rounded-xl bg-[#1557d8] px-5 py-2 text-sm font-semibold text-white">Print / Save PDF</button></div>
         </header>
 
