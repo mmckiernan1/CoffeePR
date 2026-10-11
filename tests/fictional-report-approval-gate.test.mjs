@@ -27,3 +27,17 @@ test("register and statements do not print unapproved or incomplete payroll amou
   assert.match(statement, /!canPrint \?/);
   assert.match(statement, /approvedFingerprint/);
 });
+
+test("opening guided payroll never overwrites stored evidence when approval is stale", async () => {
+  const guided = await read("app/guided-payroll/page.tsx");
+  assert.match(guided, /reconcilePilotLocalApproval/);
+  assert.doesNotMatch(guided, /localStorage\.setItem\(paymentStorageKey, JSON\.stringify\(reconciled\.state\)\)/);
+});
+
+test("reloading fictional scenario warns before discarding an approved or paid run", async () => {
+  const fictional = await read("app/uat/fictional/page.tsx");
+  assert.match(fictional, /existing\?\.approved/);
+  assert.match(fictional, /existing\?\.completedAt/);
+  assert.match(fictional, /window\.confirm\(/);
+  assert.match(fictional, /Existing fictional payroll preserved/);
+});
