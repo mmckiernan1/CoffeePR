@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FICTIONAL_PILOT_PROFILE_KEY } from "@/lib/payroll/pilot-fictional-scenario";
 import { reconcilePilotLocalApproval } from "@/lib/payroll/pilot-local-payment-state";
 import { pilotRunFingerprint } from "@/lib/payroll/pilot-run-fingerprint";
+import { pilotReportReadiness } from "@/lib/payroll/pilot-report-readiness";
 import {
   PILOT_RUN_KEY,
   PILOT_RUN_PERIOD,
@@ -34,6 +35,7 @@ export default function PilotReportsPage() {
   const [payments, setPayments] = useState<PaymentState>({ approved: false, approvedFingerprint: null, paidEmployeeIds: [], references: {}, completedAt: null });
   const [source, setSource] = useState("Loading payroll record…");
   const [workspaceConnected, setWorkspaceConnected] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,7 +69,7 @@ export default function PilotReportsPage() {
           if (!cancelled) setSource("Fictional starter record");
         }
       }
-    })();
+    })().finally(() => { if (!cancelled) setLoaded(true); });
     return () => { cancelled = true; };
   }, []);
 
@@ -88,11 +90,14 @@ export default function PilotReportsPage() {
     ? reconcilePilotLocalApproval(payments, currentFingerprint).state as PaymentState
     : payments;
 
-  const rows = useMemo(() => profile.province === "Alberta"
+  const reportReadiness = useMemo(() => pilotReportReadiness(state, profile, payments), [state, profile, payments]);
+  const canPrint = loaded && reportReadiness.ready;
+
+  const rows = useMemo(() => canPrint && profile.province === "Alberta"
     ? state.employees
       .filter(pilotEmployeeIsInRun)
       .map((employee) => pilotCalculateEmployee(employee, state.timesheets, profile.frequency, state.openingBalances ?? {}))
-    : [], [state, profile]);
+    : [], [state, profile, canPrint]);
 
   const totals = useMemo(() => rows.reduce((sum, row) => ({
     gross: sum.gross + row.gross,
@@ -107,16 +112,18 @@ export default function PilotReportsPage() {
       <div className="mx-auto max-w-5xl">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3"><span className="block h-12 w-12 rounded-2xl bg-[#fff7ef]" style={{ background: "center / contain no-repeat url('/favicon.svg')" }} role="img" aria-label="Coffee Payroll cup" /><div><div className="text-2xl font-semibold">Coffee Payroll</div><div className="text-[10px] tracking-[0.3em] text-[#795f4f]">stress free payroll · reports</div></div></div>
-          <div className="no-print flex flex-wrap gap-2"><button onClick={() => router.push(displayPayments.completedAt ? "/uat/complete" : "/guided-payroll")} className="rounded-xl border border-[#e5d1bd] bg-[#fffdf9] px-4 py-2 text-sm font-semibold">Back</button><button onClick={() => window.print()} className="rounded-xl bg-[#1557d8] px-5 py-2 text-sm font-semibold text-white">Print / Save PDF</button></div>
+          <div className="no-print flex flex-wrap gap-2"><button onClick={() => router.push(displayPayments.completedAt ? "/uat/complete" : "/guided-payroll")} className="rounded-xl border border-[#e5d1bd] bg-[#fffdf9] px-4 py-2 text-sm font-semibold">Back</button><button onClick={() => window.print()} disabled={!canPrint} className="rounded-xl bg-[#1557d8] px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">Print / Save PDF</button></div>
         </header>
 
-        <section className="print-document mt-7 rounded-[28px] border border-[#decdbd] bg-[#fffdf9] p-6 shadow-sm sm:p-8">
+        <section className={`${canPrint ? "print-document " : ""}mt-7 rounded-[28px]`} border border-[#decdbd] bg-[#fffdf9] p-6 shadow-sm sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#795f4f]">Payroll record</p>
           <h1 className="mt-2 text-3xl font-semibold">Run 18 register</h1>
           <p className="mt-2 text-sm text-[#795f4f]">{profile.businessName} · August 16–29, 2026 · Pay September 4, 2026 · {source}</p>
           <p className="mt-1 text-xs text-[#795f4f]">{PILOT_RUN_KEY}</p>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {!canPrint && <div role="alert" className="no-print mt-6 rounded-2xl border border-[#e6c566] bg-[#fff6ec] p-5 text-sm text-[#714a32]"><p className="font-semibold">Register not ready to print</p><p className="mt-2">{loaded ? reportReadiness.message : "Checking this payroll…"}</p>{loaded && reportReadiness.action && <button type="button" onClick={() => router.push(reportReadiness.action === "hours" ? "/uat/time" : "/guided-payroll")} className="mt-3 rounded-xl bg-[#1557d8] px-4 py-2 text-sm font-semibold text-white">{reportReadiness.action === "hours" ? "Review hours" : "Return to payroll"}</button>}</div>}
+
+          {canPrint && <><div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <Summary label="Gross" value={totals.gross} />
             <Summary label="Income tax" value={totals.tax} />
             <Summary label="CPP" value={totals.cpp} />
@@ -137,6 +144,8 @@ export default function PilotReportsPage() {
               </article>;
             })}
           </div>
+
+          </>}
 
           <div className="no-print mt-7 rounded-2xl border border-[#d7e5ce] bg-[#f4faf1] p-4 text-sm leading-6 text-[#4f6944]"><strong>Fictional UAT report.</strong> This device-local view lets you verify the payroll register and payment evidence without opening the full production application.</div>
         </section>
