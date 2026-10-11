@@ -198,7 +198,7 @@ export default function PilotCompletePage() {
                 <div className="rounded-2xl border border-[#decdbd] bg-white p-4 text-center"><div className="text-xs text-[#795f4f]">Next pay date</div><div className="mt-1 text-sm font-bold">{nextDate}</div></div>
               </div>
 
-              <div className="mx-auto mt-7 max-w-2xl rounded-2xl border border-[#d7e5ce] bg-[#f4faf1] px-5 py-4 text-sm leading-6 text-[#4f6944]"><strong>Everything for this payroll is saved.</strong> {workspaceConnected ? "The approved run, employee payment confirmations and bank references are kept with the pilot payroll record." : "For this isolated test, the payroll and payment confirmations are saved only on this iPhone. Clearing Safari website data will erase them."}</div>
+              <div className="mx-auto mt-7 max-w-2xl rounded-2xl border border-[#d7e5ce] bg-[#f4faf1] px-5 py-4 text-sm leading-6 text-[#4f6944]"><strong>Everything for this payroll is saved.</strong> {workspaceConnected ? "The approved run, employee payment confirmations and bank references are kept with the pilot payroll record." : "For this isolated test, payroll and payment confirmations are saved in this browser only. Clearing its website data will erase them."}</div>
 
               <div className="mx-auto mt-7 max-w-2xl">
                 <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#795f4f]">What you may need next</p>
