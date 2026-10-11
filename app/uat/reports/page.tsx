@@ -115,7 +115,7 @@ export default function PilotReportsPage() {
           <div className="no-print flex flex-wrap gap-2"><button onClick={() => router.push(displayPayments.completedAt ? "/uat/complete" : "/guided-payroll")} className="rounded-xl border border-[#e5d1bd] bg-[#fffdf9] px-4 py-2 text-sm font-semibold">Back</button><button onClick={() => window.print()} disabled={!canPrint} className="rounded-xl bg-[#1557d8] px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">Print / Save PDF</button></div>
         </header>
 
-        <section className={`${canPrint ? "print-document " : ""}mt-7 rounded-[28px]`} border border-[#decdbd] bg-[#fffdf9] p-6 shadow-sm sm:p-8">
+        <section className={`${canPrint ? "print-document " : ""}mt-7 rounded-[28px] border border-[#decdbd] bg-[#fffdf9] p-6 shadow-sm sm:p-8`}>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#795f4f]">Payroll record</p>
           <h1 className="mt-2 text-3xl font-semibold">Run 18 register</h1>
           <p className="mt-2 text-sm text-[#795f4f]">{profile.businessName} · August 16–29, 2026 · Pay September 4, 2026 · {source}</p>
