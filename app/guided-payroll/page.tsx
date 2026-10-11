@@ -148,7 +148,12 @@ export default function GuidedPayrollPreviewPage() {
     const ordinary = employee.payType === "Hourly"
       ? `${row?.regular ?? 0} regular · ${row?.overtime ?? 0} OT · $${employee.appliedRate.toFixed(2)}/hr`
       : `$${employee.appliedRate.toLocaleString("en-CA")}/yr · regular salary carries forward`;
-    const detail = [lifecycle, ordinary, finalPayTotal > 0 ? `Final-pay items $${finalPayTotal.toFixed(2)}` : ""].filter(Boolean).join(" · ");
+    const changeSummary = employee.status === "Terminating" || employee.status === "Terminated"
+      ? `Leaving${employee.terminationDate ? ` · last day ${employee.terminationDate}` : ""}`
+      : employee.status === "New hire" ? "New this payroll"
+      : employee.rateEffectiveDate ? `Pay changed ${employee.rateEffectiveDate}`
+      : lifecycle ? "Employee change to review" : "";
+    const detail = [changeSummary, ordinary, finalPayTotal > 0 ? `Final-pay items ${finalPayTotal.toFixed(2)}` : ""].filter(Boolean).join(" · ");
     return {
       id: employee.id,
       name: employee.name,
@@ -157,7 +162,7 @@ export default function GuidedPayrollPreviewPage() {
       netPay: employee.net,
       grossPay: employee.gross,
       status: employee.status,
-      changeLabel: lifecycle || undefined,
+      changeLabel: changeSummary || undefined,
       needsAttention: Boolean(lifecycle),
     };
   });
