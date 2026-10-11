@@ -131,3 +131,24 @@
 body {
   @apply bg-background text-foreground;
 }
+
+/* The fictional payroll register and statements use the browser's Print/Save PDF flow. */
+@media print {
+  @page { size: letter; margin: 0.55in; }
+  html, body { background: #ffffff !important; color: #332118 !important; }
+  .no-print { display: none !important; }
+  .print-document {
+    background: #ffffff !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  .print-document article,
+  .print-document header,
+  .print-document footer,
+  .print-document .grid > div { break-inside: avoid; }
+  .print-document article { margin-bottom: 8pt; }
+  .print-document * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
