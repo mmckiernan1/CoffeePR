@@ -107,10 +107,10 @@ export default function PilotReportsPage() {
       <div className="mx-auto max-w-5xl">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1557d8] text-xl text-white">☕</div><div><div className="text-2xl font-semibold">Coffee Payroll</div><div className="text-[10px] tracking-[0.3em] text-[#795f4f]">stress free payroll · reports</div></div></div>
-          <button onClick={() => router.push(displayPayments.completedAt ? "/uat/complete" : "/guided-payroll")} className="rounded-xl border border-[#e5d1bd] bg-[#fffdf9] px-4 py-2 text-sm font-semibold">Back</button>
+          <div className="no-print flex flex-wrap gap-2"><button onClick={() => router.push(displayPayments.completedAt ? "/uat/complete" : "/guided-payroll")} className="rounded-xl border border-[#e5d1bd] bg-[#fffdf9] px-4 py-2 text-sm font-semibold">Back</button><button onClick={() => window.print()} className="rounded-xl bg-[#1557d8] px-5 py-2 text-sm font-semibold text-white">Print / Save PDF</button></div>
         </header>
 
-        <section className="mt-7 rounded-[28px] border border-[#decdbd] bg-[#fffdf9] p-6 shadow-sm sm:p-8">
+        <section className="print-document mt-7 rounded-[28px] border border-[#decdbd] bg-[#fffdf9] p-6 shadow-sm sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#795f4f]">Payroll record</p>
           <h1 className="mt-2 text-3xl font-semibold">Run 18 register</h1>
           <p className="mt-2 text-sm text-[#795f4f]">{profile.businessName} · August 16–29, 2026 · Pay September 4, 2026 · {source}</p>
@@ -131,15 +131,16 @@ export default function PilotReportsPage() {
               const paid = displayPayments.paidEmployeeIds.includes(row.id);
               const reference = displayPayments.references[row.id]?.trim();
               return <article key={row.id} className="rounded-2xl border border-[#decdbd] bg-white p-4 sm:p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold">{row.name}</h2><p className="mt-1 text-xs text-[#795f4f]">{row.payType}{row.status === "Terminating" ? " · Leaving" : ""}</p></div><div className="text-right"><p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#795f4f]">Employee payment</p><p className="mt-1 font-mono text-lg font-bold">{cad.format(row.net)}</p></div></div>
+                <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold">{row.name}</h2><p className="mt-1 text-xs text-[#795f4f]">ID {row.id} · {row.payType}{row.status === "Terminating" ? " · Leaving" : ""}</p><button type="button" onClick={() => router.push(`/uat/statements?employee=${encodeURIComponent(row.id)}`)} className="no-print mt-2 text-xs font-semibold text-[#1557d8] hover:underline">View pay statement →</button></div><div className="text-right"><p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#795f4f]">Employee payment</p><p className="mt-1 font-mono text-lg font-bold">{cad.format(row.net)}</p></div></div>
                 <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-5"><Cell label="Gross" value={cad.format(row.gross)} /><Cell label="Tax" value={cad.format(row.incomeTax)} /><Cell label="CPP" value={cad.format(row.cpp + row.cpp2)} /><Cell label="EI" value={cad.format(row.ei)} /><Cell label="Reimbursement" value={cad.format(row.reimbursement)} /></div>
                 {(paid || reference) && <div className="mt-4 rounded-xl bg-[#f4faf1] px-3 py-2 text-xs text-[#5f7654]">{paid ? "✓ Payment confirmed" : "Payment reference entered"}{reference ? ` · Ref: ${reference}` : ""}</div>}
               </article>;
             })}
           </div>
 
-          <div className="mt-7 rounded-2xl border border-[#d7e5ce] bg-[#f4faf1] p-4 text-sm leading-6 text-[#4f6944]"><strong>Fictional UAT report.</strong> This device-local view lets you verify the payroll register and payment evidence without opening the full production application.</div>
+          <div className="no-print mt-7 rounded-2xl border border-[#d7e5ce] bg-[#f4faf1] p-4 text-sm leading-6 text-[#4f6944]"><strong>Fictional UAT report.</strong> This device-local view lets you verify the payroll register and payment evidence without opening the full production application.</div>
         </section>
+        <p className="no-print mt-4 text-sm text-[#795f4f]">Choose “Save as PDF” in the browser Print menu. Select an employee to print an individual pay statement. Email delivery is not enabled for this fictional test.</p>
       </div>
     </main>
   );
