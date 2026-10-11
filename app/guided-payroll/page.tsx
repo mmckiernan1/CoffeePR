@@ -85,7 +85,8 @@ export default function GuidedPayrollPreviewPage() {
             });
             const reconciled = reconcilePilotLocalApproval(JSON.parse(raw) as PaymentState, fingerprint);
             setPayments(reconciled.state);
-            if (reconciled.approvalStale) window.localStorage.setItem(paymentStorageKey, JSON.stringify(reconciled.state));
+            // Show a safe stale-approval view without erasing the original payment record.
+            // A read-only visit must never destroy completed payment evidence.
           }
         }
       } catch {
@@ -107,7 +108,8 @@ export default function GuidedPayrollPreviewPage() {
             });
             const reconciled = reconcilePilotLocalApproval(JSON.parse(raw) as PaymentState, fingerprint);
             setPayments(reconciled.state);
-            if (reconciled.approvalStale) window.localStorage.setItem(paymentStorageKey, JSON.stringify(reconciled.state));
+            // Show a safe stale-approval view without erasing the original payment record.
+            // A read-only visit must never destroy completed payment evidence.
           }
         } catch {
           // Keep clean payment state.
