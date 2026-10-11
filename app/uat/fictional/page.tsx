@@ -22,6 +22,28 @@ export default function FictionalPilotScenarioPage() {
   const [message, setMessage] = useState("Load the fictional scenario, then run payroll exactly as a small-business owner would.");
 
   async function loadScenario() {
+    // Re-loading this UAT explicitly resets the run. Make sure a completed
+    // fictional payroll is never erased by an accidental click.
+    try {
+      const existingRaw = window.localStorage.getItem(paymentStorageKey);
+      const existing = existingRaw ? JSON.parse(existingRaw) as {
+        approved?: boolean;
+        completedAt?: string | null;
+        paidEmployeeIds?: string[];
+      } : null;
+      if (existing?.approved || existing?.completedAt || (existing?.paidEmployeeIds?.length ?? 0) > 0) {
+        const proceed = window.confirm(
+          "This will reset the previous fictional payroll, including its approval and payment confirmations. To preserve the existing test, choose Cancel. Reset the fictional payroll?",
+        );
+        if (!proceed) {
+          setMessage("Existing fictional payroll preserved. No records were changed.");
+          return;
+        }
+      }
+    } catch {
+      // Malformed stored test data will not prevent loading a fresh scenario.
+    }
+
     setStatus("loading");
     setMessage("Loading Juniper Trail Coffee Co. and clearing prior pilot progress…");
 
