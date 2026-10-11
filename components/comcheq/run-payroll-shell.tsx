@@ -49,35 +49,35 @@ export function RunPayrollShell({
         <button
           type="button"
           onClick={onHome}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#7d8797] transition hover:text-[#17428e]"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#795f4f] transition hover:text-[#1557d8]"
         >
           <Home className="size-3.5" />
           Main menu
         </button>
-        <span className="text-xs font-semibold text-[#7d8797]">
+        <span className="text-xs font-semibold text-[#795f4f]">
           Step {safeCurrentStep + 1} of {RUN_PAYROLL_STEPS.length}
         </span>
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-[#d7e0ec] bg-white shadow-[0_8px_24px_rgba(42,57,82,0.05)]" aria-label="Run payroll progress">
+      <section className="overflow-hidden rounded-2xl border border-[#decdbd] bg-white shadow-[0_8px_24px_rgba(42,57,82,0.05)]" aria-label="Run payroll progress">
         <div className="px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6">
           <div className="flex items-start gap-3">
             <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#1557d8] text-sm font-bold text-white shadow-sm">
               {safeCurrentStep + 1}
             </span>
             <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#647087]">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#795f4f]">
                 {activeStep.label}
               </p>
-              <h1 className="mt-0.5 text-2xl font-semibold tracking-[-0.025em] text-[#172033] sm:text-[28px]">
+              <h1 className="mt-0.5 text-2xl font-semibold tracking-[-0.025em] text-[#332118] sm:text-[28px]">
                 {title ?? activeStep.helper}
               </h1>
-              {detail && <p className="mt-1.5 max-w-3xl text-sm leading-6 text-[#647087]">{detail}</p>}
+              {detail && <p className="mt-1.5 max-w-3xl text-sm leading-6 text-[#795f4f]">{detail}</p>}
             </div>
           </div>
         </div>
 
-        <nav className="border-y border-[#e5ebf4] bg-[#fafbfd] px-2 py-2.5 sm:px-5 sm:py-3" aria-label="Payroll steps">
+        <nav className="border-y border-[#eadfd4] bg-[#fffaf5] px-2 py-2.5 sm:px-5 sm:py-3" aria-label="Payroll steps">
           <div className="flex items-center gap-0.5 overflow-x-auto pb-1 sm:gap-0 sm:pb-0">
             {RUN_PAYROLL_STEPS.map((step, index) => {
               const complete = index <= completedThrough && index !== safeCurrentStep;
@@ -105,12 +105,12 @@ export function RunPayrollShell({
                           ? "border-[#b8d5aa] bg-[#eef9e8] text-[#34701d]"
                           : active
                             ? "border-[#1557d8] bg-[#1557d8] text-white"
-                            : "border-[#d8e0ea] bg-white text-[#7d8797]"
+                            : "border-[#decdbd] bg-white text-[#795f4f]"
                       }`}
                     >
                       {complete ? <Check className="size-4" /> : index + 1}
                     </span>
-                    <span className={`whitespace-nowrap text-[10px] font-semibold sm:text-xs ${active ? "text-[#17428e]" : complete ? "text-[#47623b]" : "text-[#647087]"}`}>
+                    <span className={`whitespace-nowrap text-[10px] font-semibold sm:text-xs ${active ? "text-[#1557d8]" : complete ? "text-[#47623b]" : "text-[#795f4f]"}`}>
                       {step.label}
                     </span>
                   </button>
@@ -126,13 +126,13 @@ export function RunPayrollShell({
         <div className="p-4 sm:p-6">{children}</div>
 
         {safeCurrentStep > 0 && safeCurrentStep < RUN_PAYROLL_STEPS.length - 1 && onBack && (
-          <div className="flex items-center justify-between gap-3 border-t border-[#e6ebf2] bg-[#fcfdff] px-4 py-3 sm:px-6">
-            <Button type="button" variant="ghost" onClick={onBack} className="h-9 px-2 text-sm font-semibold text-[#17428e] hover:bg-[#edf3ff]">
+          <div className="flex items-center justify-between gap-3 border-t border-[#e6ebf2] bg-[#fffdf9] px-4 py-3 sm:px-6">
+            <Button type="button" variant="ghost" onClick={onBack} className="h-9 px-2 text-sm font-semibold text-[#1557d8] hover:bg-[#edf3ff]">
               <ArrowLeft className="size-4" />
               Back
             </Button>
             {nextStep && (
-              <span className="inline-flex items-center gap-1 text-xs text-[#7d8797]">
+              <span className="inline-flex items-center gap-1 text-xs text-[#795f4f]">
                 Next: {nextStep.label}
                 <ChevronRight className="size-3.5" />
               </span>
