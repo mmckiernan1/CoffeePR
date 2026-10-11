@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FICTIONAL_PILOT_PROFILE, FICTIONAL_PILOT_PROFILE_KEY } from "@/lib/payroll/pilot-fictional-scenario";
+import { pilotReportReadiness } from "@/lib/payroll/pilot-report-readiness";
 import {
   PILOT_RUN_PERIOD,
   PILOT_STARTER_STATE,
@@ -16,7 +17,7 @@ import {
 const money = new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" });
 const paymentStorageKey = "coffee-payroll:pilot-payments";
 
-type PaymentEvidence = { paidEmployeeIds: string[]; references: Record<string, string> };
+type PaymentEvidence = { approved: boolean; approvedFingerprint?: string | null; paidEmployeeIds: string[]; references: Record<string, string> };
 
 export default function FictionalPayStatementPage() {
   const router = useRouter();
@@ -24,7 +25,7 @@ export default function FictionalPayStatementPage() {
   const employeeId = searchParams.get("employee");
   const [state, setState] = useState<PilotUatState>(PILOT_STARTER_STATE);
   const [profile, setProfile] = useState<PilotProfile>(FICTIONAL_PILOT_PROFILE);
-  const [payments, setPayments] = useState<PaymentEvidence>({ paidEmployeeIds: [], references: {} });
+  const [payments, setPayments] = useState<PaymentEvidence>({ approved: false, approvedFingerprint: null, paidEmployeeIds: [], references: {} });
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -61,10 +62,12 @@ export default function FictionalPayStatementPage() {
     return () => { cancelled = true; };
   }, []);
 
+  const reportReadiness = useMemo(() => pilotReportReadiness(state, profile, payments), [state, profile, payments]);
+  const canPrint = loaded && reportReadiness.ready;
   const employee = useMemo(() => state.employees.find((person) => person.id === employeeId && pilotEmployeeIsInRun(person)), [state.employees, employeeId]);
-  const row = useMemo(() => employee && profile.province === "Alberta"
+  const row = useMemo(() => canPrint && employee && profile.province === "Alberta"
     ? pilotCalculateEmployee(employee, state.timesheets, profile.frequency, state.openingBalances ?? {})
-    : null, [employee, state, profile]);
+    : null, [employee, state, profile, canPrint]);
   const paid = Boolean(employeeId && payments.paidEmployeeIds.includes(employeeId));
   const reference = employeeId ? payments.references[employeeId] : null;
   const deductions = row ? row.incomeTax + row.cpp + row.cpp2 + row.ei : 0;
@@ -78,6 +81,7 @@ export default function FictionalPayStatementPage() {
         </div>
 
         {!loaded ? <div className="rounded-2xl bg-[#fffdf9] p-6">Loading fictional statement…</div>
+        : !canPrint ? <div role="alert" className="rounded-2xl border border-[#decdbd] bg-[#fffdf9] p-6"><h1 className="font-semibold">Pay statement not ready</h1><p className="mt-2 text-sm text-[#795f4f]">{reportReadiness.message}</p><button type="button" onClick={() => router.push(reportReadiness.action === "hours" ? "/uat/time" : "/guided-payroll")} className="mt-4 rounded-xl bg-[#1557d8] px-4 py-2 text-sm font-semibold text-white">Return to payroll</button></div>
         : !row ? <div className="rounded-2xl bg-[#fffdf9] p-6">This employee was not found in the selected fictional payroll.</div>
         : <section className="print-document rounded-[28px] border border-[#decdbd] bg-[#fffdf9] p-6 shadow-sm sm:p-9">
           <header className="flex flex-wrap items-start justify-between gap-4 border-b border-[#decdbd] pb-5">
