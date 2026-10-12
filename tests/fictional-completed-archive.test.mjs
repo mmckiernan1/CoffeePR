@@ -44,3 +44,19 @@ test("completed register, individual statements and Done screen can access saved
   assert.match(complete, /View historical register/);
   assert.match(complete, /This does not mark the current draft complete/);
 });
+
+test("sample completed register can be opened in one click without editing live payroll", async () => {
+  const [sample, hub] = await Promise.all([
+    read("lib/payroll/pilot-completed-reporting-sample.ts"),
+    read("app/uat/page.tsx"),
+  ]);
+  assert.match(sample, /createPilotCompletedSnapshot\(/);
+  assert.match(sample, /Math\.round\(noah\.gross \* 100\) !== 253625/);
+  assert.match(sample, /sample: true/);
+  assert.match(sample, /DEMO-CHQ-001/);
+  assert.match(hub, /View sample completed register/);
+  assert.match(hub, /savePilotCompletedSnapshot\(window\.localStorage, makePilotCompletedReportingSample\(\)\)/);
+  const open = hub.slice(hub.indexOf("function openSampleCompletedRegister()"), hub.indexOf("async function resetPilot()"));
+  assert.doesNotMatch(open, /resetState|removeItem|PUT|setItem\(PILOT_UAT_STORAGE_KEY/);
+  assert.match(open, /router\.push\("\/uat\/reports"\)/);
+});
