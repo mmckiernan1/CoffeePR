@@ -36,6 +36,8 @@ export type PilotCompletedRow = {
 
 export type PilotCompletedSnapshot = {
   version: 1;
+  /** True only for a generated, explicitly labelled sample historical record. */
+  sample?: boolean;
   id: string;
   runKey: string;
   fingerprint: string;
