@@ -3,6 +3,8 @@ import { FICTIONAL_PILOT_PROFILE_KEY } from "@/lib/payroll/pilot-fictional-scena
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { savePilotCompletedSnapshot } from "@/lib/payroll/pilot-completed-archive";
+import { makePilotCompletedReportingSample } from "@/lib/payroll/pilot-completed-reporting-sample";
 import {
   PILOT_STARTER_STATE,
   PILOT_RUN_KEY,
@@ -96,6 +98,16 @@ export default function PilotUatPage() {
   const changedEmployees = useMemo(() => state.employees.filter((employee) => pilotChangeSummary(employee)), [state.employees]);
   const hourlyEmployees = useMemo(() => includedEmployees.filter((employee) => employee.payType === "Hourly"), [includedEmployees]);
 
+  function openSampleCompletedRegister() {
+    try {
+      // Separate, clearly labelled sample: never change payroll inputs, approvals or payments.
+      savePilotCompletedSnapshot(window.localStorage, makePilotCompletedReportingSample());
+      router.push("/uat/reports");
+    } catch {
+      setNotice("Could not store the fictional reporting sample in this browser. Existing payroll data was not changed.");
+    }
+  }
+
   async function resetPilot() {
     setMode("resetting");
     setNotice("Resetting the fictional payroll scenario…");
@@ -171,14 +183,15 @@ export default function PilotUatPage() {
               <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Test the real payroll journey</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#795f4f]">The old duplicate hire and pay-change forms are gone. Use the same Changes, Hours, Review and Payments screens that the owner journey uses, so UAT now tests the product we actually intend to ship.</p>
             </div>
+            <button onClick={openSampleCompletedRegister} className="rounded-xl bg-[#1557d8] px-4 py-2.5 text-sm font-semibold text-white">View sample completed register</button>
             <button onClick={resetPilot} disabled={mode === "resetting"} className="rounded-xl border border-[#e5d1bd] bg-white px-4 py-2.5 text-sm font-semibold disabled:opacity-50">Reset fictional scenario</button>
           </div>
 
           <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl border border-[#decdbd] bg-white p-5"><div className="text-xs font-bold uppercase tracking-[0.14em] text-[#795f4f]">In this payroll</div><div className="mt-2 text-3xl font-semibold">{includedEmployees.length}</div><div className="mt-1 text-sm text-[#795f4f]">employees included</div></div>
             <div className="rounded-2xl border border-[#decdbd] bg-white p-5"><div className="text-xs font-bold uppercase tracking-[0.14em] text-[#795f4f]">Need hours</div><div className="mt-2 text-3xl font-semibold">{hourlyEmployees.length}</div><div className="mt-1 text-sm text-[#795f4f]">hourly employees</div></div>
-            <div className={`rounded-2xl border p-5 ${changedEmployees.length ? "border-[#e6c566] bg-[#fff6ec]" : "border-[#d7e5ce] bg-[#f4faf1]"}`}><div className="text-xs font-bold uppercase tracking-[0.14em] text-[#795f4f]">Changes</div><div className="mt-2 text-3xl font-semibold">{changedEmployees.length}</div><div className="mt-1 text-sm text-[#795f4f]">employees flagged</div></div>
-            <div className={`rounded-2xl border p-5 ${state.ready ? "border-[#d7e5ce] bg-[#f4faf1]" : "border-[#e6c566] bg-[#fff6ec]"}`}><div className="text-xs font-bold uppercase tracking-[0.14em] text-[#795f4f]">Hours status</div><div className="mt-2 text-lg font-semibold">{state.ready ? "Ready" : "Needs review"}</div><div className="mt-2 text-sm text-[#795f4f]">for Run 17</div></div>
+            <div className={`rounded-2xl border p-5 ${changedEmployees.length ? "border-[#e6c566] bg-[#fff6ec]" : "border-[#d7e5ce] bg-[#f4faf1]"}`}><div className="text-xs font-bold uppercase tracking-[0.14em] text-[#795f4f]">Changes</div><div className="mt-2 text-3xl font-semibold">{changedEmployees.length}</div><div className="mt-1 text-sm text-[#795f4f]">employees needing attention</div></div>
+            <div className={`rounded-2xl border p-5 ${state.ready ? "border-[#d7e5ce] bg-[#f4faf1]" : "border-[#e6c566] bg-[#fff6ec]"}`}><div className="text-xs font-bold uppercase tracking-[0.14em] text-[#795f4f]">Hours status</div><div className="mt-2 text-lg font-semibold">{state.ready ? "Ready" : "Needs review"}</div><div className="mt-2 text-sm text-[#795f4f]">for Run 18</div></div>
           </div>
         </section>
 
