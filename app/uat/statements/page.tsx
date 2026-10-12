@@ -107,7 +107,7 @@ export default function FictionalPayStatementPage() {
             </div>
           </header>
 
-          {archived && <p className="mt-3 text-xs text-[#5f7d4e]">Completed fictional payroll · historical snapshot preserved in this browser</p>}
+          {archived && <p className="mt-3 text-xs text-[#5f7d4e]">{archived.sample ? "SAMPLE STATEMENT. No payment was sent. " : ""}Completed fictional payroll · historical snapshot preserved in this browser</p>}
           <div className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
             <div><p className="text-xs uppercase tracking-wide text-[#967663]">Pay period</p><p className="mt-1 font-semibold">{archived?.period.periodStart ?? PILOT_RUN_PERIOD.periodStart} to {archived?.period.periodEnd ?? PILOT_RUN_PERIOD.periodEnd}</p></div>
             <div><p className="text-xs uppercase tracking-wide text-[#967663]">Pay basis</p><p className="mt-1 font-semibold">{row.payType}{row.status === "Terminating" ? " · Final pay review" : ""}</p></div>
