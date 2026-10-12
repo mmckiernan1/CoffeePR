@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { reconcilePilotLocalApproval } from "@/lib/payroll/pilot-local-payment-state";
 import { pilotRunFingerprint } from "@/lib/payroll/pilot-run-fingerprint";
+import { createPilotCompletedSnapshot, savePilotCompletedSnapshot } from "@/lib/payroll/pilot-completed-archive";
 import {
   PILOT_RUN_KEY,
   PILOT_RUN_PERIOD,
@@ -233,7 +234,21 @@ export default function PilotPaymentsPage() {
     clearReferenceTimers();
     const next = { ...paymentsRef.current, completedAt: new Date().toISOString() };
     const saved = await save(next);
-    if (saved) router.push("/uat/complete");
+    if (!saved) return;
+    // Capture the exact approved figures before any later changes to hours,
+    // rates, payment references or the current fictional workspace.
+    const snapshot = createPilotCompletedSnapshot(uat, profile, next, paymentMethods);
+    if (!snapshot) {
+      setCompletionError("This payroll could not be archived. Check the approved hours and payment confirmations before proceeding.");
+      return;
+    }
+    try {
+      savePilotCompletedSnapshot(window.localStorage, snapshot);
+    } catch {
+      setCompletionError("Could not save the completed payroll history in this browser. Do not clear browser data. Check available storage before continuing.");
+      return;
+    }
+    router.push("/uat/complete");
   }
 
   return (
