@@ -85,7 +85,8 @@ export default function GuidedPayrollPreviewPage() {
             });
             const reconciled = reconcilePilotLocalApproval(JSON.parse(raw) as PaymentState, fingerprint);
             setPayments(reconciled.state);
-            if (reconciled.approvalStale) window.localStorage.setItem(paymentStorageKey, JSON.stringify(reconciled.state));
+            // Show a safe stale-approval view without erasing the original payment record.
+            // A read-only visit must never destroy completed payment evidence.
           }
         }
       } catch {
@@ -107,7 +108,8 @@ export default function GuidedPayrollPreviewPage() {
             });
             const reconciled = reconcilePilotLocalApproval(JSON.parse(raw) as PaymentState, fingerprint);
             setPayments(reconciled.state);
-            if (reconciled.approvalStale) window.localStorage.setItem(paymentStorageKey, JSON.stringify(reconciled.state));
+            // Show a safe stale-approval view without erasing the original payment record.
+            // A read-only visit must never destroy completed payment evidence.
           }
         } catch {
           // Keep clean payment state.
@@ -148,7 +150,12 @@ export default function GuidedPayrollPreviewPage() {
     const ordinary = employee.payType === "Hourly"
       ? `${row?.regular ?? 0} regular · ${row?.overtime ?? 0} OT · $${employee.appliedRate.toFixed(2)}/hr`
       : `$${employee.appliedRate.toLocaleString("en-CA")}/yr · regular salary carries forward`;
-    const detail = [lifecycle, ordinary, finalPayTotal > 0 ? `Final-pay items $${finalPayTotal.toFixed(2)}` : ""].filter(Boolean).join(" · ");
+    const changeSummary = employee.status === "Terminating" || employee.status === "Terminated"
+      ? `Leaving${employee.terminationDate ? ` · last day ${employee.terminationDate}` : ""}`
+      : employee.status === "New hire" ? "New this payroll"
+      : employee.rateEffectiveDate ? `Pay changed ${employee.rateEffectiveDate}`
+      : lifecycle ? "Employee change to review" : "";
+    const detail = [changeSummary, ordinary, finalPayTotal > 0 ? `Final-pay items ${finalPayTotal.toFixed(2)}` : ""].filter(Boolean).join(" · ");
     return {
       id: employee.id,
       name: employee.name,
@@ -157,7 +164,7 @@ export default function GuidedPayrollPreviewPage() {
       netPay: employee.net,
       grossPay: employee.gross,
       status: employee.status,
-      changeLabel: lifecycle || undefined,
+      changeLabel: changeSummary || undefined,
       needsAttention: Boolean(lifecycle),
     };
   });
@@ -244,34 +251,34 @@ export default function GuidedPayrollPreviewPage() {
   const paymentsComplete = Boolean(payments.approved && payments.completedAt);
 
   return (
-    <main className="min-h-screen bg-[#f5f7fa] text-[#1a2930]">
+    <main className="min-h-screen bg-[#f7efe6] text-[#332118]">
       <div className="mx-auto max-w-[1240px] px-4 py-5 sm:px-7 sm:py-8">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-1 text-xs text-[#4c5c68]">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-1 text-xs text-[#795f4f]">
           <div>
-            <strong className="text-[#1a2930]">{profile.businessName} · Run payroll</strong>
+            <strong className="text-[#332118]">{profile.businessName} · Run payroll</strong>
             <span className="ml-2">Run 18 · August 16–29 · Pay date September 4, 2026</span>
           </div>
-          {lifecycleChanges.length > 0 && <button onClick={() => router.push("/uat/lifecycle")} className="rounded-lg px-2 py-1.5 font-semibold text-[#7a5d18] transition hover:bg-[#fff8e7]">{lifecycleChanges.length} employee change{lifecycleChanges.length === 1 ? "" : "s"}</button>}
+          {lifecycleChanges.length > 0 && <button onClick={() => router.push("/uat/lifecycle")} className="rounded-lg px-2 py-1.5 font-semibold text-[#714a32] transition hover:bg-[#fff6ec]">{lifecycleChanges.length} employee change{lifecycleChanges.length === 1 ? "" : "s"}</button>}
         </div>
 
         {pendingTaxSetup.length > 0 && (
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e6c566] bg-[#fff8e7] px-4 py-3 text-sm text-[#7a5d18]">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e6c566] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">
             <div><strong>{pendingTaxSetup.length} employee{pendingTaxSetup.length === 1 ? " needs" : "s need"} statutory setup review before approval.</strong><div className="mt-1 text-xs">Coffee Payroll will keep approval locked until the required checkpoint is complete.</div></div>
             <button onClick={() => router.push("/uat/tax-setup")} className="rounded-lg bg-[#1557d8] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0f47b5]">Review tax setup</button>
           </div>
         )}
 
         {unresolvedHourlyRateChanges.length > 0 && (
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e6c566] bg-[#fff8e7] px-4 py-3 text-sm text-[#7a5d18]">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e6c566] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">
             <div><strong>{unresolvedHourlyRateChanges.length} hourly employee{unresolvedHourlyRateChanges.length === 1 ? " has" : "s have"} a rate change inside this pay period.</strong><div className="mt-1 text-xs">Split their hours between the old and new rates in Hours & pay. Approval will unlock once every rate segment has been reviewed.</div></div>
             <button onClick={() => router.push("/uat/time")} className="rounded-lg bg-[#1557d8] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0f47b5]">Split hours by rate</button>
           </div>
         )}
 
-        {approvalError && <div className="mb-5 rounded-xl border border-[#e6c566] bg-[#fff8e7] px-4 py-3 text-sm font-semibold text-[#7a5d18]">{approvalError}</div>}
+        {approvalError && <div className="mb-5 rounded-xl border border-[#e6c566] bg-[#fff6ec] px-4 py-3 text-sm font-semibold text-[#714a32]">{approvalError}</div>}
 
         {!supported && (
-          <div className="mb-5 rounded-xl border border-[#e6c566] bg-[#fff8e7] px-4 py-3 text-sm text-[#7a5d18]">
+          <div className="mb-5 rounded-xl border border-[#e6c566] bg-[#fff6ec] px-4 py-3 text-sm text-[#714a32]">
             Coffee Payroll&apos;s current calculation pack is validated for Alberta. Change the business province to Alberta before running this payroll.
           </div>
         )}

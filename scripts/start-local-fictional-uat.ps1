@@ -11,8 +11,8 @@ Push-Location $root
 try {
   $branch = (& git branch --show-current).Trim()
   Assert-Exit "Git branch lookup"
-  if ($branch -ne "chat/uat-cobalt-cheque") {
-    throw "Expected the UAT branch, not '$branch'. Nothing started."
+  if ($branch -ne "chat/uat-foundation-print-theme") {
+    throw "Expected the printable UAT review branch, not '$branch'. Nothing started."
   }
 
   if (& git status --porcelain) {

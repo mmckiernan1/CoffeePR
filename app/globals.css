@@ -18,71 +18,71 @@
 }
 
 :root {
-  --background: #f5f7fa;
-  --foreground: #1a2930;
-  --card: #ffffff;
-  --card-foreground: #1a2930;
-  --popover: #ffffff;
-  --popover-foreground: #1a2930;
+  --background: #fffaf5;
+  --foreground: #332118;
+  --card: #fffdf9;
+  --card-foreground: #332118;
+  --popover: #fffdf9;
+  --popover-foreground: #332118;
   --primary: #1557d8;
   --primary-foreground: #ffffff;
-  --secondary: #edf3ff;
-  --secondary-foreground: #1557d8;
-  --muted: #f5f7fa;
-  --muted-foreground: #4c5c68;
+  --secondary: #f3e6da;
+  --secondary-foreground: #5a321f;
+  --muted: #f7efe6;
+  --muted-foreground: #795f4f;
   --accent: #edf3ff;
   --accent-foreground: #1557d8;
   --destructive: #dc2626;
-  --border: #dde6eb;
-  --input: #b4c7cc;
+  --border: #decdbd;
+  --input: #d8c8ba;
   --ring: #1557d8;
   --radius: 0.75rem;
   --chart-1: #1557d8;
   --chart-2: #5f7d4e;
-  --chart-3: #647087;
-  --chart-4: #7a98d2;
+  --chart-3: #967663;
+  --chart-4: #c79c74;
   --chart-5: #7a98d2;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #1a2930;
+  --sidebar: #fffdf9;
+  --sidebar-foreground: #332118;
   --sidebar-primary: #1557d8;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #edf3ff;
-  --sidebar-accent-foreground: #1557d8;
-  --sidebar-border: #dde6eb;
+  --sidebar-accent: #f3e6da;
+  --sidebar-accent-foreground: #5a321f;
+  --sidebar-border: #decdbd;
   --sidebar-ring: #1557d8;
 }
 
 .dark {
-  --background: #111827;
-  --foreground: #f7f9fd;
-  --card: #172033;
-  --card-foreground: #f7f9fd;
-  --popover: #172033;
-  --popover-foreground: #f7f9fd;
+  --background: #21150f;
+  --foreground: #fff8f1;
+  --card: #2b1b13;
+  --card-foreground: #fff8f1;
+  --popover: #2b1b13;
+  --popover-foreground: #fff8f1;
   --primary: #6f9cff;
   --primary-foreground: #ffffff;
-  --secondary: #243042;
-  --secondary-foreground: #e6ebf2;
-  --muted: #243042;
-  --muted-foreground: #9aa7b8;
+  --secondary: #3a271d;
+  --secondary-foreground: #f7e8dc;
+  --muted: #3a271d;
+  --muted-foreground: #c8ad9a;
   --accent: #17346f;
   --accent-foreground: #e3ecff;
   --destructive: #ef4444;
-  --border: #4c5c68;
-  --input: #4c5c68;
+  --border: #5a4032;
+  --input: #5a4032;
   --ring: #6f9cff;
   --chart-1: #6f9cff;
   --chart-2: #8baa77;
-  --chart-3: #7a98d2;
-  --chart-4: #9eb9ef;
+  --chart-3: #c89d7f;
+  --chart-4: #e1bd9f;
   --chart-5: #9eb9ef;
-  --sidebar: #172033;
-  --sidebar-foreground: #f7f9fd;
+  --sidebar: #2b1b13;
+  --sidebar-foreground: #fff8f1;
   --sidebar-primary: #6f9cff;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #243042;
-  --sidebar-accent-foreground: #e6ebf2;
-  --sidebar-border: #4c5c68;
+  --sidebar-accent: #3a271d;
+  --sidebar-accent-foreground: #f7e8dc;
+  --sidebar-border: #5a4032;
   --sidebar-ring: #6f9cff;
 }
 
@@ -130,4 +130,25 @@
 
 body {
   @apply bg-background text-foreground;
+}
+
+/* The fictional payroll register and statements use the browser's Print/Save PDF flow. */
+@media print {
+  @page { size: letter; margin: 0.55in; }
+  html, body { background: #ffffff !important; color: #332118 !important; }
+  .no-print { display: none !important; }
+  .print-document {
+    background: #ffffff !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  .print-document article,
+  .print-document header,
+  .print-document footer,
+  .print-document .grid > div { break-inside: avoid; }
+  .print-document article { margin-bottom: 8pt; }
+  .print-document * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
