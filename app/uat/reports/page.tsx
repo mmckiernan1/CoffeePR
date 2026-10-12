@@ -139,7 +139,7 @@ export default function PilotReportsPage() {
 
           {!canPrint && <div role="alert" className="no-print mt-6 rounded-2xl border border-[#e6c566] bg-[#fff6ec] p-5 text-sm text-[#714a32]"><p className="font-semibold">Register not ready to print</p><p className="mt-2">{loaded ? reportReadiness.message : "Checking this payroll…"}</p>{loaded && reportReadiness.action && <button type="button" onClick={() => router.push(reportReadiness.action === "hours" ? "/uat/time" : "/guided-payroll")} className="mt-3 rounded-xl bg-[#1557d8] px-4 py-2 text-sm font-semibold text-white">{reportReadiness.action === "hours" ? "Review hours" : "Return to payroll"}</button>}</div>}
 
-          {canPrint && <>{archived && <div className="no-print mt-5 rounded-xl border border-[#cfe4c5] bg-[#f4faf1] p-3 text-sm text-[#4f6944]">Historical payroll from {new Date(archived.completedAt).toLocaleString("en-CA")}. These amounts and payment references are preserved from completion, not recalculated from the current draft.</div>}<div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {canPrint && <>{archived && <div className="no-print mt-5 rounded-xl border border-[#cfe4c5] bg-[#f4faf1] p-3 text-sm text-[#4f6944]">{archived.sample ? "SAMPLE COMPLETED PAYROLL. No money was moved and these references are fictional. " : ""}Historical payroll from {new Date(archived.completedAt).toLocaleString("en-CA")}. These amounts and payment references are preserved from completion, not recalculated from the current draft.</div>}<div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <Summary label="Gross" value={totals.gross} />
             <Summary label="Income tax" value={totals.tax} />
             <Summary label="CPP" value={totals.cpp} />
