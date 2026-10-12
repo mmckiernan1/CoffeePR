@@ -6,6 +6,7 @@ import { FICTIONAL_PILOT_PROFILE_KEY } from "@/lib/payroll/pilot-fictional-scena
 import { reconcilePilotLocalApproval } from "@/lib/payroll/pilot-local-payment-state";
 import { pilotRunFingerprint } from "@/lib/payroll/pilot-run-fingerprint";
 import { pilotReportReadiness } from "@/lib/payroll/pilot-report-readiness";
+import { latestPilotCompletedSnapshot, readPilotCompletedArchive, type PilotCompletedSnapshot } from "@/lib/payroll/pilot-completed-archive";
 import {
   PILOT_RUN_KEY,
   PILOT_RUN_PERIOD,
@@ -36,6 +37,7 @@ export default function PilotReportsPage() {
   const [source, setSource] = useState("Loading payroll record…");
   const [workspaceConnected, setWorkspaceConnected] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [archived, setArchived] = useState<PilotCompletedSnapshot | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,7 +71,11 @@ export default function PilotReportsPage() {
           if (!cancelled) setSource("Fictional starter record");
         }
       }
-    })().finally(() => { if (!cancelled) setLoaded(true); });
+    })().finally(() => {
+      if (cancelled) return;
+      try { setArchived(latestPilotCompletedSnapshot(readPilotCompletedArchive(window.localStorage))); } catch { /* Never print a damaged archive. */ }
+      setLoaded(true);
+    });
     return () => { cancelled = true; };
   }, []);
 
@@ -91,13 +97,23 @@ export default function PilotReportsPage() {
     : payments;
 
   const reportReadiness = useMemo(() => pilotReportReadiness(state, profile, payments), [state, profile, payments]);
-  const canPrint = loaded && reportReadiness.ready;
+  const canPrint = loaded && (archived !== null || reportReadiness.ready);
 
-  const rows = useMemo(() => canPrint && profile.province === "Alberta"
-    ? state.employees
-      .filter(pilotEmployeeIsInRun)
-      .map((employee) => pilotCalculateEmployee(employee, state.timesheets, profile.frequency, state.openingBalances ?? {}))
-    : [], [state, profile, canPrint]);
+  const rows = useMemo(() => {
+    if (!canPrint) return [];
+    if (archived) return archived.rows.map((row) => ({
+      ...row, paid: true, reference: row.paymentReference,
+    }));
+    if (profile.province !== "Alberta") return [];
+    return state.employees.filter(pilotEmployeeIsInRun).map((employee) => {
+      const row = pilotCalculateEmployee(employee, state.timesheets, profile.frequency, state.openingBalances ?? {});
+      return {
+        ...row,
+        paid: displayPayments.paidEmployeeIds.includes(row.id),
+        reference: displayPayments.references[row.id] ?? "",
+      };
+    });
+  }, [state, profile, canPrint, archived, displayPayments]);
 
   const totals = useMemo(() => rows.reduce((sum, row) => ({
     gross: sum.gross + row.gross,
@@ -118,12 +134,12 @@ export default function PilotReportsPage() {
         <section className={`${canPrint ? "print-document " : ""}mt-7 rounded-[28px] border border-[#decdbd] bg-[#fffdf9] p-6 shadow-sm sm:p-8`}>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#795f4f]">Payroll record</p>
           <h1 className="mt-2 text-3xl font-semibold">Run 18 register</h1>
-          <p className="mt-2 text-sm text-[#795f4f]">{profile.businessName} · August 16–29, 2026 · Pay September 4, 2026 · {source}</p>
+          <p className="mt-2 text-sm text-[#795f4f]">{archived?.profile.businessName ?? profile.businessName} · August 16–29, 2026 · Pay September 4, 2026 · {archived ? "Completed historical snapshot · Saved in this browser" : source}</p>
           <p className="mt-1 text-xs text-[#795f4f]">{PILOT_RUN_KEY}</p>
 
           {!canPrint && <div role="alert" className="no-print mt-6 rounded-2xl border border-[#e6c566] bg-[#fff6ec] p-5 text-sm text-[#714a32]"><p className="font-semibold">Register not ready to print</p><p className="mt-2">{loaded ? reportReadiness.message : "Checking this payroll…"}</p>{loaded && reportReadiness.action && <button type="button" onClick={() => router.push(reportReadiness.action === "hours" ? "/uat/time" : "/guided-payroll")} className="mt-3 rounded-xl bg-[#1557d8] px-4 py-2 text-sm font-semibold text-white">{reportReadiness.action === "hours" ? "Review hours" : "Return to payroll"}</button>}</div>}
 
-          {canPrint && <><div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {canPrint && <>{archived && <div className="no-print mt-5 rounded-xl border border-[#cfe4c5] bg-[#f4faf1] p-3 text-sm text-[#4f6944]">Historical payroll from {new Date(archived.completedAt).toLocaleString("en-CA")}. These amounts and payment references are preserved from completion, not recalculated from the current draft.</div>}<div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <Summary label="Gross" value={totals.gross} />
             <Summary label="Income tax" value={totals.tax} />
             <Summary label="CPP" value={totals.cpp} />
@@ -131,12 +147,12 @@ export default function PilotReportsPage() {
             <Summary label="Employee payments" value={totals.net} accent />
           </div>
 
-          {localApprovalStale && <div className="mt-6 rounded-xl border border-[#e6c566] bg-[#fff6ec] px-4 py-3 text-sm font-semibold text-[#714a32]">Payroll changed after approval. Previous payment confirmations are hidden until the updated payroll is reviewed and approved again.</div>}
+          {!archived && localApprovalStale && <div className="mt-6 rounded-xl border border-[#e6c566] bg-[#fff6ec] px-4 py-3 text-sm font-semibold text-[#714a32]">Payroll changed after approval. Previous payment confirmations are hidden until the updated payroll is reviewed and approved again.</div>}
 
           <div className="mt-7 space-y-3">
             {rows.map((row) => {
-              const paid = displayPayments.paidEmployeeIds.includes(row.id);
-              const reference = displayPayments.references[row.id]?.trim();
+              const paid = row.paid;
+              const reference = row.reference?.trim();
               return <article key={row.id} className="rounded-2xl border border-[#decdbd] bg-white p-4 sm:p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold">{row.name}</h2><p className="mt-1 text-xs text-[#795f4f]">ID {row.id} · {row.payType}{row.status === "Terminating" ? " · Leaving" : ""}</p><button type="button" onClick={() => router.push(`/uat/statements?employee=${encodeURIComponent(row.id)}`)} className="no-print mt-2 text-xs font-semibold text-[#1557d8] hover:underline">View pay statement →</button></div><div className="text-right"><p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#795f4f]">Employee payment</p><p className="mt-1 font-mono text-lg font-bold">{cad.format(row.net)}</p></div></div>
                 <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-5"><Cell label="Gross" value={cad.format(row.gross)} /><Cell label="Tax" value={cad.format(row.incomeTax)} /><Cell label="CPP" value={cad.format(row.cpp + row.cpp2)} /><Cell label="EI" value={cad.format(row.ei)} /><Cell label="Reimbursement" value={cad.format(row.reimbursement)} /></div>
