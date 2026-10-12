@@ -59,6 +59,7 @@ export function GuidedPayrollRun({ approved, paymentsComplete, timeReady, employ
   const storageKey = `coffee-payroll:guided-payroll:${runKey}`;
   const hourlyEmployees = useMemo(() => employees.filter((employee) => employee.payType.toLowerCase() === "hourly"), [employees]);
   const salariedCount = employees.length - hourlyEmployees.length;
+  const salariedGross = employees.filter((employee) => employee.payType.toLowerCase() !== "hourly").reduce((sum, employee) => sum + (employee.grossPay ?? 0), 0);
   const hourlyRateChangeCount = useMemo(() => hourlyEmployees.filter((employee) => employeeCue(employee).hasPayChange).length, [hourlyEmployees]);
   const attentionEmployees = useMemo(() => employees.filter((employee) => employeeCue(employee).needsAttention), [employees]);
   const visibleStep = paymentsComplete ? 5 : step;
@@ -133,10 +134,10 @@ export function GuidedPayrollRun({ approved, paymentsComplete, timeReady, employ
           </div>
           <div className="mt-4 flex flex-wrap gap-2 text-xs text-[#795f4f]">
             <span className="rounded-full border border-[#decdbd] bg-white px-3 py-1.5">{employees.length} employees included</span>
-            {salariedCount > 0 && <span className="rounded-full border border-[#d9e6d2] bg-[#f8fbf6] px-3 py-1.5">{salariedCount} salary ready</span>}
+            {salariedCount > 0 && <span className="rounded-full border border-[#d9e6d2] bg-[#f8fbf6] px-3 py-1.5">{salariedCount} salary ready · {cad.format(salariedGross)} gross</span>}
             {recordedChangeCount > 0 && <span className="rounded-full border border-[#e6c566] bg-[#fff6ec] px-3 py-1.5">{recordedChangeCount} changes to review</span>}
           </div>
-          <p className="mt-3 text-xs text-[#795f4f]">Continue only if this employee list and the changes below look right. For new or missing changes, use Add another change instead.</p>
+          <p className="mt-3 text-xs text-[#795f4f]">Confirm the employee count and recorded changes. The full employee list is available below.</p>
         </section>
         {recordedChangeCount > 0 && <div className="mb-4 rounded-2xl border border-[#eadfd4] bg-[#fffdf9] p-4"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#795f4f]">Already recorded</p><div className="mt-3 space-y-2">{attentionEmployees.map((employee) => <div key={employee.id ?? employee.name} className="flex items-center justify-between gap-3 text-sm"><span className="font-medium text-[#332118]">{employee.name}</span><span className="text-xs text-[#795f4f]">{employeeCue(employee).changeLabel ?? "Review"}</span></div>)}</div></div>}
         <div className="grid gap-4 lg:grid-cols-2">
