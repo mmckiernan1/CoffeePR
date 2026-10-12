@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FICTIONAL_PILOT_PROFILE, FICTIONAL_PILOT_PROFILE_KEY } from "@/lib/payroll/pilot-fictional-scenario";
 import { pilotReportReadiness } from "@/lib/payroll/pilot-report-readiness";
+import { latestPilotCompletedSnapshot, readPilotCompletedArchive, type PilotCompletedSnapshot } from "@/lib/payroll/pilot-completed-archive";
 import {
   PILOT_RUN_PERIOD,
   PILOT_STARTER_STATE,
@@ -27,6 +28,7 @@ export default function FictionalPayStatementPage() {
   const [profile, setProfile] = useState<PilotProfile>(FICTIONAL_PILOT_PROFILE);
   const [payments, setPayments] = useState<PaymentEvidence>({ approved: false, approvedFingerprint: null, paidEmployeeIds: [], references: {} });
   const [loaded, setLoaded] = useState(false);
+  const [archived, setArchived] = useState<PilotCompletedSnapshot | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,20 +58,28 @@ export default function FictionalPayStatementPage() {
           if (savedPayments) setPayments(JSON.parse(savedPayments));
         }
       } catch { /* show starter fictional records only */ }
-      finally { if (!cancelled) setLoaded(true); }
+
     }
-    void load().finally(() => { if (!cancelled) setLoaded(true); });
+    void load().finally(() => {
+      if (cancelled) return;
+      try { setArchived(latestPilotCompletedSnapshot(readPilotCompletedArchive(window.localStorage))); } catch { /* Never print an invalid archive. */ }
+      setLoaded(true);
+    });
     return () => { cancelled = true; };
   }, []);
 
   const reportReadiness = useMemo(() => pilotReportReadiness(state, profile, payments), [state, profile, payments]);
-  const canPrint = loaded && reportReadiness.ready;
+  const canPrint = loaded && (archived !== null || reportReadiness.ready);
   const employee = useMemo(() => state.employees.find((person) => person.id === employeeId && pilotEmployeeIsInRun(person)), [state.employees, employeeId]);
-  const row = useMemo(() => canPrint && employee && profile.province === "Alberta"
-    ? pilotCalculateEmployee(employee, state.timesheets, profile.frequency, state.openingBalances ?? {})
-    : null, [employee, state, profile, canPrint]);
-  const paid = Boolean(employeeId && payments.paidEmployeeIds.includes(employeeId));
-  const reference = employeeId ? payments.references[employeeId] : null;
+  const row = useMemo(() => {
+    if (!canPrint) return null;
+    if (archived) return archived.rows.find((item) => item.id === employeeId) ?? null;
+    return employee && profile.province === "Alberta"
+      ? pilotCalculateEmployee(employee, state.timesheets, profile.frequency, state.openingBalances ?? {})
+      : null;
+  }, [employee, employeeId, state, profile, canPrint, archived]);
+  const paid = archived && row ? true : Boolean(employeeId && payments.paidEmployeeIds.includes(employeeId));
+  const reference = archived && row ? archived.rows.find((item) => item.id === employeeId)?.paymentReference : employeeId ? payments.references[employeeId] : null;
   const deductions = row ? row.incomeTax + row.cpp + row.cpp2 + row.ei : 0;
 
   return (
@@ -88,17 +98,18 @@ export default function FictionalPayStatementPage() {
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#967663]">Coffee Payroll · Fictional UAT</p>
               <h1 className="mt-2 text-3xl font-semibold">Pay statement</h1>
-              <p className="mt-1 text-sm text-[#795f4f]">{profile.businessName}</p>
+              <p className="mt-1 text-sm text-[#795f4f]">{archived?.profile.businessName ?? profile.businessName}</p>
             </div>
             <div className="text-right text-sm">
               <p><strong>Employee:</strong> {row.name}</p>
               <p className="mt-1"><strong>Employee ID:</strong> {row.id}</p>
-              <p className="mt-1"><strong>Pay date:</strong> {PILOT_RUN_PERIOD.payDate}</p>
+              <p className="mt-1"><strong>Pay date:</strong> {archived?.period.payDate ?? PILOT_RUN_PERIOD.payDate}</p>
             </div>
           </header>
 
+          {archived && <p className="mt-3 text-xs text-[#5f7d4e]">Completed fictional payroll · historical snapshot preserved in this browser</p>}
           <div className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
-            <div><p className="text-xs uppercase tracking-wide text-[#967663]">Pay period</p><p className="mt-1 font-semibold">{PILOT_RUN_PERIOD.periodStart} to {PILOT_RUN_PERIOD.periodEnd}</p></div>
+            <div><p className="text-xs uppercase tracking-wide text-[#967663]">Pay period</p><p className="mt-1 font-semibold">{archived?.period.periodStart ?? PILOT_RUN_PERIOD.periodStart} to {archived?.period.periodEnd ?? PILOT_RUN_PERIOD.periodEnd}</p></div>
             <div><p className="text-xs uppercase tracking-wide text-[#967663]">Pay basis</p><p className="mt-1 font-semibold">{row.payType}{row.status === "Terminating" ? " · Final pay review" : ""}</p></div>
           </div>
 
