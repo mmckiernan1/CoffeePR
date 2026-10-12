@@ -98,6 +98,18 @@ export function GuidedPayrollRun({ approved, paymentsComplete, timeReady, employ
   function openTimeEntry(employee?: GuidedPayrollEmployee) { saveProgress({ step: 2, changesConfirmed, employeesConfirmed }); onOpenTime(employee); }
   function openReview() { saveProgress({ step: 3, changesConfirmed, employeesConfirmed }); onOpenReview(); }
   function openPayments() { saveProgress({ step: 4, changesConfirmed, employeesConfirmed }); onOpenPayments(); }
+  // A routine employer can confirm the already-listed roster and changes in
+  // one action, without dismissing two separate introductory screens.
+  // This changes navigation only. Time, tax, rate-split and approval guards
+  // remain enforced by the payroll workflow.
+  function useQuickPayroll() {
+    const next = timeReady ? 3 : 2;
+    const progress = { step: next, changesConfirmed: true, employeesConfirmed: true };
+    setChangesConfirmed(true);
+    setEmployeesConfirmed(true);
+    setStep(next);
+    saveProgress(progress);
+  }
 
   const recordedChangeCount = attentionEmployees.length;
   const changeTitle = recordedChangeCount > 0 ? "Changes this payroll" : "Anything changed?";
@@ -108,6 +120,24 @@ export function GuidedPayrollRun({ approved, paymentsComplete, timeReady, employ
   return (
     <RunPayrollShell currentStep={visibleStep} completedThrough={completedThrough} onStepChange={go} onBack={() => go(visibleStep - 1)} onHome={onHome} title={visibleStep === 0 ? changeTitle : undefined} detail={visibleStep === 0 ? changeDetail : undefined}>
       {visibleStep === 0 && <>
+        <section className="mb-5 rounded-2xl border border-[#d9c9b8] bg-[#fffaf5] p-5 sm:p-6" aria-label="Quick payroll">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#795f4f]">Quick payroll</p>
+              <h2 className="mt-1 text-xl font-semibold text-[#332118]">{timeReady ? "Ready for your review" : hourlyEmployees.length ? `${hourlyEmployees.length} hourly ${hourlyEmployees.length === 1 ? "employee needs" : "employees need"} a check` : "Regular salary is ready"}</h2>
+              <p className="mt-2 max-w-xl text-sm text-[#795f4f]">{salariedCount} salaried ${salariedCount === 1 ? "employee is" : "employees are"} calculated automatically. ${hourlyEmployees.length ? `${hourlyEmployees.length} hourly ${hourlyEmployees.length === 1 ? "employee" : "employees"} included.` : "No hourly hours to enter."} ${recordedChangeCount ? `${recordedChangeCount} existing employee ${recordedChangeCount === 1 ? "change" : "changes"} shown below.` : "No recorded employee changes."}</p>
+            </div>
+            <Button type="button" onClick={useQuickPayroll} className="bg-[#1557d8] text-white hover:bg-[#0f47b5]">
+              {timeReady ? "Review payroll" : "Check hours & pay"} <ChevronRight className="size-4" />
+            </Button>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2 text-xs text-[#795f4f]">
+            <span className="rounded-full border border-[#decdbd] bg-white px-3 py-1.5">{employees.length} employees included</span>
+            {salariedCount > 0 && <span className="rounded-full border border-[#d9e6d2] bg-[#f8fbf6] px-3 py-1.5">{salariedCount} salary ready</span>}
+            {recordedChangeCount > 0 && <span className="rounded-full border border-[#e6c566] bg-[#fff6ec] px-3 py-1.5">{recordedChangeCount} changes to review</span>}
+          </div>
+          <p className="mt-3 text-xs text-[#795f4f]">Continue only if this employee list and the changes below look right. For new or missing changes, use Add another change instead.</p>
+        </section>
         {recordedChangeCount > 0 && <div className="mb-4 rounded-2xl border border-[#eadfd4] bg-[#fffdf9] p-4"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#795f4f]">Already recorded</p><div className="mt-3 space-y-2">{attentionEmployees.map((employee) => <div key={employee.id ?? employee.name} className="flex items-center justify-between gap-3 text-sm"><span className="font-medium text-[#332118]">{employee.name}</span><span className="text-xs text-[#795f4f]">{employeeCue(employee).changeLabel ?? "Review"}</span></div>)}</div></div>}
         <div className="grid gap-4 lg:grid-cols-2">
           <button type="button" onClick={() => { setChangesConfirmed(true); go(1); }} className="group rounded-2xl border border-[#decdbd] bg-white p-5 text-left transition hover:border-[#8fb0e8] hover:bg-[#fffaf5]"><span className="grid size-11 place-items-center rounded-xl bg-[#edf3ff] text-[#1557d8]"><Check className="size-5" /></span><h2 className="mt-4 text-lg font-semibold text-[#332118]">{recordedChangeCount > 0 ? "No other changes" : "No changes this pay"}</h2><p className="mt-1 text-sm leading-6 text-[#795f4f]">{recordedChangeCount > 0 ? "Keep the changes already recorded and continue to the employee check." : "Everyone is still active and their regular pay setup is unchanged."}</p><span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-[#1557d8]">Continue <ChevronRight className="size-4" /></span></button>
