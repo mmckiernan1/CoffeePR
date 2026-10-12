@@ -19,10 +19,10 @@ test("print safety checks missing hourly rate splits, hour confirmation and appr
 });
 
 test("register and statements do not print unapproved or incomplete payroll amounts", () => {
-  assert.match(register, /const canPrint = loaded && reportReadiness\.ready/);
+  assert.match(register, /const canPrint = loaded && \(archived !== null \|\| reportReadiness\.ready\)/);
   assert.match(register, /disabled=\{!canPrint\}/);
   assert.match(register, /\{canPrint && <>/);
-  assert.match(statement, /const canPrint = loaded && reportReadiness\.ready/);
+  assert.match(statement, /const canPrint = loaded && \(archived !== null \|\| reportReadiness\.ready\)/);
   assert.match(statement, /disabled=\{!row\}/);
   assert.match(statement, /!canPrint \?/);
   assert.match(statement, /approvedFingerprint/);
