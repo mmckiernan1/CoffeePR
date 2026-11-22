@@ -134,6 +134,7 @@ export default function PilotReportsPage() {
         <section className={`${canPrint ? "print-document " : ""}mt-7 rounded-[28px] border border-[#decdbd] bg-[#fffdf9] p-6 shadow-sm sm:p-8`}>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#795f4f]">Payroll record</p>
           <h1 className="mt-2 text-3xl font-semibold">Run 18 register</h1>
+          <p className="mt-2 rounded-lg border border-[#decdbd] bg-[#fffaf5] px-3 py-2 text-xs font-semibold text-[#5a321f]">Fictional demonstration register only. Not a production payroll record or proof of employee payment.</p>
           <p className="mt-2 text-sm text-[#795f4f]">{archived?.profile.businessName ?? profile.businessName} · August 16–29, 2026 · Pay September 4, 2026 · {archived ? "Completed historical snapshot · Saved in this browser" : source}</p>
           <p className="mt-1 text-xs text-[#795f4f]">{PILOT_RUN_KEY}</p>
 
