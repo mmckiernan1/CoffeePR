@@ -6,9 +6,12 @@ import { useRouter } from "next/navigation";
 import { isEmployeeInPayPeriod } from "@/lib/payroll/employee-lifecycle";
 import { reconcilePilotLocalApproval } from "@/lib/payroll/pilot-local-payment-state";
 import { pilotRunFingerprint } from "@/lib/payroll/pilot-run-fingerprint";
+import { AfterPayrollNextSteps } from "@/components/comcheq/after-payroll-next-steps";
+import { latestPilotCompletedSnapshot, readPilotCompletedArchive, type PilotCompletedSnapshot } from "@/lib/payroll/pilot-completed-archive";
 import {
   PILOT_RUN_KEY,
   PILOT_RUN_PERIOD,
+  pilotCalculateEmployee,
   type PilotProfile,
   type PilotUatEmployee,
   type PilotUatState,
@@ -49,6 +52,7 @@ export default function PilotCompletePage() {
   const [profile, setProfile] = useState<PilotProfile>({ businessName: "My business", province: "Alberta", frequency: "Biweekly", employeeCount: 4 });
   const [approvalStale, setApprovalStale] = useState(false);
   const [workspaceConnected, setWorkspaceConnected] = useState(false);
+  const [archived, setArchived] = useState<PilotCompletedSnapshot | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showCorrection, setShowCorrection] = useState(false);
   const [correctionReason, setCorrectionReason] = useState("");
@@ -90,7 +94,10 @@ export default function PilotCompletePage() {
         }
       }
     }
-    load();
+    void load().finally(() => {
+      if (cancelled) return;
+      try { setArchived(latestPilotCompletedSnapshot(readPilotCompletedArchive(window.localStorage))); } catch { /* Invalid history is not displayed as a completed run. */ }
+    });
     return () => { cancelled = true; };
   }, []);
 
@@ -119,6 +126,13 @@ export default function PilotCompletePage() {
   const referenceCount = includedEmployees.filter((employee) => Boolean(displayPayments.references[employee.id]?.trim())).length;
   const complete = Boolean(!approvalInvalid && displayPayments.approved && displayPayments.completedAt && employeeCount > 0 && paidCount === employeeCount && referenceCount === employeeCount);
   const nextDate = nextPayDate(profile.frequency);
+  const craAmount = useMemo(() => {
+    if (!uat || profile.province !== "Alberta") return undefined;
+    return uat.employees.filter(employeeIsInRun).reduce((sum, employee) => {
+      const pay = pilotCalculateEmployee(employee, uat.timesheets, profile.frequency, uat.openingBalances ?? {});
+      return sum + pay.incomeTax + pay.cpp + pay.cpp2 + pay.ei + pay.employerCpp + pay.employerEi;
+    }, 0);
+  }, [uat, profile]);
   const latestApproval = displayPayments.approvalHistory?.at(-1) ?? null;
   const latestReopen = displayPayments.reopenHistory?.at(-1) ?? null;
   const approvalTime = latestApproval ? new Date(latestApproval.approvedAt).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" }) : null;
@@ -177,58 +191,57 @@ export default function PilotCompletePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f5f7fa] px-4 py-8 text-[#1a2930] sm:px-6 sm:py-10">
+    <main className="coffee-payroll-readable min-h-screen bg-[#f7efe6] px-4 py-8 text-[#332118] sm:px-6 sm:py-10">
       <div className="mx-auto max-w-4xl">
-        <div className="flex items-center justify-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#1557d8] text-lg text-white">☕</div><div><div className="text-xl font-semibold">Coffee Payroll</div><div className="text-[9px] tracking-[0.3em] text-[#647087]">stress free payroll</div></div></div>
+        <div className="flex items-center justify-center gap-3"><span className="block h-11 w-11 rounded-2xl bg-[#fff7ef]" style={{ background: "center / contain no-repeat url('/favicon.svg')" }} role="img" aria-label="Coffee Payroll cup" /><div><div className="text-xl font-semibold">Coffee Payroll</div><div className="text-[9px] tracking-[0.3em] text-[#795f4f]">stress free payroll</div></div></div>
 
-        <section className="mt-7 rounded-[28px] border border-[#dde6eb] bg-[#ffffff] p-6 shadow-[0_20px_60px_rgba(72,42,24,0.10)] sm:p-9">
+        <section className="mt-7 rounded-[28px] border border-[#decdbd] bg-[#fffdf9] p-6 shadow-[0_20px_60px_rgba(72,42,24,0.10)] sm:p-9">
           {complete ? (
             <>
               <div className="text-center">
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#e8efdf] text-3xl font-bold text-[#3d5a2f]">✓</div>
                 <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-[#6f7f66]">Payroll complete</p>
                 <h1 className="mt-1 text-4xl font-semibold tracking-tight">You did your payroll.</h1>
-                <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#4c5c68]">{profile.businessName}’s Run 18 is approved and every employee payment has been confirmed.</p>
-                {completionTime && <p className="mt-2 text-xs text-[#647087]">Completed {completionTime}</p>}
+                <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#795f4f]">{profile.businessName}’s Run 18 is approved and every employee payment has been confirmed.</p>
+                {completionTime && <p className="mt-2 text-xs text-[#795f4f]">Completed {completionTime}</p>}
               </div>
 
               <div className="mx-auto mt-7 grid max-w-2xl gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-[#dde6eb] bg-white p-4 text-center"><div className="text-xs text-[#647087]">Employees paid</div><div className="mt-1 text-2xl font-bold">{paidCount}</div></div>
+                <div className="rounded-2xl border border-[#decdbd] bg-white p-4 text-center"><div className="text-xs text-[#795f4f]">Employees paid</div><div className="mt-1 text-2xl font-bold">{paidCount}</div></div>
                 <div className="rounded-2xl border border-[#cfe4c5] bg-[#f6fbf2] p-4 text-center"><div className="text-xs text-[#5e7651]">Payment records</div><div className="mt-1 text-2xl font-bold text-[#3d5a2f]">{referenceCount}</div></div>
-                <div className="rounded-2xl border border-[#dde6eb] bg-white p-4 text-center"><div className="text-xs text-[#647087]">Next pay date</div><div className="mt-1 text-sm font-bold">{nextDate}</div></div>
+                <div className="rounded-2xl border border-[#decdbd] bg-white p-4 text-center"><div className="text-xs text-[#795f4f]">Example next pay date</div><div className="mt-1 text-sm font-bold">{nextDate}</div></div>
               </div>
 
-              <div className="mx-auto mt-7 max-w-2xl rounded-2xl border border-[#d7e5ce] bg-[#f4faf1] px-5 py-4 text-sm leading-6 text-[#4f6944]"><strong>Everything for this payroll is saved.</strong> {workspaceConnected ? "The approved run, employee payment confirmations and bank references are kept with the pilot payroll record." : "For this isolated test, the payroll and payment confirmations are saved only on this iPhone. Clearing Safari website data will erase them."}</div>
+              <div className="mx-auto mt-7 max-w-2xl rounded-2xl border border-[#d7e5ce] bg-[#f4faf1] px-5 py-4 text-sm leading-6 text-[#4f6944]"><strong>Everything for this payroll is saved.</strong> {workspaceConnected ? "The approved run, employee payment confirmations and bank references are kept with the pilot payroll record." : "For this isolated test, payroll and payment confirmations are saved in this browser only. Clearing its website data will erase them."}</div>
 
-              <div className="mx-auto mt-7 max-w-2xl">
-                <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#647087]">What you may need next</p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                  <button onClick={() => router.push("/uat/reports")} className="rounded-2xl border border-[#dde6eb] bg-white p-4 text-left transition hover:border-[#b4c7cc]"><div className="text-sm font-semibold">Pay statements</div><p className="mt-1 text-xs leading-5 text-[#647087]">Employee payroll records and statements.</p><span className="mt-3 inline-block text-xs font-semibold text-[#1557d8]">Open reports →</span></button>
-                  <button onClick={() => router.push("/uat/review")} className="rounded-2xl border border-[#dde6eb] bg-white p-4 text-left transition hover:border-[#b4c7cc]"><div className="text-sm font-semibold">CRA amount</div><p className="mt-1 text-xs leading-5 text-[#647087]">Review the calculated remittance amount.</p><span className="mt-3 inline-block text-xs font-semibold text-[#1557d8]">Review CRA →</span></button>
-                  <button onClick={() => router.push("/uat/reports")} className="rounded-2xl border border-[#dde6eb] bg-white p-4 text-left transition hover:border-[#b4c7cc]"><div className="text-sm font-semibold">Payroll register</div><p className="mt-1 text-xs leading-5 text-[#647087]">Payroll totals and employee detail.</p><span className="mt-3 inline-block text-xs font-semibold text-[#1557d8]">Open register →</span></button>
-                </div>
-                <p className="mt-3 text-xs leading-5 text-[#647087]">CRA remittance timing depends on the employer&apos;s remitter schedule and is not yet configured in this pilot.</p>
-              </div>
+              <AfterPayrollNextSteps
+                craAmount={craAmount}
+                onOpenStatements={() => router.push("/uat/reports")}
+                onOpenCra={() => router.push("/uat/review")}
+                onOpenRegister={() => router.push("/uat/reports")}
+              />
+              <p className="mt-3 text-center text-xs text-[#795f4f]">The example next pay date is a preview only. Scheduling the next run is not enabled in this pilot.</p>
 
-              <div className="mt-8 flex flex-wrap justify-center gap-3"><button onClick={() => router.push("/uat/reports")} className="rounded-xl border border-[#d9e3f2] bg-white px-5 py-3 text-sm font-semibold">Reports & statements</button><button onClick={() => router.push("/uat/fictional")} className="rounded-xl bg-[#1557d8] px-5 py-3 text-sm font-semibold text-white">Back to main menu</button></div>
+              <div className="mt-8 flex flex-wrap justify-center gap-3"><button onClick={() => router.push("/uat/reports")} className="rounded-xl border border-[#e5d1bd] bg-white px-5 py-3 text-sm font-semibold">Reports & statements</button><button onClick={() => router.push("/uat/fictional")} className="rounded-xl bg-[#1557d8] px-5 py-3 text-sm font-semibold text-white">Back to main menu</button></div>
 
-              <div className="mx-auto mt-8 max-w-2xl border-t border-[#e6edf2] pt-5">
-                <button onClick={() => setShowDetails((current) => !current)} className="text-xs font-semibold text-[#647087] underline decoration-[#b4c7cc] underline-offset-4">{showDetails ? "Hide payroll record details" : "Payroll record details"}</button>
+              <div className="mx-auto mt-8 max-w-2xl border-t border-[#eadfd4] pt-5">
+                <button onClick={() => setShowDetails((current) => !current)} className="text-xs font-semibold text-[#795f4f] underline decoration-[#decdbd] underline-offset-4">{showDetails ? "Hide payroll record details" : "Payroll record details"}</button>
                 {showDetails && <div className="mt-4 space-y-3">
                   {latestApproval && <div className="rounded-2xl border border-[#d7e5ce] bg-[#f4faf1] p-4 text-xs text-[#5f7654]"><p className="font-semibold">Approval record</p><div className="mt-2 grid gap-1 sm:grid-cols-2"><div><span className="font-semibold">Approved:</span> {approvalTime}</div><div><span className="font-semibold">Approved by:</span> {latestApproval.approvedBy}</div><div><span className="font-semibold">Run:</span> {latestApproval.run.runKey}</div><div><span className="font-semibold">Snapshot:</span> {latestApproval.fingerprint.slice(0, 18)}…</div></div></div>}
-                  {latestReopen && <div className="rounded-2xl border border-[#e6edf2] bg-white p-4 text-xs text-[#647087]"><strong>Previous correction recorded:</strong> {latestReopen.reason}</div>}
+                  {latestReopen && <div className="rounded-2xl border border-[#eadfd4] bg-white p-4 text-xs text-[#795f4f]"><strong>Previous correction recorded:</strong> {latestReopen.reason}</div>}
                 </div>}
               </div>
 
               <div className="mx-auto mt-5 max-w-2xl">
-                {!showCorrection ? <button onClick={() => setShowCorrection(true)} className="text-xs font-semibold text-[#647087] underline decoration-[#b4c7cc] underline-offset-4">Need to correct this payroll?</button> : <div className="rounded-2xl border border-[#dde6eb] bg-[#fff8e7] p-5"><div className="font-semibold text-[#4c5c68]">Reopen for correction</div><p className="mt-1 text-xs leading-5 text-[#647087]">Reopening keeps the completed record and your reason in the audit history. You will need to review and approve the corrected payroll again.</p><label className="mt-4 block text-xs font-semibold text-[#4c5c68]">Why does this payroll need to be corrected?<textarea value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value.slice(0, 500))} rows={3} placeholder="Example: An employee reported 4 missing regular hours after payroll was completed." className="mt-1.5 w-full rounded-xl border border-[#b4c7cc] bg-white px-3 py-2.5 text-sm font-normal" /></label>{correctionError && <div className="mt-2 text-xs font-semibold text-[#7a5d18]">{correctionError}</div>}<div className="mt-4 flex flex-wrap gap-2"><button onClick={reopenPayroll} disabled={reopening || correctionReason.trim().length < 10} className="rounded-xl bg-[#7a5d18] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-35">{reopening ? "Reopening…" : "Reopen payroll"}</button><button onClick={() => { setShowCorrection(false); setCorrectionError(""); }} className="rounded-xl border border-[#d9e3f2] bg-white px-4 py-2.5 text-sm font-semibold">Cancel</button></div></div>}
+                {!showCorrection ? <button onClick={() => setShowCorrection(true)} className="text-xs font-semibold text-[#795f4f] underline decoration-[#decdbd] underline-offset-4">Need to correct this payroll?</button> : <div className="rounded-2xl border border-[#decdbd] bg-[#fff6ec] p-5"><div className="font-semibold text-[#795f4f]">Reopen for correction</div><p className="mt-1 text-xs leading-5 text-[#795f4f]">Reopening keeps the completed record and your reason in the audit history. You will need to review and approve the corrected payroll again.</p><label className="mt-4 block text-xs font-semibold text-[#795f4f]">Why does this payroll need to be corrected?<textarea value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value.slice(0, 500))} rows={3} placeholder="Example: An employee reported 4 missing regular hours after payroll was completed." className="mt-1.5 w-full rounded-xl border border-[#decdbd] bg-white px-3 py-2.5 text-sm font-normal" /></label>{correctionError && <div className="mt-2 text-xs font-semibold text-[#714a32]">{correctionError}</div>}<div className="mt-4 flex flex-wrap gap-2"><button onClick={reopenPayroll} disabled={reopening || correctionReason.trim().length < 10} className="rounded-xl bg-[#714a32] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-35">{reopening ? "Reopening…" : "Reopen payroll"}</button><button onClick={() => { setShowCorrection(false); setCorrectionError(""); }} className="rounded-xl border border-[#e5d1bd] bg-white px-4 py-2.5 text-sm font-semibold">Cancel</button></div></div>}
               </div>
             </>
           ) : (
             <div className="text-center">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#edf3ff] text-2xl">…</div>
               <h1 className="mt-5 text-3xl font-semibold">{approvalInvalid ? "Payroll changed after approval" : "Payroll is not finished yet"}</h1>
-              <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#4c5c68]">{approvalInvalid ? "An employee, rate, time or final-pay input changed. Review the updated payroll and approve it again before Coffee Payroll can mark this run complete." : "Approval, every employee payment, and a bank confirmation or cheque number for each payment must all be present before Coffee Payroll marks the run complete."}</p>
+              {archived && <div className="mx-auto mt-5 max-w-lg rounded-2xl border border-[#cfe4c5] bg-[#f4faf1] p-4 text-sm text-[#4f6944]">A previously completed fictional payroll is preserved in this browser. <button onClick={() => router.push("/uat/reports")} className="font-semibold underline">View historical register</button>. This does not mark the current draft complete.</div>}
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#795f4f]">{approvalInvalid ? "An employee, rate, time or final-pay input changed. Review the updated payroll and approve it again before Coffee Payroll can mark this run complete." : "Approval, every employee payment, and a bank confirmation or cheque number for each payment must all be present before Coffee Payroll marks the run complete."}</p>
               <div className="mt-7 flex justify-center"><button onClick={() => router.push(approvalInvalid ? "/guided-payroll" : "/uat/payments")} className="rounded-xl bg-[#1557d8] px-5 py-3 font-semibold text-white">{approvalInvalid ? "Review payroll again" : "Return to employee payments"}</button></div>
             </div>
           )}

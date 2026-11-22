@@ -1,65 +1,56 @@
-# Isolated Juniper Trail Coffee Co. mobile UAT
+# Isolated Juniper Trail Coffee Co. fictional UAT — desktop and mobile
 
-The `chat/uat-cobalt-cheque` review branch retains a separate Worker named
-`coffee-payroll-fictional-uat`. It has no D1 binding and never runs migrations.
-The Worker returns 404 for application/API routes outside the fictional UAT
-journey. Payroll progress and payment confirmations remain in the iPhone's
-browser storage; use fictional references only. Clearing Safari website data
-will erase this test run.
+The latest review branch is `chat/uat-foundation-print-theme` (draft PR #4).
+It includes printable fictional registers/statements and the warm Coffee Payroll
+espresso/cream/latte visual standard, with cobalt actions and green successes.
 
-## Prepare and publish the closed UAT Worker
+The UAT package uses a **separate** Worker name,
+`coffee-payroll-fictional-uat`, and deliberately has **no D1 binding,
+migrations, production routes or public preview URLs**. It stores fictional test
+progress in the browser; clearing browser data removes that test run.
 
-The current UAT branch is `chat/uat-cobalt-cheque`. On Martin's Windows
-desktop, open PowerShell in the existing CoffeePR repository and run:
+## Run the current review branch locally — no Cloudflare deployment
+
+On Martin's Windows development machine, in the CoffeePR repository:
 
 ```powershell
 git fetch origin
-git switch --track origin/chat/uat-cobalt-cheque
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\deploy-closed-fictional-uat.ps1
+git switch chat/uat-foundation-print-theme
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-local-fictional-uat.ps1
 ```
 
-If the local branch already exists, use `git switch chat/uat-cobalt-cheque`
-instead of `git switch --track`. The deployment script requires a clean
-working tree and the correct branch; it uses the installed Git Bash for the
-Vinext build, prepares and verifies the isolated bundle, then deploys **only**
-`coffee-payroll-fictional-uat` with **both public URLs disabled**.
+If the branch is not present locally, use
+`git switch --track origin/chat/uat-foundation-print-theme` instead of
+`git switch chat/uat-foundation-print-theme`. The PowerShell script requires
+a clean working tree. It builds the isolated fictional package, verifies that
+it contains no production bindings, and starts a **local-only** server.
 
-The generated `dist/server/wrangler.json` has `workers_dev: false`,
-`preview_urls: false`, no routes, no D1 binding, and Worker-first assets.
-Do not substitute the production `coffee-payroll` Worker or its D1 database.
-The script does not run database migrations.
+Visit `http://127.0.0.1:8787/uat/fictional`. For responsive QA, use browser
+developer tools at narrow mobile widths. The local run does not publish
+anything to Cloudflare.
 
-## Enable protected access, then the UAT URL
+**Do not use `scripts/deploy-closed-fictional-uat.ps1` for this review.**
+That legacy deployment script currently requires the older
+`chat/uat-cobalt-cheque` branch. Do not deploy or enable public URLs, migrate
+D1 or merge anything merely to complete this desktop review.
 
-1. Confirm the separate **coffee-payroll-fictional-uat** Worker appears under
-   Cloudflare **Workers & Pages** after the closed deployment.
-2. Select **coffee-payroll-fictional-uat** > **Access** >
-   **Protect this Worker behind Access**. Choose **All traffic**, not
-   "Previews only". Use an Allow policy for **Martin's one exact email address**
-   and **One-time PIN**. Do not permit an email domain, everyone, or all account
-   members. Apply Access and confirm the protection is active.
-3. Only after step 2 is confirmed: under this same isolated Worker, open
-   **Settings > Domains & Routes** and enable its production `workers.dev`
-   hostname. **Leave Preview URLs disabled.** Do not change the separate
-   production `coffee-payroll` Worker or expose it.
-4. In a signed-out/private Safari tab, open
-   `https://coffee-payroll-fictional-uat.<YOUR_WORKERS_SUBDOMAIN>.workers.dev/uat/fictional`.
-   **Before seeing any app content or assets**, Safari must show Cloudflare
-   Access sign-in. If app content appears without authentication, immediately
-   disable this Worker's `workers.dev` route.
-5. Complete One-time PIN sign-in, then tap **Load fictional test** and
-   **Start Run Payroll**. The scenario is saved on this device only.
+## Future hosted iPhone UAT — blocked until Access protection is verified
 
-Cloudflare's Worker-level Access policy protects all Worker routes and associated
-hostnames, including `workers.dev`. This is safer than protecting only a
-single page. Leave `workers_dev: false` in the **source UAT configuration**
-until future deployment logic explicitly preserves protection: redeploying with
-`workers_dev: false` will disable its route again.
+A genuine iPhone/Safari test may follow the local review, but only on the
+**separate** `coffee-payroll-fictional-uat` Worker after its Cloudflare
+Access protection is configured for Martin's **one exact email address** with
+One-time PIN, covering **all traffic**. Verify unauthenticated requests are
+blocked before allowing any workers.dev route. Keep preview URLs off, the
+production `coffee-payroll` Worker unchanged, and D1 unbound. The current
+review does **not** authorize publishing or changing Access.
 
-Keep `workers_dev: false` if Access has not been confirmed. Never apply
-`drizzle/0013`–`0015` as part of this preview. Never merge this branch to
-`main` to publish the preview.
+## Desktop print check
 
+On the latest review branch, from the fictional run print/save the register
+and each individual pay statement. Verify ID, gross, tax, CPP, EI, net pay,
+any reimbursement and payment evidence; check page breaks and margins.
+Every document must clearly identify itself as **fictional demonstration
+material**. The app does not email statements or send employee payments.
 
 ## iPhone test script
 
@@ -70,8 +61,8 @@ knew what to do next.
 ### Start
 
 - Open `/uat/fictional`.
-- Confirm the page feels like Coffee Payroll: clean white/light-neutral surfaces,
-  cobalt primary actions and green success states, without a brown/beige theme.
+- Confirm the page feels like Coffee Payroll: warm espresso/cream/latte surfaces,
+  cobalt primary actions and green success states, with the original cup mark.
 - Tap **Load fictional test**, then **Start Run Payroll**.
 - Pass: the next action is obvious without zooming or horizontal scrolling.
 
@@ -180,8 +171,8 @@ When reporting an issue, use whichever label fits best:
 - **BUG** — something is wrong or fails.
 - **CONFUSING** — it works, but you did not know what to do or why.
 - **MOBILE** — cramped, hard to tap/read, zooming or horizontal scrolling.
-- **VISUAL** — does not feel consistent with the cobalt/green/light-neutral
-  Coffee Payroll theme.
+- **VISUAL** — does not feel consistent with the warm espresso/cream/latte,
+  cobalt-action and green-success Coffee Payroll theme.
 - **CALC** — amount, rate, deduction, final pay or statutory result looks wrong.
 - **ENHANCEMENT** — works correctly, but there is a better/faster way.
 

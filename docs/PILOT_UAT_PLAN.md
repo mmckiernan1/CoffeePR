@@ -47,13 +47,13 @@ Validate the small-business owner journey before real payroll data is used. UAT 
 - Confirm a newly added fictional employee is included in the calculation.
 
 ### 7. Employee payment pilot
-- Business e-transfer is the visible pilot payment method.
+- Business e-transfer or Business cheque is available per employee during fictional UAT.
 - EFT/bank-file upload controls are hidden during the pilot.
 - From Approve & pay, open `/uat/payments`.
 - Confirm each employee's calculated net pay is shown as the amount to send.
-- Record a bank/e-transfer confirmation reference for each employee.
+- Record a bank/e-transfer confirmation reference or cheque number for each employee, as appropriate.
 - Mark each employee paid and confirm the checklist persists after navigation/refresh.
-- Confirm Coffee Payroll does not mark the payroll complete until the run is approved and every employee is marked paid.
+- Confirm Coffee Payroll does not mark payroll complete until the run is approved and every employee is marked paid. Changing payment method must clear old confirmation evidence.
 
 ### 8. Completion
 - After every employee is marked paid, choose **Finish payroll**.
@@ -75,9 +75,9 @@ Existing fictional employees retain fictional year-to-date balances so CPP, EI a
 
 The pilot now demonstrates the dependency:
 
-**Hire / change / timesheet → guided payroll population → statutory calculation → employee-level Review → approval → e-transfer checklist → confirmed completion.**
+**Hire / change / timesheet → guided payroll population → statutory calculation → employee-level Review → approval → business e-transfer/cheque checklist → confirmed completion.**
 
-This is still UAT state, not production payroll history. Coffee Payroll records the payment handoff and confirmation reference; the business owner sends the actual e-transfer through their bank.
+This is still UAT state, not production payroll history. Coffee Payroll records the payment handoff and confirmation reference or cheque number; the business owner makes the actual e-transfer or issues the cheque outside the application.
 
 ## Existing foundation already present
 
@@ -94,7 +94,7 @@ Use `/guided-payroll` to test the owner-facing six-step payroll experience using
 
 Use `/uat/review` for employee-level calculation verification.
 
-Use `/uat/payments` for the business e-transfer checklist and confirmation references.
+Use `/uat/payments` for the business e-transfer/cheque checklist and confirmation references or cheque numbers.
 
 Use `/uat/complete` to verify that completion depends on actual UAT payment status.
 

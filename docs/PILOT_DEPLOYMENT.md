@@ -9,7 +9,7 @@ Coffee Payroll already uses the Cloudflare Vite plugin and a D1 binding named `D
 - **Authentication:** Supabase Auth
 - **Domain:** `coffeepayroll.ca` if registered/available, with `app.coffeepayroll.ca` for the payroll application
 - **Customer billing:** PayPal Business for the pilot
-- **Employee payments:** business e-transfer checklist only; EFT/bank-file functionality remains hidden during pilot UAT
+- **Employee payments:** business e-transfer or business cheque checklist; EFT/bank-file functionality remains hidden during pilot UAT
 
 GETUS can still be used as the domain registrar or DNS/communications provider if desired. The application itself should stay on the platform that already matches the code and D1 binding unless we deliberately re-platform later.
 
@@ -113,8 +113,8 @@ Create account
 → Mark time ready
 → Review payroll
 → Approve payroll
-→ Send business e-transfers
-→ Record confirmation references
+→ Send business e-transfers or issue cheques
+→ Record e-transfer confirmations or cheque numbers
 → Mark every employee paid
 → You did your payroll
 ```
