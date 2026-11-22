@@ -64,4 +64,16 @@ Before considering a screen finished, ask:
 - Is there only one obvious next action?
 - Does it feel warm and calm rather than technical and corporate?
 - Are success and warning colours being used consistently?
-- Is any old Comcheq, purple, magenta or teal styling still visible?
+- Is any old Comcheq, purple, magenta or teal styling still visible?\n\n
+## Protected design baseline (November 2026)
+
+This is the approved Coffee Payroll look. Preserve it during UAT fixes, refactoring, and future releases:
+
+- **Keep** the original coffee-cup icon (`public/favicon.svg`) and the customer-facing Coffee Payroll name.
+- **Keep** warm cream/latte backgrounds, milk-foam cards, espresso text, cobalt action buttons, and fresh-green success indicators.
+- Do not replace this with cold-grey dashboards, violet fintech gradients, or a different logo/brand without an explicit design decision.
+- Keep the six-step guided owner journey intact; technical improvements should not turn it into an enterprise payroll console.
+- The automated `tests/coffee-theme.test.mjs` checks baseline theme tokens, user-facing identity, the cup silhouette, and payroll steps. **Passing tests are necessary but do not replace a visual desktop/mobile review.**
+- Print layouts may use white paper surfaces for readability, while the surrounding application retains the coffee-shop theme.
+
+Theme changes should be proposed separately from functional or calculation fixes and reviewed with before-and-after screenshots. The canonical design baseline is this document plus `app/globals.css` and `public/favicon.svg`.
