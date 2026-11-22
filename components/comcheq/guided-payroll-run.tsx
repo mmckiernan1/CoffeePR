@@ -5,6 +5,7 @@ import { BadgeCheck, Check, ChevronRight, Landmark, LockKeyhole, ReceiptText, Us
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RunPayrollShell } from "@/components/comcheq/run-payroll-shell";
+import { AfterPayrollNextSteps } from "@/components/comcheq/after-payroll-next-steps";
 
 export type GuidedPayrollEmployee = {
   id?: string;
@@ -202,7 +203,7 @@ export function GuidedPayrollRun({ approved, paymentsComplete, timeReady, employ
         </div>
       </div>}
 
-      {visibleStep === 5 && paymentsComplete && <div className="py-2 text-center"><span className="mx-auto grid size-16 place-items-center rounded-2xl bg-[#eef9e8] text-[#34701d]"><Check className="size-8" /></span><h2 className="mt-5 text-2xl font-semibold text-[#332118]">You did your payroll.</h2><p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[#795f4f]">Run 18 is approved and every employee payment has been confirmed. Your payroll is complete.</p><div className="mx-auto mt-6 grid max-w-2xl gap-3 sm:grid-cols-3"><Summary label="Employees" textValue={String(employees.length)} /><Summary label="Deposits" value={net} accent /><Summary label="CRA" value={remittance} /></div><div className="mt-6 flex flex-wrap justify-center gap-3"><Button type="button" variant="outline" onClick={onOpenReports} className="border-[#decdbd] bg-white text-[#1557d8]"><ReceiptText className="size-4" />Reports & statements</Button><Button type="button" onClick={onHome} className="bg-[#1557d8] text-white hover:bg-[#0f47b5]">Back to main menu</Button></div></div>}
+      {visibleStep === 5 && paymentsComplete && <div className="py-2 text-center"><span className="mx-auto grid size-16 place-items-center rounded-2xl bg-[#eef9e8] text-[#34701d]"><Check className="size-8" /></span><h2 className="mt-5 text-2xl font-semibold text-[#332118]">You did your payroll.</h2><p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[#795f4f]">Run 18 is approved and every employee payment has been confirmed. Your payroll is complete.</p><div className="mx-auto mt-6 grid max-w-2xl gap-3 sm:grid-cols-3"><Summary label="Employees" textValue={String(employees.length)} /><Summary label="Deposits" value={net} accent /><Summary label="CRA" value={remittance} /></div><AfterPayrollNextSteps craAmount={remittance} onOpenStatements={onOpenReports} onOpenCra={onOpenReview} onOpenRegister={onOpenReports} /><div className="mt-6 flex flex-wrap justify-center gap-3"><Button type="button" variant="outline" onClick={onOpenReports} className="border-[#decdbd] bg-white text-[#1557d8]"><ReceiptText className="size-4" />Reports & statements</Button><Button type="button" onClick={onHome} className="bg-[#1557d8] text-white hover:bg-[#0f47b5]">Back to main menu</Button></div></div>}
     </RunPayrollShell>
   );
 }

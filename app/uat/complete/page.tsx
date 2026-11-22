@@ -6,10 +6,12 @@ import { useRouter } from "next/navigation";
 import { isEmployeeInPayPeriod } from "@/lib/payroll/employee-lifecycle";
 import { reconcilePilotLocalApproval } from "@/lib/payroll/pilot-local-payment-state";
 import { pilotRunFingerprint } from "@/lib/payroll/pilot-run-fingerprint";
+import { AfterPayrollNextSteps } from "@/components/comcheq/after-payroll-next-steps";
 import { latestPilotCompletedSnapshot, readPilotCompletedArchive, type PilotCompletedSnapshot } from "@/lib/payroll/pilot-completed-archive";
 import {
   PILOT_RUN_KEY,
   PILOT_RUN_PERIOD,
+  pilotCalculateEmployee,
   type PilotProfile,
   type PilotUatEmployee,
   type PilotUatState,
@@ -124,6 +126,13 @@ export default function PilotCompletePage() {
   const referenceCount = includedEmployees.filter((employee) => Boolean(displayPayments.references[employee.id]?.trim())).length;
   const complete = Boolean(!approvalInvalid && displayPayments.approved && displayPayments.completedAt && employeeCount > 0 && paidCount === employeeCount && referenceCount === employeeCount);
   const nextDate = nextPayDate(profile.frequency);
+  const craAmount = useMemo(() => {
+    if (!uat || profile.province !== "Alberta") return undefined;
+    return uat.employees.filter(employeeIsInRun).reduce((sum, employee) => {
+      const pay = pilotCalculateEmployee(employee, uat.timesheets, profile.frequency, uat.openingBalances ?? {});
+      return sum + pay.incomeTax + pay.cpp + pay.cpp2 + pay.ei + pay.employerCpp + pay.employerEi;
+    }, 0);
+  }, [uat, profile]);
   const latestApproval = displayPayments.approvalHistory?.at(-1) ?? null;
   const latestReopen = displayPayments.reopenHistory?.at(-1) ?? null;
   const approvalTime = latestApproval ? new Date(latestApproval.approvedAt).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" }) : null;
@@ -200,20 +209,18 @@ export default function PilotCompletePage() {
               <div className="mx-auto mt-7 grid max-w-2xl gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl border border-[#decdbd] bg-white p-4 text-center"><div className="text-xs text-[#795f4f]">Employees paid</div><div className="mt-1 text-2xl font-bold">{paidCount}</div></div>
                 <div className="rounded-2xl border border-[#cfe4c5] bg-[#f6fbf2] p-4 text-center"><div className="text-xs text-[#5e7651]">Payment records</div><div className="mt-1 text-2xl font-bold text-[#3d5a2f]">{referenceCount}</div></div>
-                <div className="rounded-2xl border border-[#decdbd] bg-white p-4 text-center"><div className="text-xs text-[#795f4f]">Next pay date</div><div className="mt-1 text-sm font-bold">{nextDate}</div></div>
+                <div className="rounded-2xl border border-[#decdbd] bg-white p-4 text-center"><div className="text-xs text-[#795f4f]">Example next pay date</div><div className="mt-1 text-sm font-bold">{nextDate}</div></div>
               </div>
 
               <div className="mx-auto mt-7 max-w-2xl rounded-2xl border border-[#d7e5ce] bg-[#f4faf1] px-5 py-4 text-sm leading-6 text-[#4f6944]"><strong>Everything for this payroll is saved.</strong> {workspaceConnected ? "The approved run, employee payment confirmations and bank references are kept with the pilot payroll record." : "For this isolated test, payroll and payment confirmations are saved in this browser only. Clearing its website data will erase them."}</div>
 
-              <div className="mx-auto mt-7 max-w-2xl">
-                <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#795f4f]">What you may need next</p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                  <button onClick={() => router.push("/uat/reports")} className="rounded-2xl border border-[#decdbd] bg-white p-4 text-left transition hover:border-[#decdbd]"><div className="text-sm font-semibold">Pay statements</div><p className="mt-1 text-xs leading-5 text-[#795f4f]">Employee payroll records and statements.</p><span className="mt-3 inline-block text-xs font-semibold text-[#1557d8]">Open reports →</span></button>
-                  <button onClick={() => router.push("/uat/review")} className="rounded-2xl border border-[#decdbd] bg-white p-4 text-left transition hover:border-[#decdbd]"><div className="text-sm font-semibold">CRA amount</div><p className="mt-1 text-xs leading-5 text-[#795f4f]">Review the calculated remittance amount.</p><span className="mt-3 inline-block text-xs font-semibold text-[#1557d8]">Review CRA →</span></button>
-                  <button onClick={() => router.push("/uat/reports")} className="rounded-2xl border border-[#decdbd] bg-white p-4 text-left transition hover:border-[#decdbd]"><div className="text-sm font-semibold">Payroll register</div><p className="mt-1 text-xs leading-5 text-[#795f4f]">Payroll totals and employee detail.</p><span className="mt-3 inline-block text-xs font-semibold text-[#1557d8]">Open register →</span></button>
-                </div>
-                <p className="mt-3 text-xs leading-5 text-[#795f4f]">CRA remittance timing depends on the employer&apos;s remitter schedule and is not yet configured in this pilot.</p>
-              </div>
+              <AfterPayrollNextSteps
+                craAmount={craAmount}
+                onOpenStatements={() => router.push("/uat/reports")}
+                onOpenCra={() => router.push("/uat/review")}
+                onOpenRegister={() => router.push("/uat/reports")}
+              />
+              <p className="mt-3 text-center text-xs text-[#795f4f]">The example next pay date is a preview only. Scheduling the next run is not enabled in this pilot.</p>
 
               <div className="mt-8 flex flex-wrap justify-center gap-3"><button onClick={() => router.push("/uat/reports")} className="rounded-xl border border-[#e5d1bd] bg-white px-5 py-3 text-sm font-semibold">Reports & statements</button><button onClick={() => router.push("/uat/fictional")} className="rounded-xl bg-[#1557d8] px-5 py-3 text-sm font-semibold text-white">Back to main menu</button></div>
 
