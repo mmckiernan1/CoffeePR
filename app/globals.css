@@ -132,6 +132,24 @@ body {
   @apply bg-background text-foreground;
 }
 
+/* Owner-facing payroll text should be legible on a normal desktop monitor.
+   Only screen UI is enlarged: printable documents keep their paper layout. */
+@media screen {
+  .coffee-payroll-readable .text-xs,
+  .coffee-payroll-readable [class~="text-[9px]"],
+  .coffee-payroll-readable [class~="text-[10px]"],
+  .coffee-payroll-readable [class~="text-[11px]"],
+  .coffee-payroll-readable [class~="text-[12px]"] {
+    font-size: 0.875rem;
+    line-height: 1.35rem;
+  }
+
+  .coffee-payroll-readable .text-sm {
+    font-size: 1rem;
+    line-height: 1.55rem;
+  }
+}
+
 /* The fictional payroll register and statements use the browser's Print/Save PDF flow. */
 @media print {
   @page { size: letter; margin: 0.55in; }

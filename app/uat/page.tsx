@@ -155,7 +155,7 @@ export default function PilotUatPage() {
           : "Saved on this device";
 
   return (
-    <main className="min-h-screen bg-[#f7efe6] px-4 py-7 text-[#332118] sm:px-6">
+    <main className="coffee-payroll-readable min-h-screen bg-[#f7efe6] px-4 py-7 text-[#332118] sm:px-6">
       <div className="mx-auto max-w-6xl">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">

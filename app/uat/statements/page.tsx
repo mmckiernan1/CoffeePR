@@ -83,7 +83,7 @@ export default function FictionalPayStatementPage() {
   const deductions = row ? row.incomeTax + row.cpp + row.cpp2 + row.ei : 0;
 
   return (
-    <main className="min-h-screen bg-[#f7efe6] px-4 py-8 text-[#332118] sm:px-6">
+    <main className="coffee-payroll-readable min-h-screen bg-[#f7efe6] px-4 py-8 text-[#332118] sm:px-6">
       <div className="mx-auto max-w-3xl">
         <div className="no-print mb-5 flex flex-wrap items-center justify-between gap-3">
           <button type="button" onClick={() => router.push("/uat/reports")} className="rounded-xl border border-[#decdbd] bg-[#fffdf9] px-4 py-2 text-sm font-semibold">Back to register</button>

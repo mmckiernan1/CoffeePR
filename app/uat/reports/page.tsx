@@ -124,7 +124,7 @@ export default function PilotReportsPage() {
   }), { gross: 0, tax: 0, cpp: 0, ei: 0, net: 0 }), [rows]);
 
   return (
-    <main className="min-h-screen bg-[#f7efe6] px-4 py-7 text-[#332118] sm:px-6">
+    <main className="coffee-payroll-readable min-h-screen bg-[#f7efe6] px-4 py-7 text-[#332118] sm:px-6">
       <div className="mx-auto max-w-5xl">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3"><span className="block h-12 w-12 rounded-2xl bg-[#fff7ef]" style={{ background: "center / contain no-repeat url('/favicon.svg')" }} role="img" aria-label="Coffee Payroll cup" /><div><div className="text-2xl font-semibold">Coffee Payroll</div><div className="text-[10px] tracking-[0.3em] text-[#795f4f]">stress free payroll · reports</div></div></div>

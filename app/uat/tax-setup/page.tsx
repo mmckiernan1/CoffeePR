@@ -91,7 +91,7 @@ export default function PilotTaxSetupPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f7efe6] px-4 py-7 text-[#332118] sm:px-6">
+    <main className="coffee-payroll-readable min-h-screen bg-[#f7efe6] px-4 py-7 text-[#332118] sm:px-6">
       <div className="mx-auto max-w-4xl">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1557d8] text-xl text-white">☕</div><div><div className="text-2xl font-semibold">Coffee Payroll</div><div className="text-[10px] tracking-[0.3em] text-[#795f4f]">stress free payroll · tax setup</div></div></div>

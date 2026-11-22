@@ -89,7 +89,7 @@ export default function FictionalPilotScenarioPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f7efe6] px-4 py-7 text-[#332118] sm:px-6">
+    <main className="coffee-payroll-readable min-h-screen bg-[#f7efe6] px-4 py-7 text-[#332118] sm:px-6">
       <div className="mx-auto max-w-4xl">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>

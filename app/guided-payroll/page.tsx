@@ -251,7 +251,7 @@ export default function GuidedPayrollPreviewPage() {
   const paymentsComplete = Boolean(payments.approved && payments.completedAt);
 
   return (
-    <main className="min-h-screen bg-[#f7efe6] text-[#332118]">
+    <main className="coffee-payroll-readable min-h-screen bg-[#f7efe6] text-[#332118]">
       <div className="mx-auto max-w-[1240px] px-4 py-5 sm:px-7 sm:py-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-1 text-xs text-[#795f4f]">
           <div>

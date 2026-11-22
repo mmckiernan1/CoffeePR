@@ -182,7 +182,7 @@ export default function PilotCompletePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f7efe6] px-4 py-8 text-[#332118] sm:px-6 sm:py-10">
+    <main className="coffee-payroll-readable min-h-screen bg-[#f7efe6] px-4 py-8 text-[#332118] sm:px-6 sm:py-10">
       <div className="mx-auto max-w-4xl">
         <div className="flex items-center justify-center gap-3"><span className="block h-11 w-11 rounded-2xl bg-[#fff7ef]" style={{ background: "center / contain no-repeat url('/favicon.svg')" }} role="img" aria-label="Coffee Payroll cup" /><div><div className="text-xl font-semibold">Coffee Payroll</div><div className="text-[9px] tracking-[0.3em] text-[#795f4f]">stress free payroll</div></div></div>
 
